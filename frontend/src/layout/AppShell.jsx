@@ -40,7 +40,7 @@ export default function AppShell() {
 
       <div className="main-column">
         <header className="top-header">
-          <h2>CRM السوق العربي</h2>
+          <h2>سيستم ادارة عملاء</h2>
           <p>متابعة دقيقة للعملاء والمناطق</p>
         </header>
         <main className="page-content">
