@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 
 export default function ProtectedRoute({ allowedRoles, children }) {
-  const { token, user, loading } = useAuth();
+  const { token, user, loading, authError } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -10,6 +10,10 @@ export default function ProtectedRoute({ allowedRoles, children }) {
   }
 
   if (!token || !user) {
+    if (token && !user) {
+      return <div className="loading-screen">{authError || "جاري تحميل بيانات الحساب..."}</div>;
+    }
+
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

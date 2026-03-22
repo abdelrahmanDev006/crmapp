@@ -1,8 +1,14 @@
 const prisma = require("../config/prisma");
 const env = require("../config/env");
-const { Roles, ClientStatuses } = require("../constants/enums");
+const { Roles, ClientStatuses, VisitTypes } = require("../constants/enums");
 const { normalizeToWorkDate, calculateNextVisitDate, addWorkDaysWith28DayMonth } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
+const {
+  normalizePhoneForWhatsApp,
+  buildDueTodayWhatsAppMessage,
+  assertWhatsAppCloudConfigured,
+  sendWhatsAppTextMessage
+} = require("./whatsappService");
 
 const clientWithRelations = {
   region: {
@@ -13,6 +19,24 @@ const clientWithRelations = {
     }
   }
 };
+
+function chunkArray(items, chunkSize) {
+  const chunks = [];
+
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+}
+
+function sleep(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 
 function buildClientWhere(filters, user) {
   const where = {};
@@ -42,7 +66,22 @@ function buildClientWhere(filters, user) {
     ];
   }
 
-  if (filters.dueOnly === true) {
+  if (filters.dueDate) {
+    const selectedDate = normalizeToWorkDate(filters.dueDate);
+    const nextDay = new Date(selectedDate);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+    where.nextVisitDate = {
+      gte: selectedDate,
+      lt: nextDay
+    };
+
+    if (!filters.status) {
+      where.status = {
+        not: ClientStatuses.REJECTED
+      };
+    }
+  } else if (filters.dueOnly === true) {
     where.nextVisitDate = {
       lte: normalizeToWorkDate(new Date())
     };
@@ -126,7 +165,7 @@ function canRetryRejectedClient(client, referenceDate = new Date()) {
   return today.getTime() >= retryDate.getTime();
 }
 
-function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDays }) {
+function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDays, advanceDays, referenceDate }) {
   if (outcome === ClientStatuses.REJECTED) {
     // After rejection, schedule a future retry date.
     return addWorkDaysWith28DayMonth(normalizeToWorkDate(new Date()), rejectedRetryDays);
@@ -136,7 +175,13 @@ function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDa
     return currentDate;
   }
 
-  return calculateNextVisitDate(normalizeToWorkDate(new Date()), visitType);
+  if (Number.isFinite(Number(advanceDays)) && Number(advanceDays) > 0) {
+    const baseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
+    return addWorkDaysWith28DayMonth(baseDate, Number(advanceDays));
+  }
+
+  const nextVisitBaseDate = currentDate ? normalizeToWorkDate(currentDate) : normalizeToWorkDate(new Date());
+  return calculateNextVisitDate(nextVisitBaseDate, visitType);
 }
 
 function getVisitTypeLabel(type) {
@@ -149,7 +194,7 @@ function getVisitTypeLabel(type) {
   return labels[type] || type;
 }
 
-async function handleClientVisit({ clientId, user, outcome, note, visitType }) {
+async function handleClientVisit({ clientId, user, outcome, note, visitType, advanceDays, referenceDate }) {
   const existingClient = await getClientById(clientId, user, false);
 
   if (existingClient.status === ClientStatuses.REJECTED && outcome === ClientStatuses.NO_ANSWER) {
@@ -169,7 +214,9 @@ async function handleClientVisit({ clientId, user, outcome, note, visitType }) {
     currentDate: existingClient.nextVisitDate,
     visitType: nextVisitType,
     outcome,
-    rejectedRetryDays: env.rejectedRetryDays
+    rejectedRetryDays: env.rejectedRetryDays,
+    advanceDays,
+    referenceDate
   });
 
   const statusRecoveryNote =
@@ -213,7 +260,7 @@ async function handleClientVisit({ clientId, user, outcome, note, visitType }) {
 
 async function handleRegionClients({ regionId, user, note }) {
   if (user.role === Roles.REPRESENTATIVE && Number(user.regionId) !== Number(regionId)) {
-    throw createHttpError(403, "لا يمكنك إدارة هذه المنطقة");
+    throw createHttpError(403, "\u0644\u0627 \u064a\u0645\u0643\u0646\u0643 \u0625\u062f\u0627\u0631\u0629 \u0647\u0630\u0647 \u0627\u0644\u0645\u0646\u0637\u0642\u0629");
   }
 
   const region = await prisma.region.findUnique({
@@ -221,7 +268,7 @@ async function handleRegionClients({ regionId, user, note }) {
   });
 
   if (!region) {
-    throw createHttpError(404, "المنطقة غير موجودة");
+    throw createHttpError(404, "\u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f\u0629");
   }
 
   const clients = await prisma.client.findMany({
@@ -230,43 +277,158 @@ async function handleRegionClients({ regionId, user, note }) {
       status: {
         not: ClientStatuses.REJECTED
       }
+    },
+    select: {
+      id: true,
+      status: true,
+      visitType: true,
+      nextVisitDate: true
     }
   });
 
-  let updatedCount = 0;
+  if (clients.length === 0) {
+    return {
+      region,
+      updatedCount: 0
+    };
+  }
+
+  const now = normalizeToWorkDate(new Date());
+  const nextVisitDatesByType = {
+    [VisitTypes.WEEKLY]: calculateNextVisitDate(now, VisitTypes.WEEKLY),
+    [VisitTypes.BIWEEKLY]: calculateNextVisitDate(now, VisitTypes.BIWEEKLY),
+    [VisitTypes.MONTHLY]: calculateNextVisitDate(now, VisitTypes.MONTHLY)
+  };
+  const idsByVisitType = {
+    [VisitTypes.WEEKLY]: [],
+    [VisitTypes.BIWEEKLY]: [],
+    [VisitTypes.MONTHLY]: []
+  };
+  const regionHandledNote =
+    note || "\u062a\u0645 \u0627\u0644\u062a\u0639\u0627\u0645\u0644 \u0645\u0639 \u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0628\u0627\u0644\u0643\u0627\u0645\u0644";
+
+  const visitHistoryPayload = clients.map((client) => {
+    idsByVisitType[client.visitType].push(client.id);
+
+    return {
+      clientId: client.id,
+      visitedById: user.id,
+      previousStatus: client.status,
+      newStatus: ClientStatuses.ACTIVE,
+      note: regionHandledNote,
+      previousNextVisitDate: client.nextVisitDate,
+      newNextVisitDate: nextVisitDatesByType[client.visitType],
+      visitDate: new Date()
+    };
+  });
 
   await prisma.$transaction(async (tx) => {
-    for (const client of clients) {
-      const newNextVisitDate = calculateNextVisitDate(normalizeToWorkDate(new Date()), client.visitType);
+    const clientUpdateOperations = Object.entries(idsByVisitType).flatMap(([visitType, ids]) =>
+      chunkArray(ids, 500).map((idBatch) =>
+        tx.client.updateMany({
+          where: { id: { in: idBatch } },
+          data: {
+            status: ClientStatuses.ACTIVE,
+            nextVisitDate: nextVisitDatesByType[visitType]
+          }
+        })
+      )
+    );
 
-      await tx.client.update({
-        where: { id: client.id },
-        data: {
-          status: ClientStatuses.ACTIVE,
-          nextVisitDate: newNextVisitDate
-        }
-      });
+    const visitHistoryOperations = chunkArray(visitHistoryPayload, 500).map((batch) =>
+      tx.visitHistory.createMany({
+        data: batch
+      })
+    );
 
-      await tx.visitHistory.create({
-        data: {
-          clientId: client.id,
-          visitedById: user.id,
-          previousStatus: client.status,
-          newStatus: ClientStatuses.ACTIVE,
-          note: note || "تم التعامل مع المنطقة بالكامل",
-          previousNextVisitDate: client.nextVisitDate,
-          newNextVisitDate,
-          visitDate: new Date()
-        }
-      });
-
-      updatedCount += 1;
-    }
+    await Promise.all([...clientUpdateOperations, ...visitHistoryOperations]);
   });
 
   return {
     region,
-    updatedCount
+    updatedCount: clients.length
+  };
+}
+
+async function sendDueTodayWhatsAppAlerts({ user, regionId, customMessage }) {
+  assertWhatsAppCloudConfigured();
+
+  const dueDate = normalizeToWorkDate(new Date()).toISOString().slice(0, 10);
+  const where = buildClientWhere(
+    {
+      dueDate,
+      ...(regionId ? { regionId } : {})
+    },
+    user
+  );
+
+  const clients = await prisma.client.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      phone: true
+    },
+    orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }]
+  });
+
+  if (clients.length === 0) {
+    return {
+      dueDate,
+      totalDueClients: 0,
+      sentCount: 0,
+      skippedCount: 0,
+      failedCount: 0,
+      skippedClients: [],
+      failedClients: []
+    };
+  }
+
+  const messageText =
+    String(customMessage || "").trim() || buildDueTodayWhatsAppMessage({ representativeName: user.name, dueDate: new Date() });
+
+  let sentCount = 0;
+  const skippedClients = [];
+  const failedClients = [];
+
+  for (const client of clients) {
+    const normalizedPhone = normalizePhoneForWhatsApp(client.phone);
+
+    if (!normalizedPhone) {
+      skippedClients.push({
+        id: client.id,
+        name: client.name,
+        phone: client.phone,
+        reason: "رقم غير صالح للواتساب"
+      });
+      continue;
+    }
+
+    try {
+      await sendWhatsAppTextMessage({
+        to: normalizedPhone,
+        message: messageText
+      });
+      sentCount += 1;
+      await sleep(env.whatsappCloudMessageDelayMs);
+    } catch (error) {
+      failedClients.push({
+        id: client.id,
+        name: client.name,
+        phone: client.phone,
+        reason: error.message || "تعذر إرسال رسالة واتساب"
+      });
+    }
+  }
+
+  return {
+    dueDate,
+    totalDueClients: clients.length,
+    sentCount,
+    skippedCount: skippedClients.length,
+    failedCount: failedClients.length,
+    skippedClients,
+    failedClients
   };
 }
 
@@ -275,6 +437,7 @@ module.exports = {
   getClientById,
   handleClientVisit,
   handleRegionClients,
+  sendDueTodayWhatsAppAlerts,
   enforceClientScope,
   canRetryRejectedClient
 };

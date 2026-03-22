@@ -8,6 +8,11 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const prisma = new PrismaClient();
 
+const SeedModes = {
+  FULL: "FULL",
+  ADMIN_ONLY: "ADMIN_ONLY"
+};
+
 const regionNames = [
   "المنطقة الأولى",
   "المنطقة الثانية",
@@ -24,14 +29,25 @@ function getSafeWorkDate(offsetDays = 0) {
   return base;
 }
 
-function toPositiveInteger(value, fallback) {
+function toNonNegativeInteger(value, fallback) {
   const parsed = Number(value);
 
-  if (!Number.isFinite(parsed) || parsed <= 0) {
+  if (!Number.isFinite(parsed) || parsed < 0) {
     return fallback;
   }
 
   return Math.floor(parsed);
+}
+
+function resolveSeedMode(value) {
+  const mode = String(value || SeedModes.FULL).trim().toUpperCase();
+  const allowedModes = Object.values(SeedModes);
+
+  if (!allowedModes.includes(mode)) {
+    throw new Error(`Unsupported SEED_MODE "${value}". Allowed values: ${allowedModes.join(", ")}`);
+  }
+
+  return mode;
 }
 
 function generateStrongPassword(length = 16) {
@@ -70,6 +86,7 @@ async function seedRegions() {
 }
 
 async function seedUsers(regions) {
+  const availableRegions = Array.isArray(regions) ? regions : [];
   const createdCredentials = [];
   const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@crm.local";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || generateStrongPassword();
@@ -97,11 +114,18 @@ async function seedUsers(regions) {
   }
 
   const repEmailPrefix = process.env.SEED_REP_EMAIL_PREFIX || "rep";
-  const repCount = toPositiveInteger(process.env.SEED_REP_COUNT, regions.length);
+  const repCount = toNonNegativeInteger(process.env.SEED_REP_COUNT, availableRegions.length);
   const sharedRepPassword = process.env.SEED_REP_DEFAULT_PASSWORD || null;
 
+  if (repCount === 0 || availableRegions.length === 0) {
+    return {
+      adminId: admin.id,
+      createdCredentials
+    };
+  }
+
   for (let index = 0; index < repCount; index += 1) {
-    const region = regions[index % regions.length];
+    const region = availableRegions[index % availableRegions.length];
     const email = `${repEmailPrefix}${index + 1}@crm.local`;
 
     const existingUser = await prisma.user.findUnique({
@@ -210,11 +234,20 @@ async function seedClients(regions, adminId) {
 }
 
 async function main() {
-  const regions = await seedRegions();
-  const { adminId, createdCredentials } = await seedUsers(regions);
-  await seedClients(regions, adminId);
+  const seedMode = resolveSeedMode(process.env.SEED_MODE);
+  const isAdminOnlyMode = seedMode === SeedModes.ADMIN_ONLY;
+  const regions = isAdminOnlyMode ? [] : await seedRegions();
 
-  console.log("Seed completed.");
+  const { adminId, createdCredentials } = await seedUsers(regions);
+  if (!isAdminOnlyMode) {
+    await seedClients(regions, adminId);
+  }
+
+  console.log(`Seed completed (${seedMode}).`);
+
+  if (isAdminOnlyMode) {
+    console.log("Admin-only seed mode: regions, representatives, and clients were skipped.");
+  }
 
   if (createdCredentials.length === 0) {
     console.log("No new users created in this seed run.");

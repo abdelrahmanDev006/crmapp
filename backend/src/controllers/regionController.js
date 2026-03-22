@@ -60,6 +60,40 @@ const listRegions = asyncHandler(async (req, res) => {
   res.json({ items: filteredItems });
 });
 
+const createRegion = asyncHandler(async (req, res) => {
+  const name = req.body.name.trim();
+
+  const existingByName = await prisma.region.findFirst({
+    where: {
+      name: {
+        equals: name,
+        mode: "insensitive"
+      }
+    }
+  });
+
+  if (existingByName) {
+    throw createHttpError(409, "اسم المنطقة مستخدم بالفعل");
+  }
+
+  const aggregate = await prisma.region.aggregate({
+    _max: { code: true }
+  });
+  const nextCode = Number(aggregate._max.code || 0) + 1;
+
+  const created = await prisma.region.create({
+    data: {
+      name,
+      code: nextCode
+    }
+  });
+
+  res.status(201).json({
+    message: "تم إنشاء المنطقة بنجاح",
+    item: created
+  });
+});
+
 const getRegionDetails = asyncHandler(async (req, res) => {
   const regionId = Number(req.params.id);
 
@@ -104,6 +138,79 @@ const getRegionDetails = asyncHandler(async (req, res) => {
   });
 });
 
+const updateRegion = asyncHandler(async (req, res) => {
+  const regionId = Number(req.params.id);
+  const name = req.body.name?.trim();
+
+  const existing = await prisma.region.findUnique({
+    where: { id: regionId }
+  });
+
+  if (!existing) {
+    throw createHttpError(404, "المنطقة غير موجودة");
+  }
+
+  if (name) {
+    const duplicateByName = await prisma.region.findFirst({
+      where: {
+        id: { not: regionId },
+        name: {
+          equals: name,
+          mode: "insensitive"
+        }
+      }
+    });
+
+    if (duplicateByName) {
+      throw createHttpError(409, "اسم المنطقة مستخدم بالفعل");
+    }
+  }
+
+  const updated = await prisma.region.update({
+    where: { id: regionId },
+    data: {
+      ...(name ? { name } : {})
+    }
+  });
+
+  res.json({
+    message: "تم تحديث بيانات المنطقة",
+    item: updated
+  });
+});
+
+const deleteRegion = asyncHandler(async (req, res) => {
+  const regionId = Number(req.params.id);
+
+  const existing = await prisma.region.findUnique({
+    where: { id: regionId },
+    include: {
+      _count: {
+        select: {
+          clients: true,
+          users: true
+        }
+      }
+    }
+  });
+
+  if (!existing) {
+    throw createHttpError(404, "المنطقة غير موجودة");
+  }
+
+  if (existing._count.clients > 0 || existing._count.users > 0) {
+    throw createHttpError(400, "لا يمكن حذف منطقة مرتبطة بعملاء أو مستخدمين");
+  }
+
+  await prisma.region.delete({
+    where: { id: regionId }
+  });
+
+  res.json({
+    message: "تم حذف المنطقة بنجاح"
+  });
+});
+
 const handleWholeRegion = asyncHandler(async (req, res) => {
   const regionId = Number(req.params.id);
 
@@ -125,7 +232,10 @@ const handleWholeRegion = asyncHandler(async (req, res) => {
 
 module.exports = {
   listRegions,
+  createRegion,
   getRegionDetails,
+  updateRegion,
+  deleteRegion,
   handleWholeRegion,
   getRegionSummary
 };

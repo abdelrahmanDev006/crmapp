@@ -8,12 +8,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_STORAGE_KEY));
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     let mounted = true;
 
     async function bootstrap() {
       if (!token) {
+        setAuthError("");
         setLoading(false);
         return;
       }
@@ -22,12 +24,20 @@ export function AuthProvider({ children }) {
         const response = await authApi.me();
         if (mounted) {
           setUser(response.data.user);
+          setAuthError("");
         }
       } catch (error) {
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        const statusCode = error?.status;
+
         if (mounted) {
-          setToken(null);
-          setUser(null);
+          if (statusCode === 401 || statusCode === 403) {
+            localStorage.removeItem(TOKEN_STORAGE_KEY);
+            setToken(null);
+            setUser(null);
+            setAuthError("");
+          } else {
+            setAuthError(error.message || "تعذر التحقق من الجلسة");
+          }
         }
       } finally {
         if (mounted) {
@@ -48,6 +58,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem(TOKEN_STORAGE_KEY, response.data.token);
     setToken(response.data.token);
     setUser(response.data.user);
+    setAuthError("");
 
     return response.data.user;
   };
@@ -56,6 +67,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken(null);
     setUser(null);
+    setAuthError("");
   };
 
   const value = useMemo(
@@ -63,11 +75,12 @@ export function AuthProvider({ children }) {
       user,
       token,
       loading,
+      authError,
       login,
       logout,
       isAuthenticated: Boolean(token && user)
     }),
-    [user, token, loading]
+    [user, token, loading, authError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -189,7 +189,7 @@ export default function ClientDetailsPage() {
 
         {client.visits?.length ? (
           <div className="table-wrapper">
-            <table className="visit-history-table">
+            <table className="visit-history-table mobile-table">
               <thead>
                 <tr>
                   <th>تاريخ الزيارة</th>
@@ -204,17 +204,17 @@ export default function ClientDetailsPage() {
               <tbody>
                 {client.visits.map((visit) => (
                   <tr key={visit.id}>
-                    <td>{formatDate(visit.visitDate)}</td>
-                    <td>
+                    <td data-label="\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0632\u064a\u0627\u0631\u0629">{formatDate(visit.visitDate)}</td>
+                    <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629 \u0627\u0644\u0633\u0627\u0628\u0642\u0629">
                       <StatusBadge status={visit.previousStatus} />
                     </td>
-                    <td>
+                    <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629 \u0627\u0644\u062c\u062f\u064a\u062f\u0629">
                       <StatusBadge status={visit.newStatus} />
                     </td>
-                    <td>{formatDate(visit.previousNextVisitDate)}</td>
-                    <td>{formatDate(visit.newNextVisitDate)}</td>
-                    <td>{visit.visitedBy?.name || "-"}</td>
-                    <td>{visit.note || "-"}</td>
+                    <td data-label="\u0627\u0644\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0633\u0627\u0628\u0642">{formatDate(visit.previousNextVisitDate)}</td>
+                    <td data-label="\u0627\u0644\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u062c\u062f\u064a\u062f">{formatDate(visit.newNextVisitDate)}</td>
+                    <td data-label="\u0628\u0648\u0627\u0633\u0637\u0629">{visit.visitedBy?.name || "-"}</td>
+                    <td data-label="\u0645\u0644\u0627\u062d\u0638\u0629">{visit.note || "-"}</td>
                   </tr>
                 ))}
               </tbody>

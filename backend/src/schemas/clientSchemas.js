@@ -29,11 +29,17 @@ const updateClientSchema = z.object({
 
 const clientQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  pageSize: z
+    .coerce.number()
+    .int()
+    .min(1)
+    .default(20)
+    .transform((value) => Math.min(value, 100)),
   search: z.string().trim().optional(),
   visitType: z.enum([VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY]).optional(),
   status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
   regionId: z.coerce.number().int().positive().optional(),
+  dueDate: dateInputSchema.optional(),
   dueOnly: z
     .union([z.boolean(), z.string()])
     .optional()
@@ -47,11 +53,18 @@ const clientQuerySchema = z.object({
 const handleClientSchema = z.object({
   outcome: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]),
   note: z.string().max(500).optional(),
-  visitType: z.enum([VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY]).optional()
+  visitType: z.enum([VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY]).optional(),
+  advanceDays: z.coerce.number().int().min(1).max(365).optional(),
+  referenceDate: dateInputSchema.optional()
 });
 
 const bulkRegionHandleSchema = z.object({
   note: z.string().max(500).optional()
+});
+
+const sendTodayWhatsAppAlertsSchema = z.object({
+  regionId: z.coerce.number().int().positive().optional(),
+  message: z.string().trim().min(3).max(1000).optional()
 });
 
 module.exports = {
@@ -59,5 +72,6 @@ module.exports = {
   updateClientSchema,
   clientQuerySchema,
   handleClientSchema,
-  bulkRegionHandleSchema
+  bulkRegionHandleSchema,
+  sendTodayWhatsAppAlertsSchema
 };

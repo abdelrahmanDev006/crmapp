@@ -19,6 +19,8 @@ Copy-Item frontend/.env.production.example frontend/.env.production
   - `JWT_SECRET` (قيمة قوية >= 32 حرف)
   - `ALLOWED_ORIGINS` (الدومين الحقيقي فقط)
   - `AUTH_RATE_LIMIT_MAX`
+  - `WHATSAPP_CLOUD_ENABLED=true` (إذا أردت إرسال واتساب تلقائي)
+  - `WHATSAPP_CLOUD_ACCESS_TOKEN` و `WHATSAPP_CLOUD_PHONE_NUMBER_ID`
 - `.env.production`
   - `POSTGRES_USER`
   - `POSTGRES_PASSWORD`
@@ -57,7 +59,9 @@ docker compose --env-file .env.production -f docker-compose.prod.yml exec backen
 
 ## 5) قواعد تشغيل مهمة
 
-- لا تستخدم `prisma:seed` في الإنتاج.
+- النسخة الإنتاجية الافتراضية تكون بدون بيانات (لا مناطق/عملاء/مندوبين).
+- أنشئ فقط حساب الأدمن عبر `admin:bootstrap` بعد التشغيل.
+- لا تستخدم `prisma:seed` في الإنتاج. وإذا اضطررت، اجعل `SEED_MODE=ADMIN_ONLY`.
 - لا تستخدم حسابات `@crm.local` في البيئة الرسمية.
 - لا تحفظ كلمات المرور في ملفات مشاركة عامة.
 - فعّل HTTPS على مستوى السيرفر/الـ reverse proxy.

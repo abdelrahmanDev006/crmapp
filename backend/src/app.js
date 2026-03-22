@@ -39,7 +39,7 @@ const authLimiter = rateLimit({
   message: "عدد محاولات تسجيل الدخول كبير، حاول لاحقًا"
 });
 
-app.use("/api/auth", authLimiter);
+app.use("/api/auth/login", authLimiter);
 
 app.get("/api/health", (req, res) => {
   res.json({

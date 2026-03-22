@@ -43,7 +43,7 @@
 - `backend/prisma/seed.js`
 
 الجداول الأساسية:
-- `Region` (6 مناطق ثابتة)
+- `Region` (مناطق ديناميكية يمكن إضافتها/تعديلها)
 - `User` (Admin / Representative)
 - `Client` (بيانات العميل + نوع الزيارة + الحالة + موعد الزيارة القادمة)
 - `VisitHistory` (سجل الزيارات والتحويلات السابقة)
@@ -83,16 +83,20 @@ Base URL: `http://localhost:5000/api`
 
 ### Regions
 - `GET /regions` قائمة المناطق
+- `POST /regions` إنشاء منطقة (Admin)
 - `GET /regions/:id` تفاصيل منطقة
+- `PATCH /regions/:id` تحديث منطقة (Admin)
+- `DELETE /regions/:id` حذف منطقة (Admin - إذا غير مرتبطة بعملاء/مستخدمين)
 - `POST /regions/:id/handle-all` تم التعامل مع المنطقة بالكامل
 
 ### Clients
-- `GET /clients` قائمة العملاء (filters + pagination)
+- `GET /clients` قائمة العملاء (filters + pagination + `dueDate` لعرض مستحقي يوم محدد)
 - `POST /clients` إنشاء عميل (Admin)
 - `GET /clients/:id` تفاصيل عميل + سجل زيارات
 - `PATCH /clients/:id` تحديث عميل (Admin)
 - `DELETE /clients/:id` حذف عميل (Admin)
-- `POST /clients/:id/handle` تحديث حالة/نتيجة الزيارة
+- `POST /clients/:id/handle` تحديث حالة/نتيجة الزيارة (يدعم `advanceDays` + `referenceDate` للترحيل بعد عدد أيام محدد)
+- `POST /clients/alerts/whatsapp/today` إرسال تنبيه واتساب تلقائي لعملاء اليوم (يتطلب إعداد WhatsApp Cloud API)
 
 ## تشغيل المشروع محليًا
 

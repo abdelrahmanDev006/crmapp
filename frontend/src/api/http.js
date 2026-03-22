@@ -8,6 +8,11 @@ function normalizeApiUrl(value) {
     return null;
   }
 
+  if (raw.startsWith("/")) {
+    const normalizedPath = raw.endsWith("/") && raw.length > 1 ? raw.slice(0, -1) : raw;
+    return normalizedPath.endsWith("/api") ? normalizedPath : `${normalizedPath}/api`;
+  }
+
   const withProtocol = raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
   const withoutTrailingSlash = withProtocol.endsWith("/") ? withProtocol.slice(0, -1) : withProtocol;
 
@@ -39,7 +44,11 @@ http.interceptors.response.use(
   (response) => response,
   (error) => {
     const message = error.response?.data?.message || "حدث خطأ أثناء تنفيذ الطلب";
-    return Promise.reject(new Error(message));
+    const wrappedError = new Error(message);
+    wrappedError.status = error.response?.status || null;
+    wrappedError.code = error.code || null;
+    wrappedError.cause = error;
+    return Promise.reject(wrappedError);
   }
 );
 

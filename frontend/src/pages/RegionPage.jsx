@@ -102,7 +102,7 @@ export default function RegionPage() {
             <div className="table-empty">لا يوجد عملاء في هذه المنطقة</div>
           ) : (
             <div className="table-wrapper">
-              <table>
+              <table className="mobile-table">
                 <thead>
                   <tr>
                     <th>العميل</th>
@@ -117,17 +117,17 @@ export default function RegionPage() {
                 <tbody>
                   {clientsData.items.map((client) => (
                     <tr key={client.id}>
-                      <td>{client.name}</td>
-                      <td>{client.phone}</td>
-                      <td>{client.products}</td>
-                      <td>
+                      <td data-label="\u0627\u0644\u0639\u0645\u064a\u0644">{client.name}</td>
+                      <td data-label="\u0627\u0644\u0647\u0627\u062a\u0641">{client.phone}</td>
+                      <td data-label="\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a">{client.products}</td>
+                      <td data-label="\u0646\u0648\u0639 \u0627\u0644\u0632\u064a\u0627\u0631\u0629">
                         <VisitTypeBadge type={client.visitType} />
                       </td>
-                      <td>
+                      <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">
                         <StatusBadge status={client.status} />
                       </td>
-                      <td>{formatDate(client.nextVisitDate)}</td>
-                      <td>
+                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">{formatDate(client.nextVisitDate)}</td>
+                      <td className="actions-cell" data-label="\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644">
                         <Link to={`/clients/${client.id}`} className="ghost-btn">
                           عرض
                         </Link>

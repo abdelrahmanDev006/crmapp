@@ -41,6 +41,57 @@ function mapTabToFilters(tab) {
   };
 }
 
+function getTodayInputDate() {
+  const now = new Date();
+  const timezoneOffsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
+
+function normalizePhoneForWhatsApp(phone) {
+  const digitsOnly = String(phone || "").replace(/\D/g, "");
+
+  if (!digitsOnly) {
+    return "";
+  }
+
+  if (digitsOnly.startsWith("00")) {
+    return digitsOnly.slice(2);
+  }
+
+  if (digitsOnly.startsWith("0")) {
+    return `2${digitsOnly}`;
+  }
+
+  return digitsOnly;
+}
+
+function buildDueTodayWhatsAppMessage({ representativeName, dueDate }) {
+  return `مرحبًا، معك ${representativeName || "مندوب الشركة"}. نؤكد لك أن زيارتنا الدورية لك اليوم ${dueDate}. إذا لديك أي ملاحظة، فضلاً أخبرنا قبل موعد الزيارة.`;
+}
+
+function getDateTextOrNull(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString().slice(0, 10);
+}
+
+function getDateTextForMessage(value) {
+  const parsedDateText = getDateTextOrNull(value);
+  if (!parsedDateText) {
+    return getTodayInputDate();
+  }
+
+  return parsedDateText;
+}
+
 export default function ClientsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
@@ -50,6 +101,7 @@ export default function ClientsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedRegionId, setSelectedRegionId] = useState("");
+  const [selectedDueDate, setSelectedDueDate] = useState("");
   const [data, setData] = useState({ items: [], totalPages: 1, total: 0, page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -58,8 +110,11 @@ export default function ClientsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createLoading, setCreateLoading] = useState(false);
+  const [infoMessage, setInfoMessage] = useState("");
+  const todayDateText = getTodayInputDate();
 
   const queryFilters = useMemo(() => mapTabToFilters(activeTab), [activeTab]);
+  const hasDueDateFilter = Boolean(selectedDueDate);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -69,9 +124,14 @@ export default function ClientsPage() {
       const params = {
         page,
         pageSize: 20,
-        search: search || undefined,
-        ...queryFilters
+        search: search || undefined
       };
+
+      if (hasDueDateFilter) {
+        params.dueDate = selectedDueDate;
+      } else {
+        Object.assign(params, queryFilters);
+      }
 
       if (isAdmin && selectedRegionId) {
         params.regionId = Number(selectedRegionId);
@@ -84,7 +144,7 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, page, queryFilters, search, selectedRegionId]);
+  }, [hasDueDateFilter, isAdmin, page, queryFilters, search, selectedDueDate, selectedRegionId]);
 
   useEffect(() => {
     loadClients();
@@ -117,6 +177,7 @@ export default function ClientsPage() {
 
   async function handleClientAction(clientId) {
     setActionClientId(clientId);
+    setInfoMessage("");
 
     try {
       await clientsApi.handle(clientId, {
@@ -139,6 +200,7 @@ export default function ClientsPage() {
 
     setDeleteClientId(client.id);
     setError("");
+    setInfoMessage("");
 
     try {
       await clientsApi.remove(client.id);
@@ -154,6 +216,7 @@ export default function ClientsPage() {
     event.preventDefault();
     setCreateLoading(true);
     setError("");
+    setInfoMessage("");
 
     try {
       await clientsApi.create({
@@ -180,6 +243,48 @@ export default function ClientsPage() {
   function onTabChange(nextTab) {
     setActiveTab(nextTab);
     setPage(1);
+  }
+
+  function onDueDateChange(value) {
+    setSelectedDueDate(value);
+    setPage(1);
+  }
+
+  function isClientDueToday(client) {
+    const clientDateText = getDateTextOrNull(client.nextVisitDate);
+
+    return client.status !== "REJECTED" && clientDateText === todayDateText;
+  }
+
+  function handleOpenClientWhatsApp(client) {
+    setError("");
+    setInfoMessage("");
+
+    if (!isClientDueToday(client)) {
+      setInfoMessage("زرار واتساب متاح للعملاء المستحقين اليوم فقط.");
+      return;
+    }
+
+    const normalizedPhone = normalizePhoneForWhatsApp(client.phone);
+
+    if (!normalizedPhone) {
+      setError("رقم العميل غير صالح لفتح واتساب");
+      return;
+    }
+
+    const messageText = buildDueTodayWhatsAppMessage({
+      representativeName: user?.name,
+      dueDate: getDateTextForMessage(client.nextVisitDate)
+    });
+    const encodedMessage = encodeURIComponent(messageText);
+    const popup = window.open(`https://wa.me/${normalizedPhone}?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+
+    if (!popup) {
+      setInfoMessage("المتصفح منع فتح واتساب. فعّل pop-ups ثم أعد المحاولة.");
+      return;
+    }
+
+    setInfoMessage(`تم فتح واتساب للعميل: ${client.name}`);
   }
 
   return (
@@ -286,11 +391,17 @@ export default function ClientsPage() {
               type="button"
               className={activeTab === tab.key ? "tab-btn active" : "tab-btn"}
               onClick={() => onTabChange(tab.key)}
+              disabled={hasDueDateFilter}
+              title={hasDueDateFilter ? "ألغِ فلتر التاريخ أولًا لاستخدام التبويبات" : tab.label}
             >
               {tab.label}
             </button>
           ))}
         </div>
+
+        {hasDueDateFilter && (
+          <div className="info-box">عرض العملاء المستحقين في تاريخ: {formatDate(`${selectedDueDate}T00:00:00.000Z`)}</div>
+        )}
 
         <div className="filters-row">
           <input
@@ -302,6 +413,28 @@ export default function ClientsPage() {
             }}
             placeholder="بحث بالاسم أو الهاتف أو العنوان..."
           />
+
+          <div className="clients-date-filter">
+            <span className="clients-date-label">تاريخ الاستحقاق</span>
+            <input
+              type="date"
+              className="clients-date-input"
+              value={selectedDueDate}
+              onChange={(event) => onDueDateChange(event.target.value)}
+              title="تاريخ الاستحقاق"
+            />
+            <button type="button" className="ghost-btn calendar-mini-btn" onClick={() => onDueDateChange(getTodayInputDate())}>
+              اليوم
+            </button>
+            <button
+              type="button"
+              className="ghost-btn calendar-mini-btn"
+              disabled={!hasDueDateFilter}
+              onClick={() => onDueDateChange("")}
+            >
+              مسح
+            </button>
+          </div>
 
           {isAdmin && (
             <select
@@ -323,9 +456,11 @@ export default function ClientsPage() {
           <button type="button" className="secondary-btn" onClick={loadClients}>
             تحديث
           </button>
+
         </div>
 
         {error && <div className="error-box">{error}</div>}
+        {infoMessage && <div className="info-box">{infoMessage}</div>}
 
         {loading ? (
           <div className="table-empty">جاري تحميل العملاء...</div>
@@ -333,7 +468,7 @@ export default function ClientsPage() {
           <div className="table-empty">لا توجد بيانات في هذا التصنيف</div>
         ) : (
           <div className="table-wrapper">
-            <table>
+            <table className="mobile-table">
               <thead>
                 <tr>
                   <th>العميل</th>
@@ -350,19 +485,19 @@ export default function ClientsPage() {
               <tbody>
                 {data.items.map((client) => (
                   <tr key={client.id}>
-                    <td>{client.name}</td>
-                    <td>{client.phone}</td>
-                    <td>{client.address}</td>
-                    <td>{client.region?.name}</td>
-                    <td>{client.products}</td>
-                    <td>
+                    <td data-label="\u0627\u0644\u0639\u0645\u064a\u0644">{client.name}</td>
+                    <td data-label="\u0627\u0644\u0647\u0627\u062a\u0641">{client.phone}</td>
+                    <td data-label="\u0627\u0644\u0639\u0646\u0648\u0627\u0646">{client.address}</td>
+                    <td data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">{client.region?.name}</td>
+                    <td data-label="\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a">{client.products}</td>
+                    <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629">
                       <VisitTypeBadge type={client.visitType} />
                     </td>
-                    <td>
+                    <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">
                       <StatusBadge status={client.status} />
                     </td>
-                    <td>{formatDate(client.nextVisitDate)}</td>
-                    <td className="actions-cell">
+                    <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">{formatDate(client.nextVisitDate)}</td>
+                    <td className="actions-cell" data-label="\u0627\u0644\u0625\u062c\u0631\u0627\u0621\u0627\u062a">
                       <Link className="ghost-btn" to={`/clients/${client.id}`}>
                         التفاصيل
                       </Link>
@@ -374,6 +509,12 @@ export default function ClientsPage() {
                           onClick={() => handleClientAction(client.id)}
                         >
                           {actionClientId === client.id ? "جاري..." : "تم التعامل"}
+                        </button>
+                      )}
+
+                      {isClientDueToday(client) && (
+                        <button type="button" className="secondary-btn" onClick={() => handleOpenClientWhatsApp(client)}>
+                          واتساب
                         </button>
                       )}
 

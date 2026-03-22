@@ -43,6 +43,8 @@ services:
         VITE_API_URL: ${VITE_API_URL}
     container_name: crm-frontend-prod
     restart: unless-stopped
+    environment:
+      BACKEND_API_ORIGIN: http://backend:5000
     depends_on:
       backend:
         condition: service_healthy

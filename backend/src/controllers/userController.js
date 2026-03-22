@@ -39,8 +39,16 @@ const listUsers = asyncHandler(async (req, res) => {
 
 const createUser = asyncHandler(async (req, res) => {
   const { name, email, password, role, regionId, isActive } = req.body;
+  const normalizedEmail = String(email || "").trim().toLowerCase();
 
-  const existingUser = await prisma.user.findUnique({ where: { email } });
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: normalizedEmail,
+        mode: "insensitive"
+      }
+    }
+  });
   if (existingUser) {
     throw createHttpError(409, "البريد الإلكتروني مستخدم بالفعل");
   }
@@ -64,7 +72,7 @@ const createUser = asyncHandler(async (req, res) => {
   const user = await prisma.user.create({
     data: {
       name,
-      email,
+      email: normalizedEmail,
       passwordHash,
       role,
       regionId: validatedRegionId,

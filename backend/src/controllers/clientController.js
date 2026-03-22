@@ -3,7 +3,7 @@ const asyncHandler = require("../middlewares/asyncHandler");
 const { Roles } = require("../constants/enums");
 const { normalizeToWorkDate } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
-const { listClients, getClientById, handleClientVisit } = require("../services/clientService");
+const { listClients, getClientById, handleClientVisit, sendDueTodayWhatsAppAlerts } = require("../services/clientService");
 
 const listClientRecords = asyncHandler(async (req, res) => {
   if (req.user.role === Roles.REPRESENTATIVE && req.query.regionId && Number(req.query.regionId) !== Number(req.user.regionId)) {
@@ -100,7 +100,9 @@ const handleClient = asyncHandler(async (req, res) => {
     user: req.user,
     outcome: req.body.outcome,
     note: req.body.note,
-    visitType: req.body.visitType
+    visitType: req.body.visitType,
+    advanceDays: req.body.advanceDays,
+    referenceDate: req.body.referenceDate
   });
 
   res.json({
@@ -132,11 +134,31 @@ const deleteClient = asyncHandler(async (req, res) => {
   });
 });
 
+const sendTodayWhatsAppAlerts = asyncHandler(async (req, res) => {
+  const regionId = req.body.regionId ? Number(req.body.regionId) : undefined;
+
+  if (req.user.role === Roles.REPRESENTATIVE && regionId && regionId !== Number(req.user.regionId)) {
+    throw createHttpError(403, "لا يمكنك إرسال تنبيهات لمناطق أخرى");
+  }
+
+  const result = await sendDueTodayWhatsAppAlerts({
+    user: req.user,
+    regionId,
+    customMessage: req.body.message
+  });
+
+  res.json({
+    message: "تم تنفيذ تنبيهات واتساب لعملاء اليوم",
+    item: result
+  });
+});
+
 module.exports = {
   listClientRecords,
   getClientDetails,
   createClient,
   updateClient,
   handleClient,
-  deleteClient
+  deleteClient,
+  sendTodayWhatsAppAlerts
 };

@@ -211,7 +211,7 @@ export default function UsersPage() {
           <div className="table-empty">جاري تحميل المستخدمين...</div>
         ) : (
           <div className="table-wrapper">
-            <table>
+            <table className="mobile-table">
               <thead>
                 <tr>
                   <th>الاسم</th>
@@ -225,12 +225,12 @@ export default function UsersPage() {
               <tbody>
                 {usersData.items.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.name}</td>
-                    <td>{item.email}</td>
-                    <td>{item.role === "ADMIN" ? "أدمن" : "مندوب"}</td>
-                    <td>{item.region?.name || "-"}</td>
-                    <td>{item.isActive ? "نشط" : "موقوف"}</td>
-                    <td className="actions-cell">
+                    <td data-label="\u0627\u0644\u0627\u0633\u0645">{item.name}</td>
+                    <td data-label="\u0627\u0644\u0628\u0631\u064a\u062f">{item.email}</td>
+                    <td data-label="\u0627\u0644\u062f\u0648\u0631">{item.role === "ADMIN" ? "\u0623\u062f\u0645\u0646" : "\u0645\u0646\u062f\u0648\u0628"}</td>
+                    <td data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">{item.region?.name || "-"}</td>
+                    <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">{item.isActive ? "\u0646\u0634\u0637" : "\u0645\u0648\u0642\u0648\u0641"}</td>
+                    <td className="actions-cell" data-label="\u0627\u0644\u0625\u062c\u0631\u0627\u0621">
                       <button
                         type="button"
                         className="ghost-btn"

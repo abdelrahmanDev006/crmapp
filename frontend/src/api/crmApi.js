@@ -12,6 +12,9 @@ export const dashboardApi = {
 export const regionsApi = {
   list: () => http.get("/regions"),
   getById: (id) => http.get(`/regions/${id}`),
+  create: (payload) => http.post("/regions", payload),
+  update: (id, payload) => http.patch(`/regions/${id}`, payload),
+  remove: (id) => http.delete(`/regions/${id}`),
   handleAll: (id, payload = {}) => http.post(`/regions/${id}/handle-all`, payload)
 };
 

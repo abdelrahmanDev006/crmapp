@@ -23,10 +23,16 @@ function sanitizeUser(user) {
 }
 
 const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const normalizedEmail = String(req.body.email || "").trim().toLowerCase();
+  const { password } = req.body;
 
-  const user = await prisma.user.findUnique({
-    where: { email },
+  const user = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: normalizedEmail,
+        mode: "insensitive"
+      }
+    },
     include: { region: true }
   });
 
