@@ -352,6 +352,53 @@ td {
 
 .table-wrapper table:has(th:nth-child(9)) td:nth-child(1) {
   font-weight: 600;
+  white-space: normal;
+  text-overflow: clip;
+  overflow: visible;
+}
+
+.client-name-cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.client-name-text {
+  min-width: 0;
+  white-space: normal;
+  text-overflow: clip;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.client-freshness-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.client-freshness-new {
+  background: rgba(14, 122, 120, 0.14);
+  color: #0a605e;
+  border-color: rgba(14, 122, 120, 0.28);
+}
+
+.client-freshness-old {
+  background: #edf2f3;
+  color: #4f676f;
+  border-color: #d2dde0;
 }
 
 .table-wrapper table:has(th:nth-child(9)) td:nth-child(2) {

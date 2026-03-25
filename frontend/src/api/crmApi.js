@@ -24,7 +24,9 @@ export const clientsApi = {
   create: (payload) => http.post("/clients", payload),
   update: (id, payload) => http.patch(`/clients/${id}`, payload),
   handle: (id, payload) => http.post(`/clients/${id}/handle`, payload),
-  remove: (id) => http.delete(`/clients/${id}`)
+  remove: (id) => http.delete(`/clients/${id}`),
+  sendTodayWhatsAppAlerts: (payload = {}) => http.post("/clients/alerts/whatsapp/today", payload),
+  sendNewClientsWhatsAppAlerts: (payload = {}) => http.post("/clients/alerts/whatsapp/new", payload)
 };
 
 export const usersApi = {

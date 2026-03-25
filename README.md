@@ -97,6 +97,7 @@ Base URL: `http://localhost:5000/api`
 - `DELETE /clients/:id` حذف عميل (Admin)
 - `POST /clients/:id/handle` تحديث حالة/نتيجة الزيارة (يدعم `advanceDays` + `referenceDate` للترحيل بعد عدد أيام محدد)
 - `POST /clients/alerts/whatsapp/today` إرسال تنبيه واتساب تلقائي لعملاء اليوم (يتطلب إعداد WhatsApp Cloud API)
+- `POST /clients/alerts/whatsapp/new` إرسال رسالة واتساب تلقائية للعملاء الجدد المضافين اليوم (يتطلب إعداد WhatsApp Cloud API)
 
 ## تشغيل المشروع محليًا
 
@@ -145,6 +146,8 @@ Frontend يعمل على:
   - `.env.production.example`
   - `backend/.env.production.example`
   - `frontend/.env.production.example`
+  - `backend/.env.railway.example`
+  - `frontend/.env.railway.example`
 - تم إضافة سكربتات أمان وإدارة إنتاج:
   - `npm run security:validate-env`
   - `npm run admin:bootstrap -- --name ... --email ... --password ...`
@@ -152,6 +155,7 @@ Frontend يعمل على:
 خطوات النشر التفصيلية موجودة في:
 - `PRODUCTION_DEPLOYMENT.md`
 - `RENDER_DEPLOYMENT.md` (نشر مباشر على Render عبر Blueprint)
+- `RAILWAY_DEPLOYMENT.md` (نشر مباشر على Railway - Production)
 
 ## حسابات Seed
 - لا يتم إنشاء كلمات مرور ثابتة أو متوقعة.

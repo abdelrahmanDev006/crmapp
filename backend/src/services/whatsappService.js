@@ -26,6 +26,10 @@ function buildDueTodayWhatsAppMessage({ representativeName, dueDate = new Date()
   return `مرحبًا، معك ${representativeName || "مندوب الشركة"}. نؤكد لك أن زيارتنا الدورية لك اليوم ${dueDateText}. إذا لديك أي ملاحظة، فضلاً أخبرنا قبل موعد الزيارة.`;
 }
 
+function buildNewClientWhatsAppMessage({ representativeName }) {
+  return `مرحبًا، معك ${representativeName || "مندوب الشركة"}. نرحب بانضمامك كعميل جديد لدينا، ويسعدنا خدمتك في أي وقت. لأي استفسار يمكنك التواصل معنا مباشرة.`;
+}
+
 function assertWhatsAppCloudConfigured() {
   if (!env.whatsappCloudEnabled) {
     throw createHttpError(503, "خدمة إرسال واتساب غير مفعلة حاليًا");
@@ -88,6 +92,7 @@ async function sendWhatsAppTextMessage({ to, message }) {
 module.exports = {
   normalizePhoneForWhatsApp,
   buildDueTodayWhatsAppMessage,
+  buildNewClientWhatsAppMessage,
   assertWhatsAppCloudConfigured,
   sendWhatsAppTextMessage
 };

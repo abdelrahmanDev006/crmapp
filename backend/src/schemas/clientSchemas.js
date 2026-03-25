@@ -40,6 +40,7 @@ const clientQuerySchema = z.object({
   status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
   regionId: z.coerce.number().int().positive().optional(),
   dueDate: dateInputSchema.optional(),
+  createdDate: dateInputSchema.optional(),
   dueOnly: z
     .union([z.boolean(), z.string()])
     .optional()
@@ -62,10 +63,12 @@ const bulkRegionHandleSchema = z.object({
   note: z.string().max(500).optional()
 });
 
-const sendTodayWhatsAppAlertsSchema = z.object({
+const sendWhatsAppAlertsSchema = z.object({
   regionId: z.coerce.number().int().positive().optional(),
   message: z.string().trim().min(3).max(1000).optional()
 });
+const sendTodayWhatsAppAlertsSchema = sendWhatsAppAlertsSchema;
+const sendNewClientsWhatsAppAlertsSchema = sendWhatsAppAlertsSchema;
 
 module.exports = {
   createClientSchema,
@@ -73,5 +76,6 @@ module.exports = {
   clientQuerySchema,
   handleClientSchema,
   bulkRegionHandleSchema,
-  sendTodayWhatsAppAlertsSchema
+  sendTodayWhatsAppAlertsSchema,
+  sendNewClientsWhatsAppAlertsSchema
 };

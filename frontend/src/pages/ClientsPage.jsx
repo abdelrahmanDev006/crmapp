@@ -26,6 +26,8 @@ const initialCreateForm = {
   nextVisitDate: ""
 };
 
+const NEW_CLIENT_WINDOW_DAYS = 7;
+
 function mapTabToFilters(tab) {
   if (tab === "NO_ANSWER") {
     return { status: "NO_ANSWER" };
@@ -90,6 +92,24 @@ function getDateTextForMessage(value) {
   }
 
   return parsedDateText;
+}
+
+function isNewClient(createdAt, todayDateText) {
+  const createdDateText = getDateTextOrNull(createdAt);
+
+  if (!createdDateText) {
+    return false;
+  }
+
+  const todayDate = new Date(`${todayDateText}T00:00:00.000Z`);
+  const createdDate = new Date(`${createdDateText}T00:00:00.000Z`);
+
+  if (Number.isNaN(todayDate.getTime()) || Number.isNaN(createdDate.getTime())) {
+    return false;
+  }
+
+  const diffInDays = Math.floor((todayDate.getTime() - createdDate.getTime()) / 86400000);
+  return diffInDays >= 0 && diffInDays < NEW_CLIENT_WINDOW_DAYS;
 }
 
 export default function ClientsPage() {
@@ -483,54 +503,65 @@ export default function ClientsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((client) => (
-                  <tr key={client.id}>
-                    <td data-label="\u0627\u0644\u0639\u0645\u064a\u0644">{client.name}</td>
-                    <td data-label="\u0627\u0644\u0647\u0627\u062a\u0641">{client.phone}</td>
-                    <td data-label="\u0627\u0644\u0639\u0646\u0648\u0627\u0646">{client.address}</td>
-                    <td data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">{client.region?.name}</td>
-                    <td data-label="\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a">{client.products}</td>
-                    <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629">
-                      <VisitTypeBadge type={client.visitType} />
-                    </td>
-                    <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">
-                      <StatusBadge status={client.status} />
-                    </td>
-                    <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">{formatDate(client.nextVisitDate)}</td>
-                    <td className="actions-cell" data-label="\u0627\u0644\u0625\u062c\u0631\u0627\u0621\u0627\u062a">
-                      <Link className="ghost-btn" to={`/clients/${client.id}`}>
-                        التفاصيل
-                      </Link>
-                      {client.status !== "REJECTED" && (
-                        <button
-                          type="button"
-                          className="primary-btn"
-                          disabled={actionClientId === client.id}
-                          onClick={() => handleClientAction(client.id)}
-                        >
-                          {actionClientId === client.id ? "جاري..." : "تم التعامل"}
-                        </button>
-                      )}
+                {data.items.map((client) => {
+                  const clientIsNew = isNewClient(client.createdAt, todayDateText);
 
-                      {isClientDueToday(client) && (
-                        <button type="button" className="secondary-btn" onClick={() => handleOpenClientWhatsApp(client)}>
-                          واتساب
-                        </button>
-                      )}
+                  return (
+                    <tr key={client.id}>
+                      <td data-label="\u0627\u0644\u0639\u0645\u064a\u0644">
+                        <div className="client-name-cell">
+                          <span className="client-name-text">{client.name}</span>
+                          <span className={clientIsNew ? "client-freshness-pill client-freshness-new" : "client-freshness-pill client-freshness-old"}>
+                            {clientIsNew ? "جديد" : "قديم"}
+                          </span>
+                        </div>
+                      </td>
+                      <td data-label="\u0627\u0644\u0647\u0627\u062a\u0641">{client.phone}</td>
+                      <td data-label="\u0627\u0644\u0639\u0646\u0648\u0627\u0646">{client.address}</td>
+                      <td data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">{client.region?.name}</td>
+                      <td data-label="\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a">{client.products}</td>
+                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629">
+                        <VisitTypeBadge type={client.visitType} />
+                      </td>
+                      <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">
+                        <StatusBadge status={client.status} />
+                      </td>
+                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">{formatDate(client.nextVisitDate)}</td>
+                      <td className="actions-cell" data-label="\u0627\u0644\u0625\u062c\u0631\u0627\u0621\u0627\u062a">
+                        <Link className="ghost-btn" to={`/clients/${client.id}`}>
+                          التفاصيل
+                        </Link>
+                        {client.status !== "REJECTED" && (
+                          <button
+                            type="button"
+                            className="primary-btn"
+                            disabled={actionClientId === client.id}
+                            onClick={() => handleClientAction(client.id)}
+                          >
+                            {actionClientId === client.id ? "جاري..." : "تم التعامل"}
+                          </button>
+                        )}
 
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          className="danger-btn"
-                          disabled={deleteClientId === client.id}
-                          onClick={() => handleDeleteClient(client)}
-                        >
-                          {deleteClientId === client.id ? "جاري الحذف..." : "حذف"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        {isClientDueToday(client) && (
+                          <button type="button" className="secondary-btn" onClick={() => handleOpenClientWhatsApp(client)}>
+                            واتساب
+                          </button>
+                        )}
+
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            className="danger-btn"
+                            disabled={deleteClientId === client.id}
+                            onClick={() => handleDeleteClient(client)}
+                          >
+                            {deleteClientId === client.id ? "جاري الحذف..." : "حذف"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

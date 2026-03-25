@@ -1,11 +1,12 @@
 const prisma = require("../config/prisma");
 const env = require("../config/env");
 const { Roles, ClientStatuses, VisitTypes } = require("../constants/enums");
-const { normalizeToWorkDate, calculateNextVisitDate, addWorkDaysWith28DayMonth } = require("../utils/dateUtils");
+const { normalizeToWorkDate, toStartOfUtcDay, calculateNextVisitDate, addWorkDaysWith28DayMonth } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
 const {
   normalizePhoneForWhatsApp,
   buildDueTodayWhatsAppMessage,
+  buildNewClientWhatsAppMessage,
   assertWhatsAppCloudConfigured,
   sendWhatsAppTextMessage
 } = require("./whatsappService");
@@ -38,6 +39,50 @@ function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+async function sendWhatsAppAlertsToClients({ clients, messageText }) {
+  let sentCount = 0;
+  const skippedClients = [];
+  const failedClients = [];
+
+  for (const client of clients) {
+    const normalizedPhone = normalizePhoneForWhatsApp(client.phone);
+
+    if (!normalizedPhone) {
+      skippedClients.push({
+        id: client.id,
+        name: client.name,
+        phone: client.phone,
+        reason: "رقم غير صالح للواتساب"
+      });
+      continue;
+    }
+
+    try {
+      await sendWhatsAppTextMessage({
+        to: normalizedPhone,
+        message: messageText
+      });
+      sentCount += 1;
+      await sleep(env.whatsappCloudMessageDelayMs);
+    } catch (error) {
+      failedClients.push({
+        id: client.id,
+        name: client.name,
+        phone: client.phone,
+        reason: error.message || "تعذر إرسال رسالة واتساب"
+      });
+    }
+  }
+
+  return {
+    sentCount,
+    skippedCount: skippedClients.length,
+    failedCount: failedClients.length,
+    skippedClients,
+    failedClients
+  };
+}
+
 function buildClientWhere(filters, user) {
   const where = {};
 
@@ -64,6 +109,23 @@ function buildClientWhere(filters, user) {
       { address: { contains: filters.search, mode: "insensitive" } },
       { products: { contains: filters.search, mode: "insensitive" } }
     ];
+  }
+
+  if (filters.createdDate) {
+    const selectedCreatedDate = toStartOfUtcDay(filters.createdDate);
+    const nextCreatedDate = new Date(selectedCreatedDate);
+    nextCreatedDate.setUTCDate(nextCreatedDate.getUTCDate() + 1);
+
+    where.createdAt = {
+      gte: selectedCreatedDate,
+      lt: nextCreatedDate
+    };
+
+    if (!filters.status) {
+      where.status = {
+        not: ClientStatuses.REJECTED
+      };
+    }
   }
 
   if (filters.dueDate) {
@@ -387,48 +449,70 @@ async function sendDueTodayWhatsAppAlerts({ user, regionId, customMessage }) {
   const messageText =
     String(customMessage || "").trim() || buildDueTodayWhatsAppMessage({ representativeName: user.name, dueDate: new Date() });
 
-  let sentCount = 0;
-  const skippedClients = [];
-  const failedClients = [];
-
-  for (const client of clients) {
-    const normalizedPhone = normalizePhoneForWhatsApp(client.phone);
-
-    if (!normalizedPhone) {
-      skippedClients.push({
-        id: client.id,
-        name: client.name,
-        phone: client.phone,
-        reason: "رقم غير صالح للواتساب"
-      });
-      continue;
-    }
-
-    try {
-      await sendWhatsAppTextMessage({
-        to: normalizedPhone,
-        message: messageText
-      });
-      sentCount += 1;
-      await sleep(env.whatsappCloudMessageDelayMs);
-    } catch (error) {
-      failedClients.push({
-        id: client.id,
-        name: client.name,
-        phone: client.phone,
-        reason: error.message || "تعذر إرسال رسالة واتساب"
-      });
-    }
-  }
+  const result = await sendWhatsAppAlertsToClients({ clients, messageText });
 
   return {
     dueDate,
     totalDueClients: clients.length,
-    sentCount,
-    skippedCount: skippedClients.length,
-    failedCount: failedClients.length,
-    skippedClients,
-    failedClients
+    ...result
+  };
+}
+
+async function sendNewClientsWhatsAppAlerts({ user, regionId, customMessage }) {
+  assertWhatsAppCloudConfigured();
+
+  const createdDateStart = toStartOfUtcDay(new Date());
+  const nextDateStart = new Date(createdDateStart);
+  nextDateStart.setUTCDate(nextDateStart.getUTCDate() + 1);
+  const createdDate = createdDateStart.toISOString().slice(0, 10);
+
+  const where = {
+    createdAt: {
+      gte: createdDateStart,
+      lt: nextDateStart
+    },
+    status: {
+      not: ClientStatuses.REJECTED
+    }
+  };
+
+  if (user.role === Roles.REPRESENTATIVE) {
+    where.regionId = Number(user.regionId);
+  }
+
+  if (regionId) {
+    where.regionId = Number(regionId);
+  }
+
+  const clients = await prisma.client.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      phone: true
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }]
+  });
+
+  if (clients.length === 0) {
+    return {
+      createdDate,
+      totalNewClients: 0,
+      sentCount: 0,
+      skippedCount: 0,
+      failedCount: 0,
+      skippedClients: [],
+      failedClients: []
+    };
+  }
+
+  const messageText = String(customMessage || "").trim() || buildNewClientWhatsAppMessage({ representativeName: user.name });
+  const result = await sendWhatsAppAlertsToClients({ clients, messageText });
+
+  return {
+    createdDate,
+    totalNewClients: clients.length,
+    ...result
   };
 }
 
@@ -438,6 +522,7 @@ module.exports = {
   handleClientVisit,
   handleRegionClients,
   sendDueTodayWhatsAppAlerts,
+  sendNewClientsWhatsAppAlerts,
   enforceClientScope,
   canRetryRejectedClient
 };

@@ -3,7 +3,13 @@ const asyncHandler = require("../middlewares/asyncHandler");
 const { Roles } = require("../constants/enums");
 const { normalizeToWorkDate } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
-const { listClients, getClientById, handleClientVisit, sendDueTodayWhatsAppAlerts } = require("../services/clientService");
+const {
+  listClients,
+  getClientById,
+  handleClientVisit,
+  sendDueTodayWhatsAppAlerts,
+  sendNewClientsWhatsAppAlerts
+} = require("../services/clientService");
 
 const listClientRecords = asyncHandler(async (req, res) => {
   if (req.user.role === Roles.REPRESENTATIVE && req.query.regionId && Number(req.query.regionId) !== Number(req.user.regionId)) {
@@ -153,6 +159,25 @@ const sendTodayWhatsAppAlerts = asyncHandler(async (req, res) => {
   });
 });
 
+const sendNewClientsWhatsAppAlertsController = asyncHandler(async (req, res) => {
+  const regionId = req.body.regionId ? Number(req.body.regionId) : undefined;
+
+  if (req.user.role === Roles.REPRESENTATIVE && regionId && regionId !== Number(req.user.regionId)) {
+    throw createHttpError(403, "لا يمكنك إرسال تنبيهات لمناطق أخرى");
+  }
+
+  const result = await sendNewClientsWhatsAppAlerts({
+    user: req.user,
+    regionId,
+    customMessage: req.body.message
+  });
+
+  res.json({
+    message: "تم تنفيذ تنبيهات واتساب للعملاء الجدد",
+    item: result
+  });
+});
+
 module.exports = {
   listClientRecords,
   getClientDetails,
@@ -160,5 +185,6 @@ module.exports = {
   updateClient,
   handleClient,
   deleteClient,
-  sendTodayWhatsAppAlerts
+  sendTodayWhatsAppAlerts,
+  sendNewClientsWhatsAppAlertsController
 };
