@@ -121,6 +121,7 @@ npm run dev
 - `ALLOWED_ORIGINS` قائمة الدومينات المسموح بها للواجهة (مفصولة بفواصل).
 - `CORS_CREDENTIALS=true` لتفعيل الكوكيز/الهيدر المعتمد عند الحاجة.
 - `SEED_ADMIN_PASSWORD` و `SEED_REP_DEFAULT_PASSWORD` (اختياري) لتحديد كلمات مرور seed يدويًا بدل التوليد العشوائي.
+- عند استخدام Supabase: اضبط `DATABASE_URL` (Pooler) و `DIRECT_URL` (Direct) مع `sslmode=require`.
 
 Backend يعمل على:
 - `http://localhost:5000`
@@ -156,6 +157,7 @@ Frontend يعمل على:
 - `PRODUCTION_DEPLOYMENT.md`
 - `RENDER_DEPLOYMENT.md` (نشر مباشر على Render عبر Blueprint)
 - `RAILWAY_DEPLOYMENT.md` (نشر مباشر على Railway - Production)
+- `SUPABASE_MIGRATION.md` (تحويل قاعدة البيانات من Railway/أي PostgreSQL إلى Supabase)
 
 ## حسابات Seed
 - لا يتم إنشاء كلمات مرور ثابتة أو متوقعة.
