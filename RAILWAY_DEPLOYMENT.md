@@ -1,41 +1,38 @@
 # نشر نسخة Production على Railway
 
 هذا الدليل يجهز لك المشروع للنشر على Railway كبيئة إنتاج كاملة:
-- Database: `Railway Postgres` أو `Supabase Postgres`
+- PostgreSQL
 - Backend (Node/Express)
 - Frontend (Vite + Nginx)
 
 ## 1) تجهيز المشروع
 
 1. ارفع المشروع على GitHub.
-2. تأكد أن الملفات التالية موجودة:
+2. تأكد أن الملفات التالية موجودة (وهي موجودة بالفعل):
    - `backend/Dockerfile`
    - `frontend/Dockerfile`
    - `frontend/nginx.conf.template`
 
-## 2) إنشاء Project وخدمات Railway
+## 2) إنشاء Project على Railway
 
 1. أنشئ Project جديد على Railway.
-2. أضف Service للـ Backend من نفس الـ repo:
+2. أضف Service قاعدة بيانات PostgreSQL من لوحة Railway.
+3. أضف Service للـ Backend من نفس الـ repo:
    - Root Directory: `backend`
-3. أضف Service للـ Frontend من نفس الـ repo:
+4. أضف Service للـ Frontend من نفس الـ repo:
    - Root Directory: `frontend`
-4. اختر قاعدة البيانات:
-   - خيار A: أضف Service PostgreSQL على Railway.
-   - خيار B: استخدم Supabase (ولا تضيف PostgreSQL Service داخل Railway).
 
 مهم:
-- اجعل أسماء الخدمات واضحة (مثال: `crm-backend`, `crm-frontend`, `crm-postgres`).
+- اجعل أسماء الخدمات واضحة (مثال: `crm-backend`, `crm-frontend`, `crm-postgres`) لأننا سنستخدمها في Reference Variables.
 
 ## 3) إعداد متغيرات Backend
 
-في خدمة الـ Backend أضف:
+في خدمة الـ Backend أضف المتغيرات التالية:
 
 ```env
 NODE_ENV=production
 PORT=5000
-DATABASE_URL=REPLACE_WITH_DATABASE_URL
-DIRECT_URL=REPLACE_WITH_DIRECT_URL
+DATABASE_URL=${{crm-postgres.DATABASE_URL}}
 JWT_SECRET=REPLACE_WITH_STRONG_SECRET_MIN_32
 JWT_EXPIRES_IN=1d
 REJECTED_RETRY_DAYS=28
@@ -53,14 +50,9 @@ WHATSAPP_REQUEST_TIMEOUT_MS=15000
 WHATSAPP_MESSAGE_DELAY_MS=150
 ```
 
-قيمة `DATABASE_URL` و `DIRECT_URL` حسب نوع قاعدة البيانات:
-
-- خيار Railway Postgres:
-  - `DATABASE_URL=${{crm-postgres.DATABASE_URL}}`
-  - `DIRECT_URL=${{crm-postgres.DATABASE_URL}}`
-- خيار Supabase:
-  - `DATABASE_URL` = Pooler URL (عادة بورت `6543` مع `sslmode=require`)
-  - `DIRECT_URL` = Direct URL (عادة `db.<project-ref>.supabase.co:5432` مع `sslmode=require`)
+ملاحظات:
+- استبدل `crm-postgres` و `crm-frontend` باسم الخدمة الفعلي عندك.
+- لو هتفعل واتساب Cloud لاحقًا، غيّر `WHATSAPP_CLOUD_ENABLED=true` واملأ بيانات التوكن والرقم.
 
 ## 4) إعداد متغيرات Frontend
 
@@ -68,10 +60,10 @@ WHATSAPP_MESSAGE_DELAY_MS=150
 
 ```env
 VITE_API_URL=/api
-BACKEND_API_ORIGIN=https://${{crm-backend.RAILWAY_PUBLIC_DOMAIN}}
+BACKEND_API_ORIGIN=http://${{crm-backend.RAILWAY_PRIVATE_DOMAIN}}:5000
 ```
 
-هذا الإعداد يجعل الـ Frontend يرسل على `/api`، وNginx يعمل Proxy للـ Backend عبر HTTPS.
+هذا الإعداد يجعل الـ Frontend يرسل على `/api`، وNginx يعمل Proxy للـ Backend عبر Private Network.
 
 ## 5) إعداد Health Checks
 
@@ -81,7 +73,7 @@ BACKEND_API_ORIGIN=https://${{crm-backend.RAILWAY_PUBLIC_DOMAIN}}
 ## 6) إعداد Domains
 
 1. أنشئ Public Domain للـ Frontend (إلزامي).
-2. أنشئ Public Domain للـ Backend (إلزامي مع إعداد `BACKEND_API_ORIGIN` الحالي).
+2. إنشاء Public Domain للـ Backend اختياري (مفيد للاختبار الخارجي فقط).
 
 ## 7) أول تشغيل وإنشاء الأدمن
 
@@ -103,29 +95,7 @@ npm run admin:bootstrap -- --name "مدير النظام" --email "admin@yourcom
   - `/api/health`
   - إضافة/تعديل عميل
 
-## 9) نقل البيانات عند التحويل إلى Supabase
-
-لو عندك بيانات بالفعل على قاعدة Railway الحالية وتريد نقلها إلى Supabase:
-
-1. جهّز Supabase Project وخذ `Direct URL`.
-2. ارفع آخر نسخة كود (التي تحتوي سكربت `db:copy`).
-3. شغّل النسخ من داخل خدمة الـ Backend الحالية:
-
-```bash
-TARGET_DATABASE_URL="SUPABASE_DIRECT_URL_WITH_SSLMODE_REQUIRE" npm run db:copy
-```
-
-ملاحظة:
-- السكربت يقرأ المصدر تلقائيًا من `DATABASE_URL` الحالي للخدمة، وينسخ الجداول بالترتيب مع الحفاظ على IDs.
-- لو قاعدة Supabase ليست فارغة استخدم:
-  - `ALLOW_NON_EMPTY_TARGET=true TARGET_DATABASE_URL="..." npm run db:copy`
-
-4. بعد نجاح النسخ، غيّر متغيرات خدمة الـ Backend:
-   - `DATABASE_URL` إلى Supabase Pooler URL
-   - `DIRECT_URL` إلى Supabase Direct URL
-5. اعمل Redeploy للـ Backend وتحقق من `/api/health`.
-
-## 10) ملاحظات Production مهمة
+## 9) ملاحظات Production مهمة
 
 - لا تستخدم حسابات `@crm.local` في البيئة الرسمية.
 - لا تستخدم `prisma:seed` في الإنتاج.

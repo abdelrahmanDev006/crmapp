@@ -19,7 +19,6 @@ Copy-Item frontend/.env.production.example frontend/.env.production
 
 - `backend/.env.production`
   - `DATABASE_URL`
-  - `DIRECT_URL` (خصوصًا عند استخدام Supabase)
   - `JWT_SECRET` (قيمة قوية >= 32 حرف)
   - `ALLOWED_ORIGINS` (الدومين الحقيقي فقط)
   - `AUTH_RATE_LIMIT_MAX`

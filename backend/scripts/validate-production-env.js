@@ -65,26 +65,6 @@ if (isLikelyPlaceholder(databaseUrl) || databaseUrl.includes("postgres:postgres@
   issues.push("DATABASE_URL appears to contain default credentials.");
 }
 
-const directUrl = process.env.DIRECT_URL || "";
-if (directUrl && isLikelyPlaceholder(directUrl)) {
-  issues.push("DIRECT_URL appears to be placeholder/default.");
-}
-
-const usesSupabase = databaseUrl.includes(".supabase.co");
-if (usesSupabase) {
-  if (!directUrl) {
-    issues.push("DIRECT_URL is required when using Supabase with Prisma migrations.");
-  }
-
-  if (!databaseUrl.includes("sslmode=require")) {
-    issues.push("DATABASE_URL should include sslmode=require when using Supabase.");
-  }
-
-  if (directUrl && !directUrl.includes("sslmode=require")) {
-    issues.push("DIRECT_URL should include sslmode=require when using Supabase.");
-  }
-}
-
 if (process.env.SEED_ADMIN_PASSWORD === "Admin@123") {
   issues.push("SEED_ADMIN_PASSWORD is set to development default.");
 }
