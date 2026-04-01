@@ -1,4 +1,4 @@
-﻿version: "3.9"
+﻿name: crmapp-local
 
 services:
   postgres:
@@ -16,3 +16,4 @@ services:
 
 volumes:
   postgres_data:
+    name: crmapp_postgres_data

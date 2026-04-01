@@ -22,6 +22,44 @@ const regionNames = [
   "المنطقة السادسة"
 ];
 
+const clientNamePrefixes = ["مؤسسة", "شركة", "مخزن", "مكتبة", "متجر", "صيدلية", "معرض"];
+const addressPool = ["شارع التحرير", "شارع الملك فيصل", "حي الجامعة", "شارع النصر", "حي الزهور", "شارع الهرم"];
+const productsPool = [
+  "منتج A, منتج B",
+  "منتج C",
+  "منتج D, منتج E",
+  "منتج F",
+  "منتج G, منتج H",
+  "منتج I"
+];
+
+const visitTypeCycle = [VisitType.WEEKLY, VisitType.BIWEEKLY, VisitType.MONTHLY];
+const statusCycle = [ClientStatus.ACTIVE, ClientStatus.NO_ANSWER, ClientStatus.REJECTED, ClientStatus.ACTIVE];
+const visitOffsetCycle = [0, -1, 2, 7, 14, 21, 28];
+
+function buildClientPayload(index, regions, adminId) {
+  const region = regions[index % regions.length];
+  const visitType = visitTypeCycle[index % visitTypeCycle.length];
+  const status = statusCycle[index % statusCycle.length];
+  const visitOffset = visitOffsetCycle[index % visitOffsetCycle.length];
+  const prefix = clientNamePrefixes[index % clientNamePrefixes.length];
+  const address = addressPool[index % addressPool.length];
+  const products = productsPool[index % productsPool.length];
+  const phoneNumber = `01${String(index + 1).padStart(9, "0")}`;
+
+  return {
+    name: `${prefix} العميل ${index + 1}`,
+    phone: phoneNumber,
+    address,
+    products,
+    visitType,
+    status,
+    nextVisitDate: getSafeWorkDate(visitOffset),
+    regionId: region.id,
+    createdById: adminId
+  };
+}
+
 function getSafeWorkDate(offsetDays = 0) {
   const now = new Date();
   const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), Math.min(now.getUTCDate(), 28)));
@@ -172,64 +210,36 @@ async function seedUsers(regions) {
 }
 
 async function seedClients(regions, adminId) {
-  if (!adminId) {
+  if (!adminId || regions.length === 0) {
+    return;
+  }
+
+  const defaultClientCount = regions.length * 3;
+  const targetClientCount = toNonNegativeInteger(process.env.SEED_CLIENT_COUNT, defaultClientCount);
+
+  if (targetClientCount === 0) {
     return;
   }
 
   const existingCount = await prisma.client.count();
-  if (existingCount > 0) {
+  const clientsToCreate = Math.max(0, targetClientCount - existingCount);
+
+  if (clientsToCreate === 0) {
     return;
   }
 
-  const samples = [
-    {
-      name: "مؤسسة الهدى",
-      phone: "01000000001",
-      address: "شارع التحرير",
-      products: "منتج A, منتج B",
-      visitType: VisitType.WEEKLY,
-      status: ClientStatus.ACTIVE,
-      offset: 0
-    },
-    {
-      name: "شركة النور",
-      phone: "01000000002",
-      address: "شارع الملك فيصل",
-      products: "منتج C",
-      visitType: VisitType.BIWEEKLY,
-      status: ClientStatus.NO_ANSWER,
-      offset: -1
-    },
-    {
-      name: "مخزن الأمانة",
-      phone: "01000000003",
-      address: "حي الجامعة",
-      products: "منتج D, منتج E",
-      visitType: VisitType.MONTHLY,
-      status: ClientStatus.REJECTED,
-      offset: 2
-    }
-  ];
+  const batchSize = 500;
 
-  for (let regionIndex = 0; regionIndex < regions.length; regionIndex += 1) {
-    const region = regions[regionIndex];
+  for (let start = 0; start < clientsToCreate; start += batchSize) {
+    const currentBatchSize = Math.min(batchSize, clientsToCreate - start);
+    const data = [];
 
-    for (let sampleIndex = 0; sampleIndex < samples.length; sampleIndex += 1) {
-      const sample = samples[sampleIndex];
-      await prisma.client.create({
-        data: {
-          name: `${sample.name} ${regionIndex + 1}`,
-          phone: sample.phone,
-          address: sample.address,
-          products: sample.products,
-          visitType: sample.visitType,
-          status: sample.status,
-          nextVisitDate: getSafeWorkDate(sample.offset),
-          regionId: region.id,
-          createdById: adminId
-        }
-      });
+    for (let offset = 0; offset < currentBatchSize; offset += 1) {
+      const globalIndex = existingCount + start + offset;
+      data.push(buildClientPayload(globalIndex, regions, adminId));
     }
+
+    await prisma.client.createMany({ data });
   }
 }
 

@@ -1,4 +1,4 @@
-version: "3.9"
+name: crmapp-prod
 
 services:
   postgres:
@@ -49,12 +49,13 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "80:80"
+      - "80:8080"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1"]
       interval: 20s
       timeout: 5s
       retries: 5
 
 volumes:
   postgres_prod_data:
+    name: crmapp_postgres_prod_data

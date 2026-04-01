@@ -48,6 +48,8 @@ npm run security:validate-env
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
+ملاحظة: ملف الإنتاج يعمل باسم مشروع Compose مستقل (`crmapp-prod`) لمنع أي تضارب مع التشغيل المحلي (`crmapp-local`) على نفس السيرفر.
+
 الخدمات:
 
 - Frontend: `http://YOUR_SERVER_IP/`

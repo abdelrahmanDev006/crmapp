@@ -104,8 +104,10 @@ Base URL: `http://localhost:5000/api`
 ## 1) تشغيل PostgreSQL
 من جذر المشروع:
 ```bash
-docker compose up -d postgres
+docker compose -f docker-compose.yml up -d postgres
 ```
+
+ملاحظة: تم عزل Compose المحلي والـ Production باسمَي مشروع مختلفين (`crmapp-local` و`crmapp-prod`) لتجنب أي تضارب في الشبكات أو قاعدة البيانات عند تشغيلهما معًا.
 
 ## 2) إعداد Backend
 ```bash
