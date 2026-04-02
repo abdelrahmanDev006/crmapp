@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { regionsApi, usersApi } from "../api/crmApi";
 import { useAuth } from "../auth/AuthContext";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 const initialForm = {
   name: "",
@@ -23,6 +24,9 @@ export default function UsersPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [deleteLoadingId, setDeleteLoadingId] = useState(null);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
+  const [saveRegionLoadingId, setSaveRegionLoadingId] = useState(null);
+  const [regionDraftByUserId, setRegionDraftByUserId] = useState({});
+  const debouncedSearch = useDebouncedValue(search, 350);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -32,7 +36,7 @@ export default function UsersPage() {
       const response = await usersApi.list({
         page,
         pageSize: 20,
-        search: search || undefined
+        search: debouncedSearch || undefined
       });
       setUsersData(response.data);
     } catch (err) {
@@ -40,11 +44,33 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [debouncedSearch, page]);
 
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  useEffect(() => {
+    setRegionDraftByUserId((previous) => {
+      const next = { ...previous };
+
+      usersData.items.forEach((item) => {
+        if (item.role === "REPRESENTATIVE") {
+          next[item.id] = next[item.id] ?? String(item.region?.id || "");
+        } else {
+          delete next[item.id];
+        }
+      });
+
+      return next;
+    });
+  }, [usersData.items]);
+
+  useEffect(() => {
+    if (!loading && usersData.totalPages > 0 && page > usersData.totalPages) {
+      setPage(usersData.totalPages);
+    }
+  }, [loading, page, usersData.totalPages]);
 
   useEffect(() => {
     let mounted = true;
@@ -55,7 +81,7 @@ export default function UsersPage() {
         if (mounted) {
           setRegions(response.data.items || []);
         }
-      } catch (err) {
+      } catch {
         // Regions list is optional for the create form.
       }
     }
@@ -123,6 +149,35 @@ export default function UsersPage() {
     }
   }
 
+  async function saveRepresentativeRegion(item) {
+    const selectedRegionId = Number(regionDraftByUserId[item.id] || 0);
+
+    if (item.role !== "REPRESENTATIVE") {
+      return;
+    }
+
+    if (!selectedRegionId) {
+      setError("اختر منطقة صحيحة للمندوب");
+      return;
+    }
+
+    if (selectedRegionId === Number(item.region?.id)) {
+      return;
+    }
+
+    setError("");
+    setSaveRegionLoadingId(item.id);
+
+    try {
+      await usersApi.update(item.id, { regionId: selectedRegionId });
+      await loadUsers();
+    } catch (err) {
+      setError(err.message || "تعذر تحديث منطقة المندوب");
+    } finally {
+      setSaveRegionLoadingId(null);
+    }
+  }
+
   function isCurrentUser(item) {
     return Number(item.id) === Number(currentUser?.id);
   }
@@ -134,7 +189,7 @@ export default function UsersPage() {
           <h3>إضافة مستخدم</h3>
         </div>
 
-        <form className="form-grid create-form" onSubmit={handleCreate}>
+        <form className="form-grid create-form users-create-form" onSubmit={handleCreate}>
           <label>
             الاسم
             <input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} required />
@@ -164,9 +219,10 @@ export default function UsersPage() {
               <option value="ADMIN">أدمن</option>
             </select>
           </label>
-          <label>
+          <label className="users-create-region-field">
             المنطقة
             <select
+              className="users-create-region-select"
               value={form.regionId}
               disabled={form.role !== "REPRESENTATIVE"}
               onChange={(event) => setForm((prev) => ({ ...prev, regionId: event.target.value }))}
@@ -211,7 +267,7 @@ export default function UsersPage() {
           <div className="table-empty">جاري تحميل المستخدمين...</div>
         ) : (
           <div className="table-wrapper">
-            <table className="mobile-table">
+            <table className="mobile-table users-table">
               <thead>
                 <tr>
                   <th>الاسم</th>
@@ -228,7 +284,44 @@ export default function UsersPage() {
                     <td data-label="\u0627\u0644\u0627\u0633\u0645">{item.name}</td>
                     <td data-label="\u0627\u0644\u0628\u0631\u064a\u062f">{item.email}</td>
                     <td data-label="\u0627\u0644\u062f\u0648\u0631">{item.role === "ADMIN" ? "\u0623\u062f\u0645\u0646" : "\u0645\u0646\u062f\u0648\u0628"}</td>
-                    <td data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">{item.region?.name || "-"}</td>
+                    <td className="user-region-cell" data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">
+                      {item.role === "REPRESENTATIVE" ? (
+                        <div className="user-region-control">
+                          <select
+                            className="user-region-select"
+                            value={regionDraftByUserId[item.id] ?? String(item.region?.id || "")}
+                            onChange={(event) =>
+                              setRegionDraftByUserId((prev) => ({
+                                ...prev,
+                                [item.id]: event.target.value
+                              }))
+                            }
+                            disabled={saveRegionLoadingId === item.id}
+                          >
+                            <option value="">اختر المنطقة</option>
+                            {regions.map((region) => (
+                              <option key={region.id} value={region.id}>
+                                {region.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="secondary-btn user-region-save-btn"
+                            disabled={
+                              saveRegionLoadingId === item.id ||
+                              !regionDraftByUserId[item.id] ||
+                              Number(regionDraftByUserId[item.id]) === Number(item.region?.id)
+                            }
+                            onClick={() => saveRepresentativeRegion(item)}
+                          >
+                            {saveRegionLoadingId === item.id ? "جاري..." : "حفظ"}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="user-region-empty">-</span>
+                      )}
+                    </td>
                     <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">{item.isActive ? "\u0646\u0634\u0637" : "\u0645\u0648\u0642\u0648\u0641"}</td>
                     <td className="actions-cell" data-label="\u0627\u0644\u0625\u062c\u0631\u0627\u0621">
                       <button

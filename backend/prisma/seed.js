@@ -1,8 +1,9 @@
-﻿const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+const nodeCrypto = require("crypto");
 const path = require("path");
 const dotenv = require("dotenv");
 const { PrismaClient, Role, VisitType, ClientStatus } = require("@prisma/client");
+const { addWorkDaysWith28DayMonth, getCurrentWorkWeekStart } = require("../src/utils/dateUtils");
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
@@ -35,7 +36,7 @@ const productsPool = [
 
 const visitTypeCycle = [VisitType.WEEKLY, VisitType.BIWEEKLY, VisitType.MONTHLY];
 const statusCycle = [ClientStatus.ACTIVE, ClientStatus.NO_ANSWER, ClientStatus.REJECTED, ClientStatus.ACTIVE];
-const visitOffsetCycle = [0, -1, 2, 7, 14, 21, 28];
+const visitOffsetCycle = [-7, 0, 7, 14, 21, 28];
 
 function buildClientPayload(index, regions, adminId) {
   const region = regions[index % regions.length];
@@ -61,10 +62,7 @@ function buildClientPayload(index, regions, adminId) {
 }
 
 function getSafeWorkDate(offsetDays = 0) {
-  const now = new Date();
-  const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), Math.min(now.getUTCDate(), 28)));
-  base.setUTCDate(base.getUTCDate() + offsetDays);
-  return base;
+  return addWorkDaysWith28DayMonth(getCurrentWorkWeekStart(new Date()), offsetDays);
 }
 
 function toNonNegativeInteger(value, fallback) {
@@ -93,7 +91,7 @@ function generateStrongPassword(length = 16) {
   let password = "";
 
   while (password.length < length) {
-    const bytes = crypto.randomBytes(length);
+    const bytes = nodeCrypto.randomBytes(length);
 
     for (let index = 0; index < bytes.length && password.length < length; index += 1) {
       password += alphabet[bytes[index] % alphabet.length];

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { clientsApi } from "../api/crmApi";
+import { useAuth } from "../auth/AuthContext";
 import StatusBadge from "../components/StatusBadge";
 import VisitTypeBadge from "../components/VisitTypeBadge";
 import { formatDate } from "../utils/formatters";
@@ -15,16 +16,44 @@ function isDatePastOrToday(dateValue) {
   return checkDate.getTime() <= today.getTime();
 }
 
+function getLocationHref(locationUrl) {
+  const raw = String(locationUrl || "").trim();
+
+  if (!raw) {
+    return null;
+  }
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 export default function ClientDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
   const [client, setClient] = useState(null);
   const [nextVisitType, setNextVisitType] = useState("WEEKLY");
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [saveDetailsLoading, setSaveDetailsLoading] = useState(false);
   const [note, setNote] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editProducts, setEditProducts] = useState("");
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
 
   function goBack() {
     if (window.history.length > 1) {
@@ -35,7 +64,7 @@ export default function ClientDetailsPage() {
     navigate("/clients");
   }
 
-  async function loadClient() {
+  const loadClient = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -43,16 +72,19 @@ export default function ClientDetailsPage() {
       const response = await clientsApi.getById(id);
       setClient(response.data.item);
       setNextVisitType(response.data.item.visitType || "WEEKLY");
+      setEditPhone(response.data.item.phone || "");
+      setEditAddress(response.data.item.address || "");
+      setEditProducts(response.data.item.products || "");
     } catch (err) {
       setError(err.message || "تعذر تحميل بيانات العميل");
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
 
   useEffect(() => {
     loadClient();
-  }, [id]);
+  }, [loadClient]);
 
   const rejectedWaiting = useMemo(() => {
     if (!client || client.status !== "REJECTED") {
@@ -62,9 +94,23 @@ export default function ClientDetailsPage() {
     return !isDatePastOrToday(client.nextVisitDate);
   }, [client]);
 
+  const locationHref = useMemo(() => getLocationHref(client?.locationUrl), [client?.locationUrl]);
+  const hasDetailsChanges = useMemo(() => {
+    if (!client) {
+      return false;
+    }
+
+    return (
+      editPhone !== (client.phone || "") ||
+      editAddress !== (client.address || "") ||
+      editProducts !== (client.products || "")
+    );
+  }, [client, editAddress, editPhone, editProducts]);
+
   async function submitOutcome(outcome) {
     setActionLoading(true);
     setError("");
+    setInfoMessage("");
 
     try {
       await clientsApi.handle(id, {
@@ -78,6 +124,26 @@ export default function ClientDetailsPage() {
       setError(err.message || "تعذر تحديث الحالة");
     } finally {
       setActionLoading(false);
+    }
+  }
+
+  async function submitClientDetailsUpdate() {
+    setSaveDetailsLoading(true);
+    setError("");
+    setInfoMessage("");
+
+    try {
+      await clientsApi.update(id, {
+        phone: editPhone,
+        address: editAddress,
+        products: editProducts
+      });
+      setInfoMessage("تم تحديث بيانات العميل بنجاح");
+      await loadClient();
+    } catch (err) {
+      setError(err.message || "تعذر تحديث بيانات العميل");
+    } finally {
+      setSaveDetailsLoading(false);
     }
   }
 
@@ -128,6 +194,16 @@ export default function ClientDetailsPage() {
             <strong>{client.address}</strong>
           </div>
           <div>
+            <span>اللوكيشن</span>
+            {locationHref ? (
+              <a href={locationHref} target="_blank" rel="noopener noreferrer" className="ghost-btn inline-btn">
+                فتح اللوكيشن
+              </a>
+            ) : (
+              <strong>-</strong>
+            )}
+          </div>
+          <div>
             <span>المنتجات</span>
             <strong>{client.products}</strong>
           </div>
@@ -144,6 +220,40 @@ export default function ClientDetailsPage() {
             <strong>{formatDate(client.nextVisitDate)}</strong>
           </div>
         </div>
+
+        {isAdmin && (
+          <div className="action-bar" style={{ marginBottom: "12px" }}>
+            <input
+              type="text"
+              value={editPhone}
+              onChange={(event) => setEditPhone(event.target.value)}
+              placeholder="رقم الهاتف"
+              disabled={saveDetailsLoading || actionLoading}
+            />
+            <input
+              type="text"
+              value={editAddress}
+              onChange={(event) => setEditAddress(event.target.value)}
+              placeholder="العنوان"
+              disabled={saveDetailsLoading || actionLoading}
+            />
+            <input
+              type="text"
+              value={editProducts}
+              onChange={(event) => setEditProducts(event.target.value)}
+              placeholder="المنتجات"
+              disabled={saveDetailsLoading || actionLoading}
+            />
+            <button
+              type="button"
+              className="primary-btn"
+              disabled={saveDetailsLoading || actionLoading || !hasDetailsChanges}
+              onClick={submitClientDetailsUpdate}
+            >
+              {saveDetailsLoading ? "جاري الحفظ..." : "حفظ بيانات العميل"}
+            </button>
+          </div>
+        )}
 
         <div className="action-bar">
           <select value={nextVisitType} onChange={(event) => setNextVisitType(event.target.value)} disabled={actionLoading}>
@@ -179,6 +289,7 @@ export default function ClientDetailsPage() {
           </button>
         </div>
 
+        {infoMessage && <div className="info-box">{infoMessage}</div>}
         {error && <div className="error-box">{error}</div>}
       </section>
 

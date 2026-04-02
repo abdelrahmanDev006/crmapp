@@ -1,8 +1,3 @@
-export const UserRole = {
-  ADMIN: "ADMIN",
-  REPRESENTATIVE: "REPRESENTATIVE"
-};
-
 export const VisitType = {
   WEEKLY: "أسبوعي",
   BIWEEKLY: "كل أسبوعين",

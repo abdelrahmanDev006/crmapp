@@ -42,17 +42,10 @@ TRUST_PROXY=true
 JSON_BODY_LIMIT=1mb
 AUTH_RATE_LIMIT_WINDOW_MINUTES=15
 AUTH_RATE_LIMIT_MAX=80
-WHATSAPP_CLOUD_ENABLED=false
-WHATSAPP_CLOUD_ACCESS_TOKEN=
-WHATSAPP_CLOUD_PHONE_NUMBER_ID=
-WHATSAPP_CLOUD_API_VERSION=v21.0
-WHATSAPP_REQUEST_TIMEOUT_MS=15000
-WHATSAPP_MESSAGE_DELAY_MS=150
 ```
 
 ملاحظات:
 - استبدل `crm-postgres` و `crm-frontend` باسم الخدمة الفعلي عندك.
-- لو هتفعل واتساب Cloud لاحقًا، غيّر `WHATSAPP_CLOUD_ENABLED=true` واملأ بيانات التوكن والرقم.
 
 ## 4) إعداد متغيرات Frontend
 

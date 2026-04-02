@@ -1,6 +1,5 @@
 const express = require("express");
 const validate = require("../middlewares/validate");
-const asyncHandler = require("../middlewares/asyncHandler");
 const { loginSchema } = require("../schemas/authSchemas");
 const { login, me } = require("../controllers/authController");
 const { authenticate } = require("../middlewares/auth");

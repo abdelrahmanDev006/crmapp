@@ -96,8 +96,6 @@ Base URL: `http://localhost:5000/api`
 - `PATCH /clients/:id` تحديث عميل (Admin)
 - `DELETE /clients/:id` حذف عميل (Admin)
 - `POST /clients/:id/handle` تحديث حالة/نتيجة الزيارة (يدعم `advanceDays` + `referenceDate` للترحيل بعد عدد أيام محدد)
-- `POST /clients/alerts/whatsapp/today` إرسال تنبيه واتساب تلقائي لعملاء اليوم (يتطلب إعداد WhatsApp Cloud API)
-- `POST /clients/alerts/whatsapp/new` إرسال رسالة واتساب تلقائية للعملاء الجدد المضافين اليوم (يتطلب إعداد WhatsApp Cloud API)
 
 ## تشغيل المشروع محليًا
 
@@ -119,6 +117,21 @@ npm run prisma:seed
 npm run dev
 ```
 
+أوامر جودة الكود والاختبار السريع (Backend):
+```bash
+cd backend
+npm run lint
+npm run test:smoke
+```
+
+يمكن تشغيل الـ smoke مع تسجيل دخول أدمن اختياريًا:
+```bash
+SMOKE_API_BASE_URL=http://localhost/api \
+SMOKE_ADMIN_EMAIL=admin@company.com \
+SMOKE_ADMIN_PASSWORD=StrongPass!2026 \
+npm run test:smoke
+```
+
 إعدادات أمان موصى بها في `backend/.env`:
 - `ALLOWED_ORIGINS` قائمة الدومينات المسموح بها للواجهة (مفصولة بفواصل).
 - `CORS_CREDENTIALS=true` لتفعيل الكوكيز/الهيدر المعتمد عند الحاجة.
@@ -134,6 +147,12 @@ cd frontend
 copy .env.example .env
 npm install
 npm run dev
+```
+
+أوامر جودة الكود (Frontend):
+```bash
+cd frontend
+npm run lint
 ```
 
 Frontend يعمل على:

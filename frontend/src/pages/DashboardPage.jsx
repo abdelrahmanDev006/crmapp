@@ -14,6 +14,8 @@ export default function DashboardPage() {
   const [actionSuccessMessage, setActionSuccessMessage] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
   const [deletingRegionId, setDeletingRegionId] = useState(null);
+  const [showCreateRegionForm, setShowCreateRegionForm] = useState(false);
+  const [newRegionName, setNewRegionName] = useState("");
 
   const loadSummary = useCallback(async () => {
     setLoading(true);
@@ -34,10 +36,11 @@ export default function DashboardPage() {
   }, [loadSummary]);
 
   async function handleCreateRegion() {
-    const inputValue = window.prompt("اكتب اسم المنطقة الجديدة");
-    const regionName = String(inputValue || "").trim();
+    const regionName = String(newRegionName || "").trim();
 
     if (!regionName) {
+      setActionError("اسم المنطقة مطلوب");
+      setActionSuccessMessage("");
       return;
     }
 
@@ -49,6 +52,8 @@ export default function DashboardPage() {
       await regionsApi.create({ name: regionName });
       await loadSummary();
       setActionSuccessMessage(`تمت إضافة المنطقة "${regionName}" بنجاح`);
+      setNewRegionName("");
+      setShowCreateRegionForm(false);
     } catch (err) {
       setActionError(err.message || "تعذر إضافة المنطقة");
     } finally {
@@ -121,13 +126,49 @@ export default function DashboardPage() {
             <p>إجمالي المناطق الحالية: {data?.regions?.length || 0}</p>
           </div>
           {isAdmin && (
-            <button type="button" className="primary-btn" disabled={createLoading} onClick={handleCreateRegion}>
-              {createLoading ? "جاري إضافة المنطقة..." : "إضافة منطقة"}
+            <button
+              type="button"
+              className="primary-btn"
+              disabled={createLoading}
+              onClick={() => {
+                setShowCreateRegionForm((prev) => !prev);
+                setActionError("");
+                setActionSuccessMessage("");
+              }}
+            >
+              {showCreateRegionForm ? "إغلاق الإضافة" : "إضافة منطقة"}
             </button>
           )}
         </div>
 
         <div className="stack">
+          {isAdmin && showCreateRegionForm && (
+            <form
+              className="inline-create-region-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleCreateRegion();
+              }}
+            >
+              <input
+                type="text"
+                value={newRegionName}
+                onChange={(event) => {
+                  setNewRegionName(event.target.value);
+                  if (actionError) {
+                    setActionError("");
+                  }
+                }}
+                placeholder="اسم المنطقة الجديدة"
+                disabled={createLoading}
+                required
+              />
+              <button type="submit" className="primary-btn" disabled={createLoading}>
+                {createLoading ? "جاري الإضافة..." : "حفظ المنطقة"}
+              </button>
+            </form>
+          )}
+
           {actionError && <div className="error-box">{actionError}</div>}
           {actionSuccessMessage && <div className="info-box">{actionSuccessMessage}</div>}
 

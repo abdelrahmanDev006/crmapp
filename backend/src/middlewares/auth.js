@@ -25,7 +25,7 @@ async function authenticate(req, res, next) {
 
     req.user = user;
     return next();
-  } catch (error) {
+  } catch {
     return next(createHttpError(401, "رمز الدخول غير صالح"));
   }
 }

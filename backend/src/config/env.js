@@ -95,11 +95,5 @@ module.exports = {
   trustProxy: parseBoolean(process.env.TRUST_PROXY, false),
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || "1mb",
   authRateLimitWindowMinutes: Math.max(1, parseNumber(process.env.AUTH_RATE_LIMIT_WINDOW_MINUTES, 15)),
-  authRateLimitMax: Math.max(1, parseNumber(process.env.AUTH_RATE_LIMIT_MAX, 100)),
-  whatsappCloudEnabled: parseBoolean(process.env.WHATSAPP_CLOUD_ENABLED, false),
-  whatsappCloudAccessToken: String(process.env.WHATSAPP_CLOUD_ACCESS_TOKEN || "").trim(),
-  whatsappCloudPhoneNumberId: String(process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID || "").trim(),
-  whatsappCloudApiVersion: String(process.env.WHATSAPP_CLOUD_API_VERSION || "v21.0").trim(),
-  whatsappCloudRequestTimeoutMs: Math.max(3000, parseNumber(process.env.WHATSAPP_REQUEST_TIMEOUT_MS, 15000)),
-  whatsappCloudMessageDelayMs: Math.max(0, parseNumber(process.env.WHATSAPP_MESSAGE_DELAY_MS, 150))
+  authRateLimitMax: Math.max(1, parseNumber(process.env.AUTH_RATE_LIMIT_MAX, 100))
 };

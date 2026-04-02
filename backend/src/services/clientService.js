@@ -1,15 +1,15 @@
 const prisma = require("../config/prisma");
 const env = require("../config/env");
 const { Roles, ClientStatuses, VisitTypes } = require("../constants/enums");
-const { normalizeToWorkDate, toStartOfUtcDay, calculateNextVisitDate, addWorkDaysWith28DayMonth } = require("../utils/dateUtils");
-const { createHttpError } = require("../utils/httpError");
 const {
-  normalizePhoneForWhatsApp,
-  buildDueTodayWhatsAppMessage,
-  buildNewClientWhatsAppMessage,
-  assertWhatsAppCloudConfigured,
-  sendWhatsAppTextMessage
-} = require("./whatsappService");
+  normalizeToWorkDate,
+  toStartOfUtcDay,
+  calculateNextVisitDate,
+  addWorkDaysWith28DayMonth,
+  getCurrentWorkWeekStart,
+  getNextOrSameWorkWeekStart
+} = require("../utils/dateUtils");
+const { createHttpError } = require("../utils/httpError");
 
 const clientWithRelations = {
   region: {
@@ -29,58 +29,6 @@ function chunkArray(items, chunkSize) {
   }
 
   return chunks;
-}
-
-function sleep(milliseconds) {
-  if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
-    return Promise.resolve();
-  }
-
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-async function sendWhatsAppAlertsToClients({ clients, messageText }) {
-  let sentCount = 0;
-  const skippedClients = [];
-  const failedClients = [];
-
-  for (const client of clients) {
-    const normalizedPhone = normalizePhoneForWhatsApp(client.phone);
-
-    if (!normalizedPhone) {
-      skippedClients.push({
-        id: client.id,
-        name: client.name,
-        phone: client.phone,
-        reason: "رقم غير صالح للواتساب"
-      });
-      continue;
-    }
-
-    try {
-      await sendWhatsAppTextMessage({
-        to: normalizedPhone,
-        message: messageText
-      });
-      sentCount += 1;
-      await sleep(env.whatsappCloudMessageDelayMs);
-    } catch (error) {
-      failedClients.push({
-        id: client.id,
-        name: client.name,
-        phone: client.phone,
-        reason: error.message || "تعذر إرسال رسالة واتساب"
-      });
-    }
-  }
-
-  return {
-    sentCount,
-    skippedCount: skippedClients.length,
-    failedCount: failedClients.length,
-    skippedClients,
-    failedClients
-  };
 }
 
 function buildClientWhere(filters, user) {
@@ -107,6 +55,7 @@ function buildClientWhere(filters, user) {
       { name: { contains: filters.search, mode: "insensitive" } },
       { phone: { contains: filters.search, mode: "insensitive" } },
       { address: { contains: filters.search, mode: "insensitive" } },
+      { locationUrl: { contains: filters.search, mode: "insensitive" } },
       { products: { contains: filters.search, mode: "insensitive" } }
     ];
   }
@@ -230,20 +179,23 @@ function canRetryRejectedClient(client, referenceDate = new Date()) {
 function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDays, advanceDays, referenceDate }) {
   if (outcome === ClientStatuses.REJECTED) {
     // After rejection, schedule a future retry date.
-    return addWorkDaysWith28DayMonth(normalizeToWorkDate(new Date()), rejectedRetryDays);
+    const retryDate = addWorkDaysWith28DayMonth(normalizeToWorkDate(new Date()), rejectedRetryDays);
+    return getNextOrSameWorkWeekStart(retryDate);
   }
 
   if (outcome === ClientStatuses.NO_ANSWER) {
-    return currentDate;
+    return getCurrentWorkWeekStart(currentDate);
   }
 
   if (Number.isFinite(Number(advanceDays)) && Number(advanceDays) > 0) {
     const baseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
-    return addWorkDaysWith28DayMonth(baseDate, Number(advanceDays));
+    const advancedDate = addWorkDaysWith28DayMonth(baseDate, Number(advanceDays));
+    return getNextOrSameWorkWeekStart(advancedDate);
   }
 
   const nextVisitBaseDate = currentDate ? normalizeToWorkDate(currentDate) : normalizeToWorkDate(new Date());
-  return calculateNextVisitDate(nextVisitBaseDate, visitType);
+  const calculatedNextVisitDate = calculateNextVisitDate(nextVisitBaseDate, visitType);
+  return getCurrentWorkWeekStart(calculatedNextVisitDate);
 }
 
 function getVisitTypeLabel(type) {
@@ -335,10 +287,7 @@ async function handleRegionClients({ regionId, user, note }) {
 
   const clients = await prisma.client.findMany({
     where: {
-      regionId: Number(regionId),
-      status: {
-        not: ClientStatuses.REJECTED
-      }
+      regionId: Number(regionId)
     },
     select: {
       id: true,
@@ -355,11 +304,11 @@ async function handleRegionClients({ regionId, user, note }) {
     };
   }
 
-  const now = normalizeToWorkDate(new Date());
+  const currentWeekStart = getCurrentWorkWeekStart(new Date());
   const nextVisitDatesByType = {
-    [VisitTypes.WEEKLY]: calculateNextVisitDate(now, VisitTypes.WEEKLY),
-    [VisitTypes.BIWEEKLY]: calculateNextVisitDate(now, VisitTypes.BIWEEKLY),
-    [VisitTypes.MONTHLY]: calculateNextVisitDate(now, VisitTypes.MONTHLY)
+    [VisitTypes.WEEKLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.WEEKLY),
+    [VisitTypes.BIWEEKLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.BIWEEKLY),
+    [VisitTypes.MONTHLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.MONTHLY)
   };
   const idsByVisitType = {
     [VisitTypes.WEEKLY]: [],
@@ -412,117 +361,11 @@ async function handleRegionClients({ regionId, user, note }) {
   };
 }
 
-async function sendDueTodayWhatsAppAlerts({ user, regionId, customMessage }) {
-  assertWhatsAppCloudConfigured();
-
-  const dueDate = normalizeToWorkDate(new Date()).toISOString().slice(0, 10);
-  const where = buildClientWhere(
-    {
-      dueDate,
-      ...(regionId ? { regionId } : {})
-    },
-    user
-  );
-
-  const clients = await prisma.client.findMany({
-    where,
-    select: {
-      id: true,
-      name: true,
-      phone: true
-    },
-    orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }]
-  });
-
-  if (clients.length === 0) {
-    return {
-      dueDate,
-      totalDueClients: 0,
-      sentCount: 0,
-      skippedCount: 0,
-      failedCount: 0,
-      skippedClients: [],
-      failedClients: []
-    };
-  }
-
-  const messageText =
-    String(customMessage || "").trim() || buildDueTodayWhatsAppMessage({ representativeName: user.name, dueDate: new Date() });
-
-  const result = await sendWhatsAppAlertsToClients({ clients, messageText });
-
-  return {
-    dueDate,
-    totalDueClients: clients.length,
-    ...result
-  };
-}
-
-async function sendNewClientsWhatsAppAlerts({ user, regionId, customMessage }) {
-  assertWhatsAppCloudConfigured();
-
-  const createdDateStart = toStartOfUtcDay(new Date());
-  const nextDateStart = new Date(createdDateStart);
-  nextDateStart.setUTCDate(nextDateStart.getUTCDate() + 1);
-  const createdDate = createdDateStart.toISOString().slice(0, 10);
-
-  const where = {
-    createdAt: {
-      gte: createdDateStart,
-      lt: nextDateStart
-    },
-    status: {
-      not: ClientStatuses.REJECTED
-    }
-  };
-
-  if (user.role === Roles.REPRESENTATIVE) {
-    where.regionId = Number(user.regionId);
-  }
-
-  if (regionId) {
-    where.regionId = Number(regionId);
-  }
-
-  const clients = await prisma.client.findMany({
-    where,
-    select: {
-      id: true,
-      name: true,
-      phone: true
-    },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }]
-  });
-
-  if (clients.length === 0) {
-    return {
-      createdDate,
-      totalNewClients: 0,
-      sentCount: 0,
-      skippedCount: 0,
-      failedCount: 0,
-      skippedClients: [],
-      failedClients: []
-    };
-  }
-
-  const messageText = String(customMessage || "").trim() || buildNewClientWhatsAppMessage({ representativeName: user.name });
-  const result = await sendWhatsAppAlertsToClients({ clients, messageText });
-
-  return {
-    createdDate,
-    totalNewClients: clients.length,
-    ...result
-  };
-}
-
 module.exports = {
   listClients,
   getClientById,
   handleClientVisit,
   handleRegionClients,
-  sendDueTodayWhatsAppAlerts,
-  sendNewClientsWhatsAppAlerts,
   enforceClientScope,
   canRetryRejectedClient
 };

@@ -7,9 +7,7 @@ const {
   clientQuerySchema,
   createClientSchema,
   updateClientSchema,
-  handleClientSchema,
-  sendTodayWhatsAppAlertsSchema,
-  sendNewClientsWhatsAppAlertsSchema
+  handleClientSchema
 } = require("../schemas/clientSchemas");
 const {
   listClientRecords,
@@ -17,9 +15,7 @@ const {
   createClient,
   updateClient,
   handleClient,
-  deleteClient,
-  sendTodayWhatsAppAlerts,
-  sendNewClientsWhatsAppAlertsController
+  deleteClient
 } = require("../controllers/clientController");
 
 const router = express.Router();
@@ -27,8 +23,6 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get("/", validate(clientQuerySchema, "query"), listClientRecords);
-router.post("/alerts/whatsapp/today", validate(sendTodayWhatsAppAlertsSchema), sendTodayWhatsAppAlerts);
-router.post("/alerts/whatsapp/new", validate(sendNewClientsWhatsAppAlertsSchema), sendNewClientsWhatsAppAlertsController);
 router.get("/:id", validate(idParamSchema, "params"), getClientDetails);
 router.post("/:id/handle", validate(idParamSchema, "params"), validate(handleClientSchema), handleClient);
 router.post("/", authorizeRoles(Roles.ADMIN), validate(createClientSchema), createClient);

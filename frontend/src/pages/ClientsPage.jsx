@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import Pagination from "../components/Pagination";
 import StatusBadge from "../components/StatusBadge";
 import VisitTypeBadge from "../components/VisitTypeBadge";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { formatDate } from "../utils/formatters";
 
 const tabs = [
@@ -19,6 +20,7 @@ const initialCreateForm = {
   name: "",
   phone: "",
   address: "",
+  locationUrl: "",
   regionId: "",
   products: "",
   visitType: "WEEKLY",
@@ -49,28 +51,6 @@ function getTodayInputDate() {
   return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
 }
 
-function normalizePhoneForWhatsApp(phone) {
-  const digitsOnly = String(phone || "").replace(/\D/g, "");
-
-  if (!digitsOnly) {
-    return "";
-  }
-
-  if (digitsOnly.startsWith("00")) {
-    return digitsOnly.slice(2);
-  }
-
-  if (digitsOnly.startsWith("0")) {
-    return `2${digitsOnly}`;
-  }
-
-  return digitsOnly;
-}
-
-function buildDueTodayWhatsAppMessage({ representativeName, dueDate }) {
-  return `مرحبًا، معك ${representativeName || "مندوب الشركة"}. نؤكد لك أن زيارتنا الدورية لك اليوم ${dueDate}. إذا لديك أي ملاحظة، فضلاً أخبرنا قبل موعد الزيارة.`;
-}
-
 function getDateTextOrNull(value) {
   if (!value) {
     return null;
@@ -85,13 +65,25 @@ function getDateTextOrNull(value) {
   return parsed.toISOString().slice(0, 10);
 }
 
-function getDateTextForMessage(value) {
-  const parsedDateText = getDateTextOrNull(value);
-  if (!parsedDateText) {
-    return getTodayInputDate();
+function getLocationHref(locationUrl) {
+  const raw = String(locationUrl || "").trim();
+
+  if (!raw) {
+    return null;
   }
 
-  return parsedDateText;
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 function isNewClient(createdAt, todayDateText) {
@@ -132,6 +124,7 @@ export default function ClientsPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const todayDateText = getTodayInputDate();
+  const debouncedSearch = useDebouncedValue(search, 350);
 
   const queryFilters = useMemo(() => mapTabToFilters(activeTab), [activeTab]);
   const hasDueDateFilter = Boolean(selectedDueDate);
@@ -144,7 +137,7 @@ export default function ClientsPage() {
       const params = {
         page,
         pageSize: 20,
-        search: search || undefined
+        search: debouncedSearch || undefined
       };
 
       if (hasDueDateFilter) {
@@ -164,7 +157,7 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [hasDueDateFilter, isAdmin, page, queryFilters, search, selectedDueDate, selectedRegionId]);
+  }, [debouncedSearch, hasDueDateFilter, isAdmin, page, queryFilters, selectedDueDate, selectedRegionId]);
 
   useEffect(() => {
     loadClients();
@@ -183,7 +176,7 @@ export default function ClientsPage() {
         if (mounted) {
           setRegions(response.data.items || []);
         }
-      } catch (err) {
+      } catch {
         // Regions filter is optional on this page.
       }
     }
@@ -194,6 +187,12 @@ export default function ClientsPage() {
       mounted = false;
     };
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!loading && data.totalPages > 0 && page > data.totalPages) {
+      setPage(data.totalPages);
+    }
+  }, [data.totalPages, loading, page]);
 
   async function handleClientAction(clientId) {
     setActionClientId(clientId);
@@ -243,6 +242,7 @@ export default function ClientsPage() {
         name: createForm.name,
         phone: createForm.phone,
         address: createForm.address,
+        locationUrl: createForm.locationUrl || undefined,
         regionId: Number(createForm.regionId),
         products: createForm.products,
         visitType: createForm.visitType,
@@ -270,49 +270,12 @@ export default function ClientsPage() {
     setPage(1);
   }
 
-  function isClientDueToday(client) {
-    const clientDateText = getDateTextOrNull(client.nextVisitDate);
-
-    return client.status !== "REJECTED" && clientDateText === todayDateText;
-  }
-
-  function handleOpenClientWhatsApp(client) {
-    setError("");
-    setInfoMessage("");
-
-    if (!isClientDueToday(client)) {
-      setInfoMessage("زرار واتساب متاح للعملاء المستحقين اليوم فقط.");
-      return;
-    }
-
-    const normalizedPhone = normalizePhoneForWhatsApp(client.phone);
-
-    if (!normalizedPhone) {
-      setError("رقم العميل غير صالح لفتح واتساب");
-      return;
-    }
-
-    const messageText = buildDueTodayWhatsAppMessage({
-      representativeName: user?.name,
-      dueDate: getDateTextForMessage(client.nextVisitDate)
-    });
-    const encodedMessage = encodeURIComponent(messageText);
-    const popup = window.open(`https://wa.me/${normalizedPhone}?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
-
-    if (!popup) {
-      setInfoMessage("المتصفح منع فتح واتساب. فعّل pop-ups ثم أعد المحاولة.");
-      return;
-    }
-
-    setInfoMessage(`تم فتح واتساب للعميل: ${client.name}`);
-  }
-
   return (
     <div className="stack">
       <section className="panel">
         <div className="panel-header split">
           <h3>العملاء</h3>
-          {isAdmin && (
+          {isAdmin && (h
             <button type="button" className="primary-btn" onClick={() => setShowCreate((prev) => !prev)}>
               {showCreate ? "إغلاق نموذج الإضافة" : "إضافة عميل"}
             </button>
@@ -320,7 +283,7 @@ export default function ClientsPage() {
         </div>
 
         {isAdmin && showCreate && (
-          <form className="form-grid create-form" onSubmit={handleCreateClient}>
+          <form className="form-grid create-form clients-create-form" onSubmit={handleCreateClient}>
             <label>
               اسم العميل
               <input
@@ -343,6 +306,13 @@ export default function ClientsPage() {
                 value={createForm.address}
                 onChange={(event) => setCreateForm((prev) => ({ ...prev, address: event.target.value }))}
                 required
+              />
+            </label>
+            <label>
+              لوكيشن العميل
+              <input
+                value={createForm.locationUrl}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, locationUrl: event.target.value }))}
               />
             </label>
             <label>
@@ -488,12 +458,13 @@ export default function ClientsPage() {
           <div className="table-empty">لا توجد بيانات في هذا التصنيف</div>
         ) : (
           <div className="table-wrapper">
-            <table className="mobile-table">
+            <table className="mobile-table clients-table">
               <thead>
                 <tr>
                   <th>العميل</th>
                   <th>الهاتف</th>
                   <th>العنوان</th>
+                  <th>اللوكيشن</th>
                   <th>المنطقة</th>
                   <th>المنتجات</th>
                   <th>الزيارة</th>
@@ -505,6 +476,7 @@ export default function ClientsPage() {
               <tbody>
                 {data.items.map((client) => {
                   const clientIsNew = isNewClient(client.createdAt, todayDateText);
+                  const locationHref = getLocationHref(client.locationUrl);
 
                   return (
                     <tr key={client.id}>
@@ -518,6 +490,25 @@ export default function ClientsPage() {
                       </td>
                       <td data-label="\u0627\u0644\u0647\u0627\u062a\u0641">{client.phone}</td>
                       <td data-label="\u0627\u0644\u0639\u0646\u0648\u0627\u0646">{client.address}</td>
+                      <td data-label="\u0627\u0644\u0644\u0648\u0643\u064a\u0634\u0646">
+                        {locationHref ? (
+                          <a
+                            href={locationHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="location-link-icon"
+                            aria-label={`فتح لوكيشن العميل ${client.name}`}
+                            title="فتح اللوكيشن"
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                              <path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" />
+                              <circle cx="12" cy="10" r="2.6" />
+                            </svg>
+                          </a>
+                        ) : (
+                          <span className="location-link-missing">-</span>
+                        )}
+                      </td>
                       <td data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">{client.region?.name}</td>
                       <td data-label="\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a">{client.products}</td>
                       <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629">
@@ -541,13 +532,6 @@ export default function ClientsPage() {
                             {actionClientId === client.id ? "جاري..." : "تم التعامل"}
                           </button>
                         )}
-
-                        {isClientDueToday(client) && (
-                          <button type="button" className="secondary-btn" onClick={() => handleOpenClientWhatsApp(client)}>
-                            واتساب
-                          </button>
-                        )}
-
                         {isAdmin && (
                           <button
                             type="button"

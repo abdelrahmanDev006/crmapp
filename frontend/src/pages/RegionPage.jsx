@@ -4,6 +4,7 @@ import { clientsApi, regionsApi } from "../api/crmApi";
 import Pagination from "../components/Pagination";
 import StatusBadge from "../components/StatusBadge";
 import VisitTypeBadge from "../components/VisitTypeBadge";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { formatDate } from "../utils/formatters";
 
 export default function RegionPage() {
@@ -16,6 +17,7 @@ export default function RegionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
+  const debouncedSearch = useDebouncedValue(search, 350);
 
   const loadRegion = useCallback(async () => {
     setLoading(true);
@@ -28,7 +30,7 @@ export default function RegionPage() {
           page,
           pageSize: 20,
           regionId: Number(id),
-          search: search || undefined
+          search: debouncedSearch || undefined
         })
       ]);
 
@@ -39,11 +41,17 @@ export default function RegionPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, page, search]);
+  }, [debouncedSearch, id, page]);
 
   useEffect(() => {
     loadRegion();
   }, [loadRegion]);
+
+  useEffect(() => {
+    if (!loading && clientsData.totalPages > 0 && page > clientsData.totalPages) {
+      setPage(clientsData.totalPages);
+    }
+  }, [clientsData.totalPages, loading, page]);
 
   async function handleWholeRegion() {
     const confirmed = window.confirm("هل تريد تأكيد التعامل مع المنطقة بالكامل؟");

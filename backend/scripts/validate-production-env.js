@@ -22,22 +22,6 @@ function isLikelyPlaceholder(value) {
   return placeholders.some((placeholder) => normalized.includes(placeholder));
 }
 
-function parseBoolean(value, fallback = false) {
-  if (value === undefined) {
-    return fallback;
-  }
-
-  const normalized = String(value).trim().toLowerCase();
-  if (normalized === "true") {
-    return true;
-  }
-  if (normalized === "false") {
-    return false;
-  }
-
-  return fallback;
-}
-
 if (!env.isProduction) {
   issues.push("NODE_ENV must be set to production.");
 }
@@ -71,19 +55,6 @@ if (process.env.SEED_ADMIN_PASSWORD === "Admin@123") {
 
 if (process.env.SEED_REP_DEFAULT_PASSWORD === "Rep@1234") {
   issues.push("SEED_REP_DEFAULT_PASSWORD is set to development default.");
-}
-
-const whatsappEnabled = parseBoolean(process.env.WHATSAPP_CLOUD_ENABLED, false);
-if (whatsappEnabled) {
-  if (!process.env.WHATSAPP_CLOUD_ACCESS_TOKEN) {
-    issues.push("WHATSAPP_CLOUD_ACCESS_TOKEN is required when WHATSAPP_CLOUD_ENABLED=true.");
-  } else if (isLikelyPlaceholder(process.env.WHATSAPP_CLOUD_ACCESS_TOKEN)) {
-    issues.push("WHATSAPP_CLOUD_ACCESS_TOKEN appears to be placeholder/default.");
-  }
-
-  if (!process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID) {
-    issues.push("WHATSAPP_CLOUD_PHONE_NUMBER_ID is required when WHATSAPP_CLOUD_ENABLED=true.");
-  }
 }
 
 if (issues.length > 0) {

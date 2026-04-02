@@ -1,14 +1,12 @@
 const prisma = require("../config/prisma");
 const asyncHandler = require("../middlewares/asyncHandler");
 const { Roles } = require("../constants/enums");
-const { normalizeToWorkDate } = require("../utils/dateUtils");
+const { getCurrentWorkWeekStart } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
 const {
   listClients,
   getClientById,
-  handleClientVisit,
-  sendDueTodayWhatsAppAlerts,
-  sendNewClientsWhatsAppAlerts
+  handleClientVisit
 } = require("../services/clientService");
 
 const listClientRecords = asyncHandler(async (req, res) => {
@@ -28,10 +26,6 @@ const getClientDetails = asyncHandler(async (req, res) => {
 const createClient = asyncHandler(async (req, res) => {
   const payload = req.body;
 
-  if (req.user.role === Roles.REPRESENTATIVE) {
-    throw createHttpError(403, "لا تملك صلاحية إضافة عملاء");
-  }
-
   const region = await prisma.region.findUnique({
     where: { id: Number(payload.regionId) }
   });
@@ -45,11 +39,14 @@ const createClient = asyncHandler(async (req, res) => {
       name: payload.name,
       phone: payload.phone,
       address: payload.address,
+      locationUrl: payload.locationUrl ? String(payload.locationUrl).trim() : undefined,
       regionId: payload.regionId,
       products: payload.products,
       visitType: payload.visitType,
       status: payload.status,
-      nextVisitDate: payload.nextVisitDate ? normalizeToWorkDate(payload.nextVisitDate) : normalizeToWorkDate(new Date()),
+      nextVisitDate: payload.nextVisitDate
+        ? getCurrentWorkWeekStart(payload.nextVisitDate)
+        : getCurrentWorkWeekStart(new Date()),
       createdById: req.user.id
     },
     include: {
@@ -64,12 +61,9 @@ const createClient = asyncHandler(async (req, res) => {
 });
 
 const updateClient = asyncHandler(async (req, res) => {
-  if (req.user.role === Roles.REPRESENTATIVE) {
-    throw createHttpError(403, "لا تملك صلاحية تعديل بيانات العميل");
-  }
-
+  const clientId = Number(req.params.id);
   const existing = await prisma.client.findUnique({
-    where: { id: Number(req.params.id) }
+    where: { id: clientId }
   });
 
   if (!existing) {
@@ -83,12 +77,19 @@ const updateClient = asyncHandler(async (req, res) => {
     }
   }
 
+  const updatePayload = {
+    ...req.body,
+    ...(req.body.nextVisitDate ? { nextVisitDate: getCurrentWorkWeekStart(req.body.nextVisitDate) } : {})
+  };
+
+  if (Object.prototype.hasOwnProperty.call(req.body, "locationUrl")) {
+    const normalizedLocationUrl = String(req.body.locationUrl || "").trim();
+    updatePayload.locationUrl = normalizedLocationUrl || null;
+  }
+
   const updated = await prisma.client.update({
-    where: { id: Number(req.params.id) },
-    data: {
-      ...req.body,
-      ...(req.body.nextVisitDate ? { nextVisitDate: normalizeToWorkDate(req.body.nextVisitDate) } : {})
-    },
+    where: { id: clientId },
+    data: updatePayload,
     include: {
       region: true
     }
@@ -118,10 +119,6 @@ const handleClient = asyncHandler(async (req, res) => {
 });
 
 const deleteClient = asyncHandler(async (req, res) => {
-  if (req.user.role === Roles.REPRESENTATIVE) {
-    throw createHttpError(403, "لا تملك صلاحية حذف العملاء");
-  }
-
   const clientId = Number(req.params.id);
   const existing = await prisma.client.findUnique({
     where: { id: clientId }
@@ -140,51 +137,11 @@ const deleteClient = asyncHandler(async (req, res) => {
   });
 });
 
-const sendTodayWhatsAppAlerts = asyncHandler(async (req, res) => {
-  const regionId = req.body.regionId ? Number(req.body.regionId) : undefined;
-
-  if (req.user.role === Roles.REPRESENTATIVE && regionId && regionId !== Number(req.user.regionId)) {
-    throw createHttpError(403, "لا يمكنك إرسال تنبيهات لمناطق أخرى");
-  }
-
-  const result = await sendDueTodayWhatsAppAlerts({
-    user: req.user,
-    regionId,
-    customMessage: req.body.message
-  });
-
-  res.json({
-    message: "تم تنفيذ تنبيهات واتساب لعملاء اليوم",
-    item: result
-  });
-});
-
-const sendNewClientsWhatsAppAlertsController = asyncHandler(async (req, res) => {
-  const regionId = req.body.regionId ? Number(req.body.regionId) : undefined;
-
-  if (req.user.role === Roles.REPRESENTATIVE && regionId && regionId !== Number(req.user.regionId)) {
-    throw createHttpError(403, "لا يمكنك إرسال تنبيهات لمناطق أخرى");
-  }
-
-  const result = await sendNewClientsWhatsAppAlerts({
-    user: req.user,
-    regionId,
-    customMessage: req.body.message
-  });
-
-  res.json({
-    message: "تم تنفيذ تنبيهات واتساب للعملاء الجدد",
-    item: result
-  });
-});
-
 module.exports = {
   listClientRecords,
   getClientDetails,
   createClient,
   updateClient,
   handleClient,
-  deleteClient,
-  sendTodayWhatsAppAlerts,
-  sendNewClientsWhatsAppAlertsController
+  deleteClient
 };

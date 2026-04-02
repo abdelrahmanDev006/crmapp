@@ -4,7 +4,7 @@ function notFound(req, res) {
   });
 }
 
-function errorHandler(error, req, res, next) {
+function errorHandler(error, req, res, _next) {
   const statusCode = error.statusCode || 500;
 
   if (process.env.NODE_ENV !== "production") {

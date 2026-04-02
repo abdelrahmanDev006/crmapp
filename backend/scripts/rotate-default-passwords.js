@@ -1,5 +1,5 @@
-﻿const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+const nodeCrypto = require("crypto");
 const path = require("path");
 const dotenv = require("dotenv");
 const { PrismaClient } = require("@prisma/client");
@@ -14,7 +14,7 @@ function generateStrongPassword(length = 16) {
   let password = "";
 
   while (password.length < length) {
-    const bytes = crypto.randomBytes(length);
+    const bytes = nodeCrypto.randomBytes(length);
 
     for (let index = 0; index < bytes.length && password.length < length; index += 1) {
       password += alphabet[bytes[index] % alphabet.length];

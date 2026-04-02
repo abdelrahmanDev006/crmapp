@@ -5,10 +5,34 @@ const dateInputSchema = z
   .string()
   .refine((value) => !Number.isNaN(new Date(value).getTime()), "تاريخ الزيارة غير صالح");
 
+function isValidLocationUrl(value) {
+  const raw = String(value || "").trim();
+
+  if (!raw) {
+    return true;
+  }
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+const locationUrlSchema = z
+  .string()
+  .trim()
+  .max(1000, "رابط اللوكيشن طويل جدًا")
+  .refine(isValidLocationUrl, "رابط اللوكيشن غير صالح");
+
 const createClientSchema = z.object({
   name: z.string().min(2, "اسم العميل مطلوب"),
   phone: z.string().min(8, "رقم الهاتف مطلوب"),
   address: z.string().min(3, "العنوان مطلوب"),
+  locationUrl: locationUrlSchema.optional(),
   regionId: z.coerce.number().int().positive(),
   products: z.string().min(1, "المنتجات مطلوبة"),
   visitType: z.enum([VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY]),
@@ -20,6 +44,7 @@ const updateClientSchema = z.object({
   name: z.string().min(2).optional(),
   phone: z.string().min(8).optional(),
   address: z.string().min(3).optional(),
+  locationUrl: locationUrlSchema.optional(),
   regionId: z.coerce.number().int().positive().optional(),
   products: z.string().min(1).optional(),
   visitType: z.enum([VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY]).optional(),
@@ -63,19 +88,10 @@ const bulkRegionHandleSchema = z.object({
   note: z.string().max(500).optional()
 });
 
-const sendWhatsAppAlertsSchema = z.object({
-  regionId: z.coerce.number().int().positive().optional(),
-  message: z.string().trim().min(3).max(1000).optional()
-});
-const sendTodayWhatsAppAlertsSchema = sendWhatsAppAlertsSchema;
-const sendNewClientsWhatsAppAlertsSchema = sendWhatsAppAlertsSchema;
-
 module.exports = {
   createClientSchema,
   updateClientSchema,
   clientQuerySchema,
   handleClientSchema,
-  bulkRegionHandleSchema,
-  sendTodayWhatsAppAlertsSchema,
-  sendNewClientsWhatsAppAlertsSchema
+  bulkRegionHandleSchema
 };

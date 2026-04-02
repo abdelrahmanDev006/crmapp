@@ -57,6 +57,7 @@ model Client {
   name          String
   phone         String
   address       String
+  locationUrl   String?
   products      String
   regionId      Int
   region        Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)

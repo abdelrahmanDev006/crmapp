@@ -43,7 +43,14 @@ http.interceptors.request.use((config) => {
 http.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.message || "حدث خطأ أثناء تنفيذ الطلب";
+    let message = error.response?.data?.message || "حدث خطأ أثناء تنفيذ الطلب";
+
+    if (error.code === "ECONNABORTED") {
+      message = "انتهت مهلة الاتصال بالخادم، حاول مرة أخرى";
+    } else if (!error.response) {
+      message = "تعذر الاتصال بالخادم، تأكد من الشبكة أو حالة السيرفر";
+    }
+
     const wrappedError = new Error(message);
     wrappedError.status = error.response?.status || null;
     wrappedError.code = error.code || null;

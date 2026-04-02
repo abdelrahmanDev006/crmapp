@@ -22,8 +22,6 @@ Copy-Item frontend/.env.production.example frontend/.env.production
   - `JWT_SECRET` (قيمة قوية >= 32 حرف)
   - `ALLOWED_ORIGINS` (الدومين الحقيقي فقط)
   - `AUTH_RATE_LIMIT_MAX`
-  - `WHATSAPP_CLOUD_ENABLED=true` (إذا أردت إرسال واتساب تلقائي)
-  - `WHATSAPP_CLOUD_ACCESS_TOKEN` و `WHATSAPP_CLOUD_PHONE_NUMBER_ID`
 - `.env.production`
   - `POSTGRES_USER`
   - `POSTGRES_PASSWORD`

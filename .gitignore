@@ -1,6 +1,7 @@
 # Dependencies & build artifacts
 node_modules/
 **/node_modules/
+**/node_modules.dockerroot.bak/
 dist/
 **/dist/
 **/.vite/
