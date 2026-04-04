@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../config/prisma");
+const env = require("../config/env");
 const asyncHandler = require("../middlewares/asyncHandler");
 const { generateToken } = require("../utils/jwt");
 const { createHttpError } = require("../utils/httpError");
@@ -19,6 +20,16 @@ function sanitizeUser(user) {
           name: user.region.name
         }
       : null
+  };
+}
+
+function getAuthCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: env.authCookieSecure,
+    sameSite: env.authCookieSameSite,
+    path: "/",
+    maxAge: env.authCookieMaxAgeHours * 60 * 60 * 1000
   };
 }
 
@@ -47,11 +58,24 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const token = generateToken(user);
+  res.cookie(env.authCookieName, token, getAuthCookieOptions());
 
   res.json({
     message: "تم تسجيل الدخول بنجاح",
-    token,
     user: sanitizeUser(user)
+  });
+});
+
+const logout = asyncHandler(async (req, res) => {
+  res.clearCookie(env.authCookieName, {
+    httpOnly: true,
+    secure: env.authCookieSecure,
+    sameSite: env.authCookieSameSite,
+    path: "/"
+  });
+
+  res.json({
+    message: "تم تسجيل الخروج بنجاح"
   });
 });
 
@@ -63,6 +87,7 @@ const me = asyncHandler(async (req, res) => {
 
 module.exports = {
   login,
+  logout,
   me,
   sanitizeUser
 };

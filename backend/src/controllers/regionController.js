@@ -225,7 +225,8 @@ const handleWholeRegion = asyncHandler(async (req, res) => {
     item: {
       regionId: result.region.id,
       regionName: result.region.name,
-      updatedCount: result.updatedCount
+      updatedCount: result.updatedCount,
+      skippedRejectedCount: result.skippedRejectedCount || 0
     }
   });
 });

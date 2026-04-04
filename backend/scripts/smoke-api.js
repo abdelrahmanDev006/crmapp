@@ -22,6 +22,7 @@ async function request(path, options = {}) {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
+        ...(options.cookie ? { Cookie: options.cookie } : {}),
         ...(options.token ? { Authorization: `Bearer ${options.token}` } : {})
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
@@ -51,6 +52,14 @@ function assertCondition(condition, message) {
   }
 }
 
+function extractCookie(setCookieHeader) {
+  if (!setCookieHeader) {
+    return null;
+  }
+
+  return String(setCookieHeader).split(";")[0] || null;
+}
+
 async function run() {
   const baseUrl = getBaseUrl();
   console.log(`[SMOKE] Base URL: ${baseUrl}`);
@@ -74,16 +83,19 @@ async function run() {
   });
 
   assertCondition(login.response.ok, `[SMOKE] Login failed (${login.response.status})`);
-  assertCondition(login.data && login.data.token, "[SMOKE] Login response does not include token");
+  const cookie = extractCookie(login.response.headers.get("set-cookie"));
+  const token = login.data?.token || null;
+  assertCondition(cookie || token, "[SMOKE] Login did not set auth cookie or token");
   console.log("[SMOKE] Login endpoint is OK");
 
-  const token = login.data.token;
-  const me = await request("/auth/me", { token });
+  const authRequestOptions = cookie ? { cookie } : { token };
+
+  const me = await request("/auth/me", authRequestOptions);
   assertCondition(me.response.ok, `[SMOKE] /auth/me failed (${me.response.status})`);
   assertCondition(me.data && me.data.user && me.data.user.id, "[SMOKE] /auth/me payload is invalid");
   console.log("[SMOKE] Authenticated /auth/me endpoint is OK");
 
-  const summary = await request("/dashboard/summary", { token });
+  const summary = await request("/dashboard/summary", authRequestOptions);
   assertCondition(summary.response.ok, `[SMOKE] /dashboard/summary failed (${summary.response.status})`);
   assertCondition(summary.data && summary.data.totals, "[SMOKE] /dashboard/summary payload is invalid");
   console.log("[SMOKE] Dashboard summary endpoint is OK");

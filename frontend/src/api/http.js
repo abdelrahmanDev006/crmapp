@@ -1,5 +1,4 @@
 import axios from "axios";
-import { TOKEN_STORAGE_KEY } from "../constants/storage";
 
 function normalizeApiUrl(value) {
   const raw = String(value || "").trim();
@@ -28,16 +27,8 @@ const apiBaseUrl = configuredApiUrl || (import.meta.env.DEV ? "http://localhost:
 
 const http = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 15000
-});
-
-http.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
+  timeout: 15000,
+  withCredentials: true
 });
 
 http.interceptors.response.use(

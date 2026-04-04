@@ -12,11 +12,26 @@ function isValidLocationUrl(value) {
     return true;
   }
 
+  if (/\s/.test(raw)) {
+    return false;
+  }
+
   const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 
   try {
     const parsed = new URL(withProtocol);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
+    const isHttpProtocol = parsed.protocol === "http:" || parsed.protocol === "https:";
+
+    if (!isHttpProtocol) {
+      return false;
+    }
+
+    const hostname = String(parsed.hostname || "").trim();
+    const isIpv4 = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname);
+    const hasPublicSuffix = hostname.includes(".") && !hostname.startsWith(".") && !hostname.endsWith(".");
+    const isLocalhost = hostname === "localhost";
+
+    return isIpv4 || hasPublicSuffix || isLocalhost;
   } catch {
     return false;
   }

@@ -1,12 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { authApi } from "../api/crmApi";
-import { TOKEN_STORAGE_KEY } from "../constants/storage";
 
 const AuthContext = createContext(null);
+const LEGACY_TOKEN_STORAGE_KEY = "crm_token";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_STORAGE_KEY));
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState("");
 
@@ -14,11 +13,7 @@ export function AuthProvider({ children }) {
     let mounted = true;
 
     async function bootstrap() {
-      if (!token) {
-        setAuthError("");
-        setLoading(false);
-        return;
-      }
+      localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
 
       try {
         const response = await authApi.me();
@@ -31,8 +26,6 @@ export function AuthProvider({ children }) {
 
         if (mounted) {
           if (statusCode === 401 || statusCode === 403) {
-            localStorage.removeItem(TOKEN_STORAGE_KEY);
-            setToken(null);
             setUser(null);
             setAuthError("");
           } else {
@@ -51,21 +44,25 @@ export function AuthProvider({ children }) {
     return () => {
       mounted = false;
     };
-  }, [token]);
+  }, []);
 
   const login = async (credentials) => {
+    localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
     const response = await authApi.login(credentials);
-    localStorage.setItem(TOKEN_STORAGE_KEY, response.data.token);
-    setToken(response.data.token);
     setUser(response.data.user);
     setAuthError("");
 
     return response.data.user;
   };
 
-  const logout = () => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    setToken(null);
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Continue local cleanup even if API logout fails.
+    }
+
+    localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
     setUser(null);
     setAuthError("");
   };
@@ -73,14 +70,13 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       user,
-      token,
       loading,
       authError,
       login,
       logout,
-      isAuthenticated: Boolean(token && user)
+      isAuthenticated: Boolean(user)
     }),
-    [user, token, loading, authError]
+    [user, loading, authError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

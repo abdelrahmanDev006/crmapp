@@ -47,9 +47,40 @@ function parseNumber(value, fallback) {
   return parsed;
 }
 
+function parseCookieSameSite(value, fallback = "lax") {
+  const normalized = String(value || fallback).trim().toLowerCase();
+  const allowed = new Set(["lax", "strict", "none"]);
+
+  return allowed.has(normalized) ? normalized : fallback;
+}
+
+function parseTimeZone(value, fallback) {
+  const normalized = String(value || "").trim();
+
+  if (!normalized) {
+    return fallback;
+  }
+
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: normalized }).format(new Date());
+    return normalized;
+  } catch {
+    return fallback;
+  }
+}
+
 function isWeakJwtSecret(secret) {
   const normalized = String(secret || "").toLowerCase().trim();
-  const weakPatterns = ["change-me", "super-secret", "jwt_secret", "123456", "password"];
+  const weakPatterns = [
+    "change-me",
+    "change_me",
+    "replace_with",
+    "strong_characters",
+    "super-secret",
+    "jwt_secret",
+    "123456",
+    "password"
+  ];
 
   if (normalized.length < 32) {
     return true;
@@ -63,6 +94,11 @@ const allowedOrigins = parseAllowedOrigins(process.env.ALLOWED_ORIGINS);
 const nodeEnv = process.env.NODE_ENV || "development";
 const isProduction = nodeEnv === "production";
 const resolvedOrigins = allowedOrigins.length > 0 ? allowedOrigins : defaultAllowedOrigins;
+const authCookieName = String(process.env.AUTH_COOKIE_NAME || "crm_access_token").trim() || "crm_access_token";
+const authCookieSameSite = parseCookieSameSite(process.env.AUTH_COOKIE_SAME_SITE, "lax");
+const authCookieSecure = parseBoolean(process.env.AUTH_COOKIE_SECURE, isProduction);
+const authCookieMaxAgeHours = Math.max(1, parseNumber(process.env.AUTH_COOKIE_MAX_AGE_HOURS, 24));
+const workTimezone = parseTimeZone(process.env.WORK_TIMEZONE, "Africa/Cairo");
 
 if (isProduction) {
   if (isWeakJwtSecret(process.env.JWT_SECRET)) {
@@ -80,6 +116,14 @@ if (isProduction) {
   if (invalidProductionOrigins.length > 0) {
     throw new Error("ALLOWED_ORIGINS contains localhost/127.0.0.1 in production.");
   }
+
+  if (!authCookieSecure) {
+    throw new Error("AUTH_COOKIE_SECURE must be true in production.");
+  }
+
+  if (authCookieSameSite === "none" && !authCookieSecure) {
+    throw new Error("AUTH_COOKIE_SAME_SITE=none requires AUTH_COOKIE_SECURE=true.");
+  }
 }
 
 module.exports = {
@@ -95,5 +139,10 @@ module.exports = {
   trustProxy: parseBoolean(process.env.TRUST_PROXY, false),
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || "1mb",
   authRateLimitWindowMinutes: Math.max(1, parseNumber(process.env.AUTH_RATE_LIMIT_WINDOW_MINUTES, 15)),
-  authRateLimitMax: Math.max(1, parseNumber(process.env.AUTH_RATE_LIMIT_MAX, 100))
+  authRateLimitMax: Math.max(1, parseNumber(process.env.AUTH_RATE_LIMIT_MAX, 100)),
+  authCookieName,
+  authCookieSameSite,
+  authCookieSecure,
+  authCookieMaxAgeHours,
+  workTimezone
 };

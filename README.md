@@ -4,7 +4,7 @@
 
 ## المميزات الرئيسية
 - واجهة عربية بالكامل `RTL` ومتجاوبة (Desktop / Tablet / Mobile).
-- تسجيل دخول آمن عبر `JWT`.
+- تسجيل دخول آمن عبر `JWT` داخل `httpOnly cookie`.
 - صلاحيات متعددة:
   - `Admin`: إدارة المستخدمين، المناطق، العملاء، رؤية كل البيانات.
   - `Representative`: رؤية بيانات منطقته فقط، بدون تصدير.
@@ -70,6 +70,7 @@ Base URL: `http://localhost:5000/api`
 
 ### Auth
 - `POST /auth/login` تسجيل الدخول
+- `POST /auth/logout` تسجيل الخروج
 - `GET /auth/me` بيانات المستخدم الحالي
 
 ### Dashboard
@@ -134,8 +135,10 @@ npm run test:smoke
 
 إعدادات أمان موصى بها في `backend/.env`:
 - `ALLOWED_ORIGINS` قائمة الدومينات المسموح بها للواجهة (مفصولة بفواصل).
-- `CORS_CREDENTIALS=true` لتفعيل الكوكيز/الهيدر المعتمد عند الحاجة.
-- `SEED_ADMIN_PASSWORD` و `SEED_REP_DEFAULT_PASSWORD` (اختياري) لتحديد كلمات مرور seed يدويًا بدل التوليد العشوائي.
+- `CORS_CREDENTIALS=true` لتفعيل إرسال الـ cookies.
+- `AUTH_COOKIE_NAME`, `AUTH_COOKIE_SAME_SITE`, `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_MAX_AGE_HOURS`.
+- `WORK_TIMEZONE` لضبط بداية اليوم/الأسبوع حسب توقيت الشركة (افتراضيًا `Africa/Cairo`).
+- `SEED_ADMIN_PASSWORD` و `SEED_REP_DEFAULT_PASSWORD` لتثبيت كلمات مرور seed بشكل واضح.
 
 Backend يعمل على:
 - `http://localhost:5000`
@@ -179,8 +182,10 @@ Frontend يعمل على:
 - `RAILWAY_DEPLOYMENT.md` (نشر مباشر على Railway - Production)
 
 ## حسابات Seed
-- لا يتم إنشاء كلمات مرور ثابتة أو متوقعة.
-- عند إنشاء مستخدمين جدد عبر `seed`، يتم توليد كلمات مرور قوية تلقائيًا (أو استخدام قيم `SEED_*` من `.env`).
+- عند إنشاء مستخدمين جدد عبر `seed`:
+  - إذا كانت `SEED_ADMIN_PASSWORD` أو `SEED_REP_DEFAULT_PASSWORD` فارغة، يتم توليد كلمات مرور قوية عشوائيًا.
+  - إذا حددت القيمتين، سيستخدمها الـ seed كما هي.
+- يتم طباعة بيانات الدخول للحسابات الجديدة في مخرجات أمر `prisma:seed`.
 - لتدوير أي كلمات مرور افتراضية قديمة في قاعدة البيانات الحالية:
 ```bash
 cd backend
@@ -212,7 +217,7 @@ frontend/
 
 ## نقاط الأمان المطبقة
 - تشفير كلمات المرور باستخدام `bcrypt`.
-- JWT Authentication لكل المسارات الحساسة.
+- JWT Authentication لكل المسارات الحساسة عبر `httpOnly cookie` (مع دعم `Authorization` header للتوافق الخلفي).
 - التحقق من الصلاحيات `RBAC` قبل إرجاع البيانات.
 - منع المندوب من الوصول لمناطق أخرى.
 - حماية أساسية عبر `helmet`, `cors`, `rate-limit`.

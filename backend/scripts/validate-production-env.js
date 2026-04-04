@@ -12,8 +12,11 @@ function isLikelyPlaceholder(value) {
   const normalized = String(value || "").toLowerCase().trim();
   const placeholders = [
     "change-me",
+    "change_me",
     "example",
     "your-",
+    "replace_with",
+    "strong_characters",
     "placeholder",
     "super-secret",
     "admin@crm.local"

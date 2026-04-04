@@ -1,16 +1,20 @@
 const prisma = require("../config/prisma");
+const env = require("../config/env");
 const { Roles } = require("../constants/enums");
 const { verifyToken } = require("../utils/jwt");
 const { createHttpError } = require("../utils/httpError");
 
 async function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
+  const cookieToken = req.cookies?.[env.authCookieName];
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  const headerToken =
+    authHeader && authHeader.startsWith("Bearer ") ? authHeader.replace("Bearer ", "").trim() : null;
+  const token = headerToken || cookieToken;
+
+  if (!token) {
     return next(createHttpError(401, "غير مصرح بالدخول"));
   }
-
-  const token = authHeader.replace("Bearer ", "").trim();
 
   try {
     const payload = verifyToken(token);

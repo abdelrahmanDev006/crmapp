@@ -72,11 +72,24 @@ function getLocationHref(locationUrl) {
     return null;
   }
 
+  if (/\s/.test(raw)) {
+    return null;
+  }
+
   const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 
   try {
     const parsed = new URL(withProtocol);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+
+    const hostname = String(parsed.hostname || "").trim();
+    const isIpv4 = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname);
+    const hasPublicSuffix = hostname.includes(".") && !hostname.startsWith(".") && !hostname.endsWith(".");
+    const isLocalhost = hostname === "localhost";
+
+    if (!isIpv4 && !hasPublicSuffix && !isLocalhost) {
       return null;
     }
 
@@ -122,6 +135,7 @@ export default function ClientsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createLoading, setCreateLoading] = useState(false);
+  const [copyPhonesLoading, setCopyPhonesLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const todayDateText = getTodayInputDate();
   const debouncedSearch = useDebouncedValue(search, 350);
@@ -129,35 +143,39 @@ export default function ClientsPage() {
   const queryFilters = useMemo(() => mapTabToFilters(activeTab), [activeTab]);
   const hasDueDateFilter = Boolean(selectedDueDate);
 
+  const buildClientListParams = useCallback((targetPage = 1, targetPageSize = 20) => {
+    const params = {
+      page: targetPage,
+      pageSize: targetPageSize,
+      search: debouncedSearch || undefined
+    };
+
+    if (hasDueDateFilter) {
+      params.dueDate = selectedDueDate;
+    } else {
+      Object.assign(params, queryFilters);
+    }
+
+    if (isAdmin && selectedRegionId) {
+      params.regionId = Number(selectedRegionId);
+    }
+
+    return params;
+  }, [debouncedSearch, hasDueDateFilter, isAdmin, queryFilters, selectedDueDate, selectedRegionId]);
+
   const loadClients = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const params = {
-        page,
-        pageSize: 20,
-        search: debouncedSearch || undefined
-      };
-
-      if (hasDueDateFilter) {
-        params.dueDate = selectedDueDate;
-      } else {
-        Object.assign(params, queryFilters);
-      }
-
-      if (isAdmin && selectedRegionId) {
-        params.regionId = Number(selectedRegionId);
-      }
-
-      const response = await clientsApi.list(params);
+      const response = await clientsApi.list(buildClientListParams(page, 20));
       setData(response.data);
     } catch (err) {
       setError(err.message || "تعذر تحميل العملاء");
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, hasDueDateFilter, isAdmin, page, queryFilters, selectedDueDate, selectedRegionId]);
+  }, [buildClientListParams, page]);
 
   useEffect(() => {
     loadClients();
@@ -270,12 +288,65 @@ export default function ClientsPage() {
     setPage(1);
   }
 
+  async function handleCopyAllPhones() {
+    setCopyPhonesLoading(true);
+    setError("");
+    setInfoMessage("");
+
+    try {
+      const firstPageResponse = await clientsApi.list(buildClientListParams(1, 100));
+      const firstPageData = firstPageResponse.data || {};
+      const allItems = [...(firstPageData.items || [])];
+      const totalPages = Math.max(1, Number(firstPageData.totalPages || 1));
+
+      for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
+        const response = await clientsApi.list(buildClientListParams(currentPage, 100));
+        allItems.push(...(response.data?.items || []));
+      }
+
+      const uniquePhones = [...new Set(allItems.map((client) => String(client.phone || "").trim()).filter(Boolean))];
+
+      if (uniquePhones.length === 0) {
+        setInfoMessage("لا توجد أرقام متاحة للنسخ حسب الفلاتر الحالية.");
+        return;
+      }
+
+      const textToCopy = uniquePhones.join("\n");
+      let copied = false;
+
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+        copied = true;
+      } else {
+        const helper = document.createElement("textarea");
+        helper.value = textToCopy;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        document.body.appendChild(helper);
+        helper.select();
+        copied = document.execCommand("copy");
+        document.body.removeChild(helper);
+      }
+
+      if (!copied) {
+        throw new Error("تعذر نسخ الأرقام. حاول مرة أخرى.");
+      }
+
+      setInfoMessage(`تم نسخ ${uniquePhones.length} رقم بنجاح.`);
+    } catch (err) {
+      setError(err.message || "تعذر نسخ الأرقام");
+    } finally {
+      setCopyPhonesLoading(false);
+    }
+  }
+
   return (
     <div className="stack">
       <section className="panel">
         <div className="panel-header split">
           <h3>العملاء</h3>
-          {isAdmin && (h
+          {isAdmin && (
             <button type="button" className="primary-btn" onClick={() => setShowCreate((prev) => !prev)}>
               {showCreate ? "إغلاق نموذج الإضافة" : "إضافة عميل"}
             </button>
@@ -390,7 +461,10 @@ export default function ClientsPage() {
         </div>
 
         {hasDueDateFilter && (
-          <div className="info-box">عرض العملاء المستحقين في تاريخ: {formatDate(`${selectedDueDate}T00:00:00.000Z`)}</div>
+          <div className="info-box">
+            عرض العملاء المستحقين في تاريخ: {formatDate(`${selectedDueDate}T00:00:00.000Z`)}. تم تعطيل التبويبات
+            مؤقتًا حتى يتم مسح فلتر التاريخ.
+          </div>
         )}
 
         <div className="filters-row">
@@ -445,6 +519,15 @@ export default function ClientsPage() {
 
           <button type="button" className="secondary-btn" onClick={loadClients}>
             تحديث
+          </button>
+          <button
+            type="button"
+            className="secondary-btn"
+            disabled={copyPhonesLoading || loading}
+            onClick={handleCopyAllPhones}
+            title="نسخ كل الأرقام حسب الفلاتر الحالية"
+          >
+            {copyPhonesLoading ? "جاري تجميع الأرقام..." : "نسخ كل الأرقام"}
           </button>
 
         </div>

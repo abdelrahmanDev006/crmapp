@@ -1,35 +1,50 @@
+const { DateTime } = require("luxon");
+const env = require("../config/env");
 const { VisitIntervalDays } = require("../constants/enums");
+
 const WORK_WEEK_DAYS = 7;
 const WORK_WEEK_START_DAY = 6; // Saturday in JavaScript Date (0=Sunday ... 6=Saturday)
 
+function toSafeDate(input = new Date()) {
+  const date = input instanceof Date ? new Date(input.getTime()) : new Date(input);
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date();
+  }
+
+  return date;
+}
+
+function toWorkDateTime(input = new Date()) {
+  return DateTime.fromJSDate(toSafeDate(input), { zone: env.workTimezone });
+}
+
 function toStartOfUtcDay(input = new Date()) {
-  const date = new Date(input);
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  return normalizeToWorkDate(input);
 }
 
 function normalizeToWorkDate(input = new Date()) {
-  return toStartOfUtcDay(input);
+  return toWorkDateTime(input).startOf("day").toUTC().toJSDate();
 }
 
 function addWorkDaysWith28DayMonth(input, daysToAdd) {
-  const date = normalizeToWorkDate(input);
   const safeDaysToAdd = Number.isFinite(Number(daysToAdd)) ? Number(daysToAdd) : 0;
-  const shiftedDate = new Date(date);
   // Business month is 28 days, so monthly cycle is always +28 days.
-  shiftedDate.setUTCDate(shiftedDate.getUTCDate() + safeDaysToAdd);
-  return normalizeToWorkDate(shiftedDate);
+  return toWorkDateTime(input).startOf("day").plus({ days: safeDaysToAdd }).toUTC().toJSDate();
 }
 
 function getCurrentWorkWeekStart(input = new Date()) {
-  const date = normalizeToWorkDate(input);
-  const shiftToWeekStart = (date.getUTCDay() - WORK_WEEK_START_DAY + WORK_WEEK_DAYS) % WORK_WEEK_DAYS;
-  return addWorkDaysWith28DayMonth(date, -shiftToWeekStart);
+  const date = toWorkDateTime(input).startOf("day");
+  const dayIndex = date.weekday % WORK_WEEK_DAYS; // Convert Luxon weekday to JS day index
+  const shiftToWeekStart = (dayIndex - WORK_WEEK_START_DAY + WORK_WEEK_DAYS) % WORK_WEEK_DAYS;
+  return date.minus({ days: shiftToWeekStart }).toUTC().toJSDate();
 }
 
 function getNextOrSameWorkWeekStart(input = new Date()) {
-  const date = normalizeToWorkDate(input);
-  const shiftToWeekStart = (WORK_WEEK_START_DAY - date.getUTCDay() + WORK_WEEK_DAYS) % WORK_WEEK_DAYS;
-  return addWorkDaysWith28DayMonth(date, shiftToWeekStart);
+  const date = toWorkDateTime(input).startOf("day");
+  const dayIndex = date.weekday % WORK_WEEK_DAYS; // Convert Luxon weekday to JS day index
+  const shiftToWeekStart = (WORK_WEEK_START_DAY - dayIndex + WORK_WEEK_DAYS) % WORK_WEEK_DAYS;
+  return date.plus({ days: shiftToWeekStart }).toUTC().toJSDate();
 }
 
 function calculateNextVisitDate(currentDate, visitType) {

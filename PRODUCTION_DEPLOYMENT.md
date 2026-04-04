@@ -21,6 +21,9 @@ Copy-Item frontend/.env.production.example frontend/.env.production
   - `DATABASE_URL`
   - `JWT_SECRET` (قيمة قوية >= 32 حرف)
   - `ALLOWED_ORIGINS` (الدومين الحقيقي فقط)
+  - `WORK_TIMEZONE` (مثال: `Africa/Cairo`)
+  - `AUTH_COOKIE_SECURE=true`
+  - `AUTH_COOKIE_SAME_SITE`
   - `AUTH_RATE_LIMIT_MAX`
 - `.env.production`
   - `POSTGRES_USER`

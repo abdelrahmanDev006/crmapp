@@ -23,11 +23,24 @@ function getLocationHref(locationUrl) {
     return null;
   }
 
+  if (/\s/.test(raw)) {
+    return null;
+  }
+
   const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 
   try {
     const parsed = new URL(withProtocol);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+
+    const hostname = String(parsed.hostname || "").trim();
+    const isIpv4 = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname);
+    const hasPublicSuffix = hostname.includes(".") && !hostname.startsWith(".") && !hostname.endsWith(".");
+    const isLocalhost = hostname === "localhost";
+
+    if (!isIpv4 && !hasPublicSuffix && !isLocalhost) {
       return null;
     }
 

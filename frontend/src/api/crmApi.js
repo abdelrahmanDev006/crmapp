@@ -2,6 +2,7 @@ import http from "./http";
 
 export const authApi = {
   login: (payload) => http.post("/auth/login", payload),
+  logout: () => http.post("/auth/logout"),
   me: () => http.get("/auth/me")
 };
 

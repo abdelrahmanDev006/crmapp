@@ -210,11 +210,17 @@ function getVisitTypeLabel(type) {
 
 async function handleClientVisit({ clientId, user, outcome, note, visitType, advanceDays, referenceDate }) {
   const existingClient = await getClientById(clientId, user, false);
+  const isRejectedRecoveryOutcome =
+    existingClient.status === ClientStatuses.REJECTED &&
+    (outcome === ClientStatuses.NO_ANSWER || outcome === ClientStatuses.ACTIVE);
 
-  if (existingClient.status === ClientStatuses.REJECTED && outcome === ClientStatuses.NO_ANSWER) {
-    const canRetry = canRetryRejectedClient(existingClient);
+  if (isRejectedRecoveryOutcome) {
+    const canRetry = canRetryRejectedClient(existingClient, referenceDate || new Date());
     if (!canRetry) {
-      throw createHttpError(400, `يمكن إعادة المحاولة مع هذا العميل بعد ${normalizeToWorkDate(existingClient.nextVisitDate).toISOString().slice(0, 10)}`);
+      throw createHttpError(
+        400,
+        `يمكن إعادة المحاولة مع هذا العميل بعد ${normalizeToWorkDate(existingClient.nextVisitDate).toISOString().slice(0, 10)}`
+      );
     }
   }
 
@@ -273,6 +279,10 @@ async function handleClientVisit({ clientId, user, outcome, note, visitType, adv
 }
 
 async function handleRegionClients({ regionId, user, note }) {
+  if (user.role !== Roles.ADMIN && user.role !== Roles.REPRESENTATIVE) {
+    throw createHttpError(403, "ليس لديك صلاحية لتنفيذ هذا الإجراء");
+  }
+
   if (user.role === Roles.REPRESENTATIVE && Number(user.regionId) !== Number(regionId)) {
     throw createHttpError(403, "\u0644\u0627 \u064a\u0645\u0643\u0646\u0643 \u0625\u062f\u0627\u0631\u0629 \u0647\u0630\u0647 \u0627\u0644\u0645\u0646\u0637\u0642\u0629");
   }
@@ -300,7 +310,27 @@ async function handleRegionClients({ regionId, user, note }) {
   if (clients.length === 0) {
     return {
       region,
-      updatedCount: 0
+      updatedCount: 0,
+      skippedRejectedCount: 0
+    };
+  }
+
+  const currentWorkDate = normalizeToWorkDate(new Date());
+  const eligibleClients = clients.filter((client) => {
+    if (client.status !== ClientStatuses.REJECTED) {
+      return true;
+    }
+
+    return canRetryRejectedClient(client, currentWorkDate);
+  });
+
+  const skippedRejectedCount = clients.length - eligibleClients.length;
+
+  if (eligibleClients.length === 0) {
+    return {
+      region,
+      updatedCount: 0,
+      skippedRejectedCount
     };
   }
 
@@ -318,7 +348,7 @@ async function handleRegionClients({ regionId, user, note }) {
   const regionHandledNote =
     note || "\u062a\u0645 \u0627\u0644\u062a\u0639\u0627\u0645\u0644 \u0645\u0639 \u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0628\u0627\u0644\u0643\u0627\u0645\u0644";
 
-  const visitHistoryPayload = clients.map((client) => {
+  const visitHistoryPayload = eligibleClients.map((client) => {
     idsByVisitType[client.visitType].push(client.id);
 
     return {
@@ -357,7 +387,8 @@ async function handleRegionClients({ regionId, user, note }) {
 
   return {
     region,
-    updatedCount: clients.length
+    updatedCount: eligibleClients.length,
+    skippedRejectedCount
   };
 }
 

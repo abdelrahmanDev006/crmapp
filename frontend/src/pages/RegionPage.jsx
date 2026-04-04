@@ -16,6 +16,7 @@ export default function RegionPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const debouncedSearch = useDebouncedValue(search, 350);
 
@@ -58,11 +59,24 @@ export default function RegionPage() {
     if (!confirmed) return;
 
     setBulkLoading(true);
+    setError("");
+    setInfoMessage("");
 
     try {
-      await regionsApi.handleAll(id, {
+      const response = await regionsApi.handleAll(id, {
         note: "تم التعامل مع المنطقة بالكامل"
       });
+      const updatedCount = Number(response.data?.item?.updatedCount || 0);
+      const skippedRejectedCount = Number(response.data?.item?.skippedRejectedCount || 0);
+
+      if (skippedRejectedCount > 0) {
+        setInfoMessage(
+          `تم تحديث ${updatedCount} عميل. تم تخطي ${skippedRejectedCount} عميل مرفوض لأن موعد إعادة المحاولة لم يحن بعد.`
+        );
+      } else {
+        setInfoMessage(`تم تحديث ${updatedCount} عميل في المنطقة.`);
+      }
+
       await loadRegion();
     } catch (err) {
       setError(err.message || "تعذر تنفيذ العملية");
@@ -105,6 +119,7 @@ export default function RegionPage() {
           </div>
 
           {error && <div className="error-box">{error}</div>}
+          {infoMessage && <div className="info-box">{infoMessage}</div>}
 
           {clientsData.items.length === 0 ? (
             <div className="table-empty">لا يوجد عملاء في هذه المنطقة</div>

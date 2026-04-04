@@ -16,6 +16,12 @@ router.post("/", authorizeRoles(Roles.ADMIN), validate(createRegionSchema), crea
 router.get("/:id", validate(idParamSchema, "params"), getRegionDetails);
 router.patch("/:id", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), validate(updateRegionSchema), updateRegion);
 router.delete("/:id", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), deleteRegion);
-router.post("/:id/handle-all", validate(idParamSchema, "params"), validate(bulkRegionHandleSchema), handleWholeRegion);
+router.post(
+  "/:id/handle-all",
+  authorizeRoles(Roles.ADMIN, Roles.REPRESENTATIVE),
+  validate(idParamSchema, "params"),
+  validate(bulkRegionHandleSchema),
+  handleWholeRegion
+);
 
 module.exports = router;
