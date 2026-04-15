@@ -315,7 +315,7 @@ td {
 
 .table-wrapper table.clients-table th:nth-child(4),
 .table-wrapper table.clients-table td:nth-child(4) {
-  width: 6%;
+  width: 7%;
 }
 
 .table-wrapper table.clients-table th:nth-child(5),
@@ -350,7 +350,7 @@ td {
 
 .table-wrapper table.clients-table th:nth-child(11),
 .table-wrapper table.clients-table td:nth-child(11) {
-  width: 14%;
+  width: 13%;
 }
 
 .table-wrapper table.clients-table th,
@@ -525,9 +525,12 @@ td {
 }
 
 .table-wrapper table.clients-table th:nth-child(4) {
-  white-space: nowrap;
+  white-space: normal;
+  text-overflow: clip;
+  overflow: visible;
   word-break: keep-all;
   overflow-wrap: normal;
+  line-height: 1.15;
   font-size: clamp(0.72rem, 0.08vw + 0.68rem, 0.84rem);
 }
 
