@@ -9,6 +9,7 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { formatDate } from "../utils/formatters";
 
 const tabs = [
+  { key: "ALL", label: "جميع العملاء" },
   { key: "WEEKLY", label: "أسبوعي" },
   { key: "BIWEEKLY", label: "كل أسبوعين" },
   { key: "MONTHLY", label: "شهري" },
@@ -31,6 +32,10 @@ const initialCreateForm = {
 const NEW_CLIENT_WINDOW_DAYS = 7;
 
 function mapTabToFilters(tab) {
+  if (tab === "ALL") {
+    return {};
+  }
+
   if (tab === "NO_ANSWER") {
     return { status: "NO_ANSWER" };
   }
@@ -122,7 +127,7 @@ export default function ClientsPage() {
   const isAdmin = user?.role === "ADMIN";
 
   const [regions, setRegions] = useState([]);
-  const [activeTab, setActiveTab] = useState("WEEKLY");
+  const [activeTab, setActiveTab] = useState("ALL");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedRegionId, setSelectedRegionId] = useState("");
@@ -142,6 +147,7 @@ export default function ClientsPage() {
 
   const queryFilters = useMemo(() => mapTabToFilters(activeTab), [activeTab]);
   const hasDueDateFilter = Boolean(selectedDueDate);
+  const selectedDueDateDisplay = selectedDueDate ? formatDate(`${selectedDueDate}T00:00:00.000Z`) : "يوم/شهر/سنة";
 
   const buildClientListParams = useCallback((targetPage = 1, targetPageSize = 20) => {
     const params = {
@@ -437,6 +443,7 @@ export default function ClientsPage() {
                 type="date"
                 value={createForm.nextVisitDate}
                 onChange={(event) => setCreateForm((prev) => ({ ...prev, nextVisitDate: event.target.value }))}
+                lang="ar-EG"
               />
             </label>
             <button type="submit" className="primary-btn" disabled={createLoading}>
@@ -480,14 +487,27 @@ export default function ClientsPage() {
 
           <div className="clients-date-filter">
             <span className="clients-date-label">تاريخ الاستحقاق</span>
-            <input
-              type="date"
-              className="clients-date-input"
-              value={selectedDueDate}
-              onChange={(event) => onDueDateChange(event.target.value)}
-              title="تاريخ الاستحقاق"
-            />
-            <button type="button" className="ghost-btn calendar-mini-btn" onClick={() => onDueDateChange(getTodayInputDate())}>
+            <div className="clients-date-input">
+              <span className={selectedDueDate ? "clients-date-value" : "clients-date-placeholder"}>{selectedDueDateDisplay}</span>
+              <span className="clients-date-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
+                </svg>
+              </span>
+              <input
+                type="date"
+                className="clients-date-native-input"
+                value={selectedDueDate}
+                onChange={(event) => onDueDateChange(event.target.value)}
+                title="تاريخ الاستحقاق"
+                lang="ar-EG"
+              />
+            </div>
+            <button
+              type="button"
+              className="ghost-btn calendar-mini-btn"
+              onClick={() => onDueDateChange(getTodayInputDate())}
+            >
               اليوم
             </button>
             <button
@@ -529,7 +549,6 @@ export default function ClientsPage() {
           >
             {copyPhonesLoading ? "جاري تجميع الأرقام..." : "نسخ كل الأرقام"}
           </button>
-
         </div>
 
         {error && <div className="error-box">{error}</div>}

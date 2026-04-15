@@ -208,6 +208,15 @@ function getVisitTypeLabel(type) {
   return labels[type] || type;
 }
 
+function formatWorkDateForMessage(dateValue) {
+  const normalized = normalizeToWorkDate(dateValue);
+  const day = String(normalized.getUTCDate()).padStart(2, "0");
+  const month = String(normalized.getUTCMonth() + 1).padStart(2, "0");
+  const year = String(normalized.getUTCFullYear());
+
+  return `${day}/${month}/${year}`;
+}
+
 async function handleClientVisit({ clientId, user, outcome, note, visitType, advanceDays, referenceDate }) {
   const existingClient = await getClientById(clientId, user, false);
   const isRejectedRecoveryOutcome =
@@ -219,7 +228,7 @@ async function handleClientVisit({ clientId, user, outcome, note, visitType, adv
     if (!canRetry) {
       throw createHttpError(
         400,
-        `يمكن إعادة المحاولة مع هذا العميل بعد ${normalizeToWorkDate(existingClient.nextVisitDate).toISOString().slice(0, 10)}`
+        `يمكن إعادة المحاولة مع هذا العميل بعد ${formatWorkDateForMessage(existingClient.nextVisitDate)}`
       );
     }
   }
