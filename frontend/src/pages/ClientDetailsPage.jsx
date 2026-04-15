@@ -16,6 +16,23 @@ function isDatePastOrToday(dateValue) {
   return checkDate.getTime() <= today.getTime();
 }
 
+function toInputDate(dateValue) {
+  if (!dateValue) {
+    return "";
+  }
+
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function getLocationHref(locationUrl) {
   const raw = String(locationUrl || "").trim();
 
@@ -65,6 +82,7 @@ export default function ClientDetailsPage() {
   const [editPhone, setEditPhone] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editProducts, setEditProducts] = useState("");
+  const [editNextVisitDate, setEditNextVisitDate] = useState("");
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
 
@@ -88,6 +106,7 @@ export default function ClientDetailsPage() {
       setEditPhone(response.data.item.phone || "");
       setEditAddress(response.data.item.address || "");
       setEditProducts(response.data.item.products || "");
+      setEditNextVisitDate(toInputDate(response.data.item.nextVisitDate));
     } catch (err) {
       setError(err.message || "تعذر تحميل بيانات العميل");
     } finally {
@@ -108,6 +127,8 @@ export default function ClientDetailsPage() {
   }, [client]);
 
   const locationHref = useMemo(() => getLocationHref(client?.locationUrl), [client?.locationUrl]);
+  const currentNextVisitInputDate = useMemo(() => toInputDate(client?.nextVisitDate), [client?.nextVisitDate]);
+  const editNextVisitDateDisplay = editNextVisitDate ? formatDate(`${editNextVisitDate}T00:00:00.000Z`) : "يوم/شهر/سنة";
   const hasDetailsChanges = useMemo(() => {
     if (!client) {
       return false;
@@ -116,9 +137,10 @@ export default function ClientDetailsPage() {
     return (
       editPhone !== (client.phone || "") ||
       editAddress !== (client.address || "") ||
-      editProducts !== (client.products || "")
+      editProducts !== (client.products || "") ||
+      editNextVisitDate !== currentNextVisitInputDate
     );
-  }, [client, editAddress, editPhone, editProducts]);
+  }, [client, currentNextVisitInputDate, editAddress, editNextVisitDate, editPhone, editProducts]);
 
   async function submitOutcome(outcome) {
     setActionLoading(true);
@@ -149,7 +171,8 @@ export default function ClientDetailsPage() {
       await clientsApi.update(id, {
         phone: editPhone,
         address: editAddress,
-        products: editProducts
+        products: editProducts,
+        nextVisitDate: editNextVisitDate ? `${editNextVisitDate}T00:00:00.000Z` : undefined
       });
       setInfoMessage("تم تحديث بيانات العميل بنجاح");
       await loadClient();
@@ -257,6 +280,25 @@ export default function ClientDetailsPage() {
               placeholder="المنتجات"
               disabled={saveDetailsLoading || actionLoading}
             />
+            <div className="clients-date-input inline-date-control">
+              <span className={editNextVisitDate ? "clients-date-value" : "clients-date-placeholder"}>
+                {editNextVisitDateDisplay}
+              </span>
+              <span className="clients-date-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
+                </svg>
+              </span>
+              <input
+                type="date"
+                className="clients-date-native-input"
+                value={editNextVisitDate}
+                onChange={(event) => setEditNextVisitDate(event.target.value)}
+                title="تاريخ الزيارة القادمة"
+                lang="ar-EG"
+                disabled={saveDetailsLoading || actionLoading}
+              />
+            </div>
             <button
               type="button"
               className="primary-btn"

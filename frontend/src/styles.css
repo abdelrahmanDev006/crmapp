@@ -981,6 +981,11 @@ tbody tr:hover {
   font-size: 0.95rem;
 }
 
+.create-form .form-date-input {
+  width: 100%;
+  min-height: 44px;
+}
+
 .users-create-form .users-create-region-field {
   padding: 10px 12px;
   border: 1px solid #d4e5e4;
@@ -1191,6 +1196,12 @@ tbody tr:hover {
   border: 1px solid #cadedd;
   border-radius: 10px;
   padding: 10px 12px;
+}
+
+.action-bar .inline-date-control {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 220px;
 }
 
 .primary-btn,
@@ -1585,6 +1596,7 @@ tbody tr:hover {
   .filters-row button,
   .action-bar input,
   .action-bar select,
+  .action-bar .inline-date-control,
   .action-bar button {
     width: 100%;
     max-width: 100%;
