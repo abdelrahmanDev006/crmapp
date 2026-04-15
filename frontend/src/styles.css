@@ -300,27 +300,27 @@ td {
 
 .table-wrapper table.clients-table th:nth-child(1),
 .table-wrapper table.clients-table td:nth-child(1) {
-  width: 13%;
+  width: 11%;
 }
 
 .table-wrapper table.clients-table th:nth-child(2),
 .table-wrapper table.clients-table td:nth-child(2) {
-  width: 11%;
+  width: 9%;
 }
 
 .table-wrapper table.clients-table th:nth-child(3),
 .table-wrapper table.clients-table td:nth-child(3) {
-  width: 11%;
+  width: 10%;
 }
 
 .table-wrapper table.clients-table th:nth-child(4),
 .table-wrapper table.clients-table td:nth-child(4) {
-  width: 7%;
+  width: 6%;
 }
 
 .table-wrapper table.clients-table th:nth-child(5),
 .table-wrapper table.clients-table td:nth-child(5) {
-  width: 9%;
+  width: 8%;
 }
 
 .table-wrapper table.clients-table th:nth-child(6),
@@ -330,21 +330,26 @@ td {
 
 .table-wrapper table.clients-table th:nth-child(7),
 .table-wrapper table.clients-table td:nth-child(7) {
-  width: 8%;
+  width: 7%;
 }
 
 .table-wrapper table.clients-table th:nth-child(8),
 .table-wrapper table.clients-table td:nth-child(8) {
-  width: 8%;
+  width: 7%;
 }
 
 .table-wrapper table.clients-table th:nth-child(9),
 .table-wrapper table.clients-table td:nth-child(9) {
-  width: 11%;
+  width: 7%;
 }
 
 .table-wrapper table.clients-table th:nth-child(10),
 .table-wrapper table.clients-table td:nth-child(10) {
+  width: 11%;
+}
+
+.table-wrapper table.clients-table th:nth-child(11),
+.table-wrapper table.clients-table td:nth-child(11) {
   width: 14%;
 }
 
@@ -416,7 +421,7 @@ td {
   padding-inline: 4px;
 }
 
-.table-wrapper table.clients-table td:nth-child(9) {
+.table-wrapper table.clients-table td:nth-child(7) {
   direction: ltr;
   text-align: center;
   white-space: nowrap;
@@ -429,11 +434,12 @@ td {
 .table-wrapper table.clients-table td:nth-child(4),
 .table-wrapper table.clients-table td:nth-child(7),
 .table-wrapper table.clients-table td:nth-child(8),
-.table-wrapper table.clients-table td:nth-child(9) {
+.table-wrapper table.clients-table td:nth-child(9),
+.table-wrapper table.clients-table td:nth-child(10) {
   text-align: center;
 }
 
-.table-wrapper table.clients-table td:nth-child(8) .status-pill {
+.table-wrapper table.clients-table td:nth-child(9) .status-pill {
   max-width: 100%;
   padding: 4px 10px;
   font-size: clamp(0.76rem, 0.12vw + 0.72rem, 0.86rem);
@@ -442,7 +448,7 @@ td {
   text-overflow: ellipsis;
 }
 
-.table-wrapper table.clients-table td:nth-child(7) .visit-pill {
+.table-wrapper table.clients-table td:nth-child(8) .visit-pill {
   max-width: 100%;
   padding: 5px 10px;
   font-size: clamp(0.78rem, 0.14vw + 0.72rem, 0.9rem);
@@ -509,6 +515,15 @@ td {
   line-break: auto;
 }
 
+.table-wrapper table.clients-table th:nth-child(10),
+.table-wrapper table.clients-table td:nth-child(10) {
+  white-space: normal;
+  text-overflow: clip;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  line-height: 1.3;
+}
+
 .table-wrapper table.clients-table th:nth-child(4) {
   white-space: nowrap;
   word-break: keep-all;
@@ -516,8 +531,8 @@ td {
   font-size: clamp(0.72rem, 0.08vw + 0.68rem, 0.84rem);
 }
 
-.table-wrapper table.clients-table th:nth-child(10),
-.table-wrapper table.clients-table td:nth-child(10) {
+.table-wrapper table.clients-table th:nth-child(11),
+.table-wrapper table.clients-table td:nth-child(11) {
   white-space: normal;
   text-overflow: unset;
   overflow: visible;
@@ -528,12 +543,13 @@ td {
 .table-wrapper table.clients-table th:nth-child(7),
 .table-wrapper table.clients-table th:nth-child(8),
 .table-wrapper table.clients-table th:nth-child(9),
-.table-wrapper table.clients-table th:nth-child(10) {
+.table-wrapper table.clients-table th:nth-child(10),
+.table-wrapper table.clients-table th:nth-child(11) {
   text-align: center;
 }
 
-.table-wrapper table.clients-table th:nth-child(9),
-.table-wrapper table.clients-table th:nth-child(10) {
+.table-wrapper table.clients-table th:nth-child(10),
+.table-wrapper table.clients-table th:nth-child(11) {
   white-space: normal;
   text-overflow: clip;
   overflow: visible;

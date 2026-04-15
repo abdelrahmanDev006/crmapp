@@ -43,6 +43,8 @@ const locationUrlSchema = z
   .max(1000, "رابط اللوكيشن طويل جدًا")
   .refine(isValidLocationUrl, "رابط اللوكيشن غير صالح");
 
+const priceSchema = z.string().trim().max(120, "قيمة السعر طويلة جدًا");
+
 const createClientSchema = z.object({
   name: z.string().min(2, "اسم العميل مطلوب"),
   phone: z.string().min(8, "رقم الهاتف مطلوب"),
@@ -50,6 +52,7 @@ const createClientSchema = z.object({
   locationUrl: locationUrlSchema.optional(),
   regionId: z.coerce.number().int().positive(),
   products: z.string().min(1, "المنتجات مطلوبة"),
+  price: priceSchema.optional(),
   visitType: z.enum([VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY]),
   status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
   nextVisitDate: dateInputSchema.optional()
@@ -62,6 +65,7 @@ const updateClientSchema = z.object({
   locationUrl: locationUrlSchema.optional(),
   regionId: z.coerce.number().int().positive().optional(),
   products: z.string().min(1).optional(),
+  price: priceSchema.optional(),
   visitType: z.enum([VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY]).optional(),
   status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
   nextVisitDate: dateInputSchema.optional()

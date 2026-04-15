@@ -56,7 +56,8 @@ function buildClientWhere(filters, user) {
       { phone: { contains: filters.search, mode: "insensitive" } },
       { address: { contains: filters.search, mode: "insensitive" } },
       { locationUrl: { contains: filters.search, mode: "insensitive" } },
-      { products: { contains: filters.search, mode: "insensitive" } }
+      { products: { contains: filters.search, mode: "insensitive" } },
+      { price: { contains: filters.search, mode: "insensitive" } }
     ];
   }
 

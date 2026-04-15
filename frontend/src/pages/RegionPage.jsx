@@ -5,7 +5,7 @@ import Pagination from "../components/Pagination";
 import StatusBadge from "../components/StatusBadge";
 import VisitTypeBadge from "../components/VisitTypeBadge";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import { formatDate } from "../utils/formatters";
+import { formatDateWithWeekday } from "../utils/formatters";
 
 export default function RegionPage() {
   const { id } = useParams();
@@ -131,6 +131,7 @@ export default function RegionPage() {
                     <th>العميل</th>
                     <th>الهاتف</th>
                     <th>المنتجات</th>
+                    <th>السعر</th>
                     <th>نوع الزيارة</th>
                     <th>الحالة</th>
                     <th>الزيارة القادمة</th>
@@ -143,13 +144,14 @@ export default function RegionPage() {
                       <td data-label="\u0627\u0644\u0639\u0645\u064a\u0644">{client.name}</td>
                       <td data-label="\u0627\u0644\u0647\u0627\u062a\u0641">{client.phone}</td>
                       <td data-label="\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a">{client.products}</td>
+                      <td data-label="\u0627\u0644\u0633\u0639\u0631">{client.price || "-"}</td>
                       <td data-label="\u0646\u0648\u0639 \u0627\u0644\u0632\u064a\u0627\u0631\u0629">
                         <VisitTypeBadge type={client.visitType} />
                       </td>
                       <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">
                         <StatusBadge status={client.status} />
                       </td>
-                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">{formatDate(client.nextVisitDate)}</td>
+                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">{formatDateWithWeekday(client.nextVisitDate)}</td>
                       <td className="actions-cell" data-label="\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644">
                         <Link to={`/clients/${client.id}`} className="ghost-btn">
                           عرض

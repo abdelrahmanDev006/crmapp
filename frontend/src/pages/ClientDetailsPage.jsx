@@ -4,7 +4,7 @@ import { clientsApi } from "../api/crmApi";
 import { useAuth } from "../auth/AuthContext";
 import StatusBadge from "../components/StatusBadge";
 import VisitTypeBadge from "../components/VisitTypeBadge";
-import { formatDate } from "../utils/formatters";
+import { formatDate, formatDateWithWeekday } from "../utils/formatters";
 
 function isDatePastOrToday(dateValue) {
   const checkDate = new Date(dateValue);
@@ -82,6 +82,7 @@ export default function ClientDetailsPage() {
   const [editPhone, setEditPhone] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editProducts, setEditProducts] = useState("");
+  const [editPrice, setEditPrice] = useState("");
   const [editNextVisitDate, setEditNextVisitDate] = useState("");
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
@@ -106,6 +107,7 @@ export default function ClientDetailsPage() {
       setEditPhone(response.data.item.phone || "");
       setEditAddress(response.data.item.address || "");
       setEditProducts(response.data.item.products || "");
+      setEditPrice(response.data.item.price || "");
       setEditNextVisitDate(toInputDate(response.data.item.nextVisitDate));
     } catch (err) {
       setError(err.message || "تعذر تحميل بيانات العميل");
@@ -128,7 +130,7 @@ export default function ClientDetailsPage() {
 
   const locationHref = useMemo(() => getLocationHref(client?.locationUrl), [client?.locationUrl]);
   const currentNextVisitInputDate = useMemo(() => toInputDate(client?.nextVisitDate), [client?.nextVisitDate]);
-  const editNextVisitDateDisplay = editNextVisitDate ? formatDate(`${editNextVisitDate}T00:00:00.000Z`) : "يوم/شهر/سنة";
+  const editNextVisitDateDisplay = editNextVisitDate ? formatDateWithWeekday(`${editNextVisitDate}T00:00:00.000Z`) : "يوم/شهر/سنة";
   const hasDetailsChanges = useMemo(() => {
     if (!client) {
       return false;
@@ -138,9 +140,10 @@ export default function ClientDetailsPage() {
       editPhone !== (client.phone || "") ||
       editAddress !== (client.address || "") ||
       editProducts !== (client.products || "") ||
+      editPrice !== (client.price || "") ||
       editNextVisitDate !== currentNextVisitInputDate
     );
-  }, [client, currentNextVisitInputDate, editAddress, editNextVisitDate, editPhone, editProducts]);
+  }, [client, currentNextVisitInputDate, editAddress, editNextVisitDate, editPhone, editPrice, editProducts]);
 
   async function submitOutcome(outcome) {
     setActionLoading(true);
@@ -172,6 +175,7 @@ export default function ClientDetailsPage() {
         phone: editPhone,
         address: editAddress,
         products: editProducts,
+        price: editPrice,
         nextVisitDate: editNextVisitDate ? `${editNextVisitDate}T00:00:00.000Z` : undefined
       });
       setInfoMessage("تم تحديث بيانات العميل بنجاح");
@@ -216,7 +220,7 @@ export default function ClientDetailsPage() {
         {rejectedWaiting && (
           <div className="info-box">
             هذا العميل بحالة رفض تعامل حاليًا. يمكنك تسجيل "تم التعامل" الآن إذا وافق العميل، أو إعادة المحاولة
-            الكاملة بعد تاريخ {formatDate(client.nextVisitDate)}.
+            الكاملة بعد تاريخ {formatDateWithWeekday(client.nextVisitDate)}.
           </div>
         )}
 
@@ -244,6 +248,10 @@ export default function ClientDetailsPage() {
             <strong>{client.products}</strong>
           </div>
           <div>
+            <span>السعر</span>
+            <strong>{client.price || "-"}</strong>
+          </div>
+          <div>
             <span>نوع الزيارة</span>
             <VisitTypeBadge type={client.visitType} />
           </div>
@@ -253,7 +261,7 @@ export default function ClientDetailsPage() {
           </div>
           <div>
             <span>الزيارة القادمة</span>
-            <strong>{formatDate(client.nextVisitDate)}</strong>
+            <strong>{formatDateWithWeekday(client.nextVisitDate)}</strong>
           </div>
         </div>
 
@@ -278,6 +286,13 @@ export default function ClientDetailsPage() {
               value={editProducts}
               onChange={(event) => setEditProducts(event.target.value)}
               placeholder="المنتجات"
+              disabled={saveDetailsLoading || actionLoading}
+            />
+            <input
+              type="text"
+              value={editPrice}
+              onChange={(event) => setEditPrice(event.target.value)}
+              placeholder="السعر"
               disabled={saveDetailsLoading || actionLoading}
             />
             <div className="clients-date-input inline-date-control">

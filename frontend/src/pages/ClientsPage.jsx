@@ -6,7 +6,7 @@ import Pagination from "../components/Pagination";
 import StatusBadge from "../components/StatusBadge";
 import VisitTypeBadge from "../components/VisitTypeBadge";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import { formatDate } from "../utils/formatters";
+import { formatDate, formatDateWithWeekday } from "../utils/formatters";
 
 const tabs = [
   { key: "ALL", label: "جميع العملاء" },
@@ -24,6 +24,7 @@ const initialCreateForm = {
   locationUrl: "",
   regionId: "",
   products: "",
+  price: "",
   visitType: "WEEKLY",
   status: "ACTIVE",
   nextVisitDate: ""
@@ -149,7 +150,7 @@ export default function ClientsPage() {
   const hasDueDateFilter = Boolean(selectedDueDate);
   const selectedDueDateDisplay = selectedDueDate ? formatDate(`${selectedDueDate}T00:00:00.000Z`) : "يوم/شهر/سنة";
   const createNextVisitDateDisplay = createForm.nextVisitDate
-    ? formatDate(`${createForm.nextVisitDate}T00:00:00.000Z`)
+    ? formatDateWithWeekday(`${createForm.nextVisitDate}T00:00:00.000Z`)
     : "يوم/شهر/سنة";
 
   const buildClientListParams = useCallback((targetPage = 1, targetPageSize = 20) => {
@@ -272,6 +273,7 @@ export default function ClientsPage() {
         locationUrl: createForm.locationUrl || undefined,
         regionId: Number(createForm.regionId),
         products: createForm.products,
+        price: createForm.price || undefined,
         visitType: createForm.visitType,
         status: createForm.status,
         nextVisitDate: createForm.nextVisitDate ? `${createForm.nextVisitDate}T00:00:00.000Z` : undefined
@@ -416,6 +418,14 @@ export default function ClientsPage() {
                 value={createForm.products}
                 onChange={(event) => setCreateForm((prev) => ({ ...prev, products: event.target.value }))}
                 required
+              />
+            </label>
+            <label>
+              السعر
+              <input
+                value={createForm.price}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, price: event.target.value }))}
+                placeholder="مثال: 150"
               />
             </label>
             <label>
@@ -584,6 +594,7 @@ export default function ClientsPage() {
                   <th>اللوكيشن</th>
                   <th>المنطقة</th>
                   <th>المنتجات</th>
+                  <th>السعر</th>
                   <th>الزيارة</th>
                   <th>الحالة</th>
                   <th>الزيارة القادمة</th>
@@ -628,13 +639,14 @@ export default function ClientsPage() {
                       </td>
                       <td data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">{client.region?.name}</td>
                       <td data-label="\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a">{client.products}</td>
+                      <td data-label="\u0627\u0644\u0633\u0639\u0631">{client.price || "-"}</td>
                       <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629">
                         <VisitTypeBadge type={client.visitType} />
                       </td>
                       <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">
                         <StatusBadge status={client.status} />
                       </td>
-                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">{formatDate(client.nextVisitDate)}</td>
+                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">{formatDateWithWeekday(client.nextVisitDate)}</td>
                       <td className="actions-cell" data-label="\u0627\u0644\u0625\u062c\u0631\u0627\u0621\u0627\u062a">
                         <Link className="ghost-btn" to={`/clients/${client.id}`}>
                           التفاصيل

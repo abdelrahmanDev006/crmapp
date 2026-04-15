@@ -46,6 +46,7 @@ function buildClientPayload(index, regions, adminId) {
   const prefix = clientNamePrefixes[index % clientNamePrefixes.length];
   const address = addressPool[index % addressPool.length];
   const products = productsPool[index % productsPool.length];
+  const price = String(120 + (index % 18) * 15);
   const phoneNumber = `01${String(index + 1).padStart(9, "0")}`;
 
   return {
@@ -53,6 +54,7 @@ function buildClientPayload(index, regions, adminId) {
     phone: phoneNumber,
     address,
     products,
+    price,
     visitType,
     status,
     nextVisitDate: getSafeWorkDate(visitOffset),

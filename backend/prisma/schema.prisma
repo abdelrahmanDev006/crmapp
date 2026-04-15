@@ -59,6 +59,7 @@ model Client {
   address       String
   locationUrl   String?
   products      String
+  price         String?
   regionId      Int
   region        Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
   visitType     VisitType

@@ -42,6 +42,7 @@ const createClient = asyncHandler(async (req, res) => {
       locationUrl: payload.locationUrl ? String(payload.locationUrl).trim() : undefined,
       regionId: payload.regionId,
       products: payload.products,
+      price: payload.price ? String(payload.price).trim() : undefined,
       visitType: payload.visitType,
       status: payload.status,
       nextVisitDate: payload.nextVisitDate
@@ -85,6 +86,11 @@ const updateClient = asyncHandler(async (req, res) => {
   if (Object.prototype.hasOwnProperty.call(req.body, "locationUrl")) {
     const normalizedLocationUrl = String(req.body.locationUrl || "").trim();
     updatePayload.locationUrl = normalizedLocationUrl || null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.body, "price")) {
+    const normalizedPrice = String(req.body.price || "").trim();
+    updatePayload.price = normalizedPrice || null;
   }
 
   const updated = await prisma.client.update({
