@@ -114,7 +114,7 @@ export default function DashboardPage() {
           <strong>{data?.totals?.noAnswerClients || 0}</strong>
         </article>
         <article className="metric-card">
-          <h3>مرفوض</h3>
+          <h3>ساقط</h3>
           <strong>{data?.totals?.rejectedClients || 0}</strong>
         </article>
       </section>

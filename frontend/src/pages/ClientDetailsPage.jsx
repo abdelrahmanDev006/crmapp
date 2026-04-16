@@ -219,8 +219,7 @@ export default function ClientDetailsPage() {
 
         {rejectedWaiting && (
           <div className="info-box">
-            هذا العميل بحالة رفض تعامل حاليًا. يمكنك تسجيل "تم التعامل" الآن إذا وافق العميل، أو إعادة المحاولة
-            الكاملة بعد تاريخ {formatDateWithWeekday(client.nextVisitDate)}.
+            هذا العميل بحالة ساقط حاليًا. يمكنك تسجيل "تم التعامل" إذا تمت الاستجابة، أو الانتظار حتى موعد إعادة المحاولة.
           </div>
         )}
 
@@ -261,7 +260,7 @@ export default function ClientDetailsPage() {
           </div>
           <div>
             <span>الزيارة القادمة</span>
-            <strong>{formatDateWithWeekday(client.nextVisitDate)}</strong>
+            <strong>{client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}</strong>
           </div>
         </div>
 
@@ -295,25 +294,27 @@ export default function ClientDetailsPage() {
               placeholder="السعر"
               disabled={saveDetailsLoading || actionLoading}
             />
-            <div className="clients-date-input inline-date-control">
-              <span className={editNextVisitDate ? "clients-date-value" : "clients-date-placeholder"}>
-                {editNextVisitDateDisplay}
-              </span>
-              <span className="clients-date-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                  <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
-                </svg>
-              </span>
-              <input
-                type="date"
-                className="clients-date-native-input"
-                value={editNextVisitDate}
-                onChange={(event) => setEditNextVisitDate(event.target.value)}
-                title="تاريخ الزيارة القادمة"
-                lang="ar-EG"
-                disabled={saveDetailsLoading || actionLoading}
-              />
-            </div>
+            {client.status !== "REJECTED" && (
+              <div className="clients-date-input inline-date-control">
+                <span className={editNextVisitDate ? "clients-date-value" : "clients-date-placeholder"}>
+                  {editNextVisitDateDisplay}
+                </span>
+                <span className="clients-date-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
+                  </svg>
+                </span>
+                <input
+                  type="date"
+                  className="clients-date-native-input"
+                  value={editNextVisitDate}
+                  onChange={(event) => setEditNextVisitDate(event.target.value)}
+                  title="تاريخ الزيارة القادمة"
+                  lang="ar-EG"
+                  disabled={saveDetailsLoading || actionLoading}
+                />
+              </div>
+            )}
             <button
               type="button"
               className="primary-btn"
@@ -355,7 +356,7 @@ export default function ClientDetailsPage() {
             disabled={actionLoading || rejectedWaiting}
             onClick={() => submitOutcome("REJECTED")}
           >
-            رفض التعامل
+            ساقط
           </button>
         </div>
 

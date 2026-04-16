@@ -14,7 +14,7 @@ const tabs = [
   { key: "BIWEEKLY", label: "كل أسبوعين" },
   { key: "MONTHLY", label: "شهري" },
   { key: "NO_ANSWER", label: "لم يرد" },
-  { key: "REJECTED", label: "مرفوض" }
+  { key: "REJECTED", label: "ساقط" }
 ];
 
 const initialCreateForm = {
@@ -136,7 +136,7 @@ export default function ClientsPage() {
   const [data, setData] = useState({ items: [], totalPages: 1, total: 0, page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [actionClientId, setActionClientId] = useState(null);
+  const [actionState, setActionState] = useState({ clientId: null, outcome: null });
   const [deleteClientId, setDeleteClientId] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(initialCreateForm);
@@ -222,20 +222,26 @@ export default function ClientsPage() {
     }
   }, [data.totalPages, loading, page]);
 
-  async function handleClientAction(clientId) {
-    setActionClientId(clientId);
+  async function handleClientOutcome(clientId, outcome) {
+    const outcomeNoteByType = {
+      ACTIVE: "تم التعامل مع العميل",
+      NO_ANSWER: "العميل لم يرد وتمت إعادة الجدولة لأسبوع"
+    };
+
+    setActionState({ clientId, outcome });
+    setError("");
     setInfoMessage("");
 
     try {
       await clientsApi.handle(clientId, {
-        outcome: "ACTIVE",
-        note: "تم التعامل مع العميل"
+        outcome,
+        note: outcomeNoteByType[outcome] || undefined
       });
       await loadClients();
     } catch (err) {
       setError(err.message || "تعذر تحديث حالة العميل");
     } finally {
-      setActionClientId(null);
+      setActionState({ clientId: null, outcome: null });
     }
   }
 
@@ -447,7 +453,7 @@ export default function ClientsPage() {
               >
                 <option value="ACTIVE">نشط</option>
                 <option value="NO_ANSWER">لم يرد</option>
-                <option value="REJECTED">رفض التعامل</option>
+                <option value="REJECTED">ساقط</option>
               </select>
             </label>
             <label>
@@ -605,6 +611,9 @@ export default function ClientsPage() {
                 {data.items.map((client) => {
                   const clientIsNew = isNewClient(client.createdAt, todayDateText);
                   const locationHref = getLocationHref(client.locationUrl);
+                  const isActionLoadingForClient = actionState.clientId === client.id;
+                  const isHandleActionLoading = isActionLoadingForClient && actionState.outcome === "ACTIVE";
+                  const isNoAnswerActionLoading = isActionLoadingForClient && actionState.outcome === "NO_ANSWER";
 
                   return (
                     <tr key={client.id}>
@@ -646,7 +655,9 @@ export default function ClientsPage() {
                       <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">
                         <StatusBadge status={client.status} />
                       </td>
-                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">{formatDateWithWeekday(client.nextVisitDate)}</td>
+                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">
+                        {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
+                      </td>
                       <td className="actions-cell" data-label="\u0627\u0644\u0625\u062c\u0631\u0627\u0621\u0627\u062a">
                         <Link className="ghost-btn" to={`/clients/${client.id}`}>
                           التفاصيل
@@ -655,10 +666,20 @@ export default function ClientsPage() {
                           <button
                             type="button"
                             className="primary-btn"
-                            disabled={actionClientId === client.id}
-                            onClick={() => handleClientAction(client.id)}
+                            disabled={isActionLoadingForClient}
+                            onClick={() => handleClientOutcome(client.id, "ACTIVE")}
                           >
-                            {actionClientId === client.id ? "جاري..." : "تم التعامل"}
+                            {isHandleActionLoading ? "جاري..." : "تم التعامل"}
+                          </button>
+                        )}
+                        {client.status !== "REJECTED" && (
+                          <button
+                            type="button"
+                            className="secondary-btn"
+                            disabled={isActionLoadingForClient}
+                            onClick={() => handleClientOutcome(client.id, "NO_ANSWER")}
+                          >
+                            {isNoAnswerActionLoading ? "جاري..." : "لم يرد"}
                           </button>
                         )}
                         {isAdmin && (

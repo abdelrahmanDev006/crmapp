@@ -7,5 +7,5 @@ export const VisitType = {
 export const ClientStatus = {
   ACTIVE: "نشط",
   NO_ANSWER: "لم يرد",
-  REJECTED: "رفض التعامل"
+  REJECTED: "ساقط"
 };

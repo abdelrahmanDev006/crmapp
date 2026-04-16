@@ -184,7 +184,9 @@ function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDa
   }
 
   if (outcome === ClientStatuses.NO_ANSWER) {
-    return normalizeToWorkDate(currentDate);
+    const noAnswerBaseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
+    const noAnswerRetryDate = addWorkDaysWith28DayMonth(noAnswerBaseDate, 7);
+    return normalizeToWorkDate(noAnswerRetryDate);
   }
 
   if (Number.isFinite(Number(advanceDays)) && Number(advanceDays) > 0) {
@@ -250,7 +252,7 @@ async function handleClientVisit({ clientId, user, outcome, note, visitType, adv
 
   const statusRecoveryNote =
     previousStatus === ClientStatuses.REJECTED && newStatus === ClientStatuses.ACTIVE
-      ? "تمت إعادة تفعيل العميل بعد فترة رفض"
+      ? "تمت إعادة تفعيل العميل بعد فترة سقوط"
       : null;
 
   const visitTypeChangeNote = visitTypeChanged
