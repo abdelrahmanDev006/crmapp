@@ -1,7 +1,7 @@
 const prisma = require("../config/prisma");
 const asyncHandler = require("../middlewares/asyncHandler");
 const { Roles } = require("../constants/enums");
-const { getCurrentWorkWeekStart } = require("../utils/dateUtils");
+const { getCurrentWorkWeekStart, normalizeToWorkDate } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
 const {
   listClients,
@@ -46,7 +46,7 @@ const createClient = asyncHandler(async (req, res) => {
       visitType: payload.visitType,
       status: payload.status,
       nextVisitDate: payload.nextVisitDate
-        ? getCurrentWorkWeekStart(payload.nextVisitDate)
+        ? normalizeToWorkDate(payload.nextVisitDate)
         : getCurrentWorkWeekStart(new Date()),
       createdById: req.user.id
     },
@@ -80,7 +80,7 @@ const updateClient = asyncHandler(async (req, res) => {
 
   const updatePayload = {
     ...req.body,
-    ...(req.body.nextVisitDate ? { nextVisitDate: getCurrentWorkWeekStart(req.body.nextVisitDate) } : {})
+    ...(req.body.nextVisitDate ? { nextVisitDate: normalizeToWorkDate(req.body.nextVisitDate) } : {})
   };
 
   if (Object.prototype.hasOwnProperty.call(req.body, "locationUrl")) {
