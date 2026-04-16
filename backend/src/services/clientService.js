@@ -184,7 +184,11 @@ function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDa
   }
 
   if (outcome === ClientStatuses.NO_ANSWER) {
-    const noAnswerBaseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
+    const noAnswerBaseDate = currentDate
+      ? normalizeToWorkDate(currentDate)
+      : referenceDate
+        ? normalizeToWorkDate(referenceDate)
+        : normalizeToWorkDate(new Date());
     const noAnswerRetryDate = addWorkDaysWith28DayMonth(noAnswerBaseDate, 7);
     return normalizeToWorkDate(noAnswerRetryDate);
   }
