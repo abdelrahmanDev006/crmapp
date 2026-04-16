@@ -6,8 +6,7 @@ const {
   toStartOfUtcDay,
   calculateNextVisitDate,
   addWorkDaysWith28DayMonth,
-  getCurrentWorkWeekStart,
-  getNextOrSameWorkWeekStart
+  getCurrentWorkWeekStart
 } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
 
@@ -181,22 +180,22 @@ function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDa
   if (outcome === ClientStatuses.REJECTED) {
     // After rejection, schedule a future retry date.
     const retryDate = addWorkDaysWith28DayMonth(normalizeToWorkDate(new Date()), rejectedRetryDays);
-    return getNextOrSameWorkWeekStart(retryDate);
+    return normalizeToWorkDate(retryDate);
   }
 
   if (outcome === ClientStatuses.NO_ANSWER) {
-    return getCurrentWorkWeekStart(currentDate);
+    return normalizeToWorkDate(currentDate);
   }
 
   if (Number.isFinite(Number(advanceDays)) && Number(advanceDays) > 0) {
     const baseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
     const advancedDate = addWorkDaysWith28DayMonth(baseDate, Number(advanceDays));
-    return getNextOrSameWorkWeekStart(advancedDate);
+    return normalizeToWorkDate(advancedDate);
   }
 
   const nextVisitBaseDate = currentDate ? normalizeToWorkDate(currentDate) : normalizeToWorkDate(new Date());
   const calculatedNextVisitDate = calculateNextVisitDate(nextVisitBaseDate, visitType);
-  return getCurrentWorkWeekStart(calculatedNextVisitDate);
+  return normalizeToWorkDate(calculatedNextVisitDate);
 }
 
 function getVisitTypeLabel(type) {
