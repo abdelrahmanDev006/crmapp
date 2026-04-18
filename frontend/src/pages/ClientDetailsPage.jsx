@@ -84,7 +84,6 @@ export default function ClientDetailsPage() {
   const [editProducts, setEditProducts] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editNextVisitDate, setEditNextVisitDate] = useState("");
-  const [customNextVisitDate, setCustomNextVisitDate] = useState("");
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
 
@@ -104,13 +103,15 @@ export default function ClientDetailsPage() {
     try {
       const response = await clientsApi.getById(id);
       setClient(response.data.item);
-      setNextVisitType(response.data.item.visitType || "WEEKLY");
+      const normalizedVisitType = ["WEEKLY", "BIWEEKLY", "MONTHLY"].includes(response.data.item.visitType)
+        ? response.data.item.visitType
+        : "MONTHLY";
+      setNextVisitType(normalizedVisitType);
       setEditPhone(response.data.item.phone || "");
       setEditAddress(response.data.item.address || "");
       setEditProducts(response.data.item.products || "");
       setEditPrice(response.data.item.price || "");
       setEditNextVisitDate(toInputDate(response.data.item.nextVisitDate));
-      setCustomNextVisitDate(toInputDate(response.data.item.nextVisitDate));
     } catch (err) {
       setError(err.message || "تعذر تحميل بيانات العميل");
     } finally {
@@ -133,9 +134,6 @@ export default function ClientDetailsPage() {
   const locationHref = useMemo(() => getLocationHref(client?.locationUrl), [client?.locationUrl]);
   const currentNextVisitInputDate = useMemo(() => toInputDate(client?.nextVisitDate), [client?.nextVisitDate]);
   const editNextVisitDateDisplay = editNextVisitDate ? formatDateWithWeekday(`${editNextVisitDate}T00:00:00.000Z`) : "يوم/شهر/سنة";
-  const customNextVisitDateDisplay = customNextVisitDate
-    ? formatDateWithWeekday(`${customNextVisitDate}T00:00:00.000Z`)
-    : "يوم/شهر/سنة";
   const hasDetailsChanges = useMemo(() => {
     if (!client) {
       return false;
@@ -151,12 +149,6 @@ export default function ClientDetailsPage() {
   }, [client, currentNextVisitInputDate, editAddress, editNextVisitDate, editPhone, editPrice, editProducts]);
 
   async function submitOutcome(outcome) {
-    if (outcome === "ACTIVE" && nextVisitType === "CUSTOM" && !customNextVisitDate) {
-      setError("يرجى تحديد الموعد القادم عند اختيار نوع الزيارة ميعاد آخر");
-      setInfoMessage("");
-      return;
-    }
-
     setActionLoading(true);
     setError("");
     setInfoMessage("");
@@ -165,8 +157,7 @@ export default function ClientDetailsPage() {
       await clientsApi.handle(id, {
         outcome,
         note: note || undefined,
-        visitType: nextVisitType,
-        referenceDate: outcome === "ACTIVE" && nextVisitType === "CUSTOM" ? `${customNextVisitDate}T00:00:00.000Z` : undefined
+        visitType: nextVisitType
       });
       setNote("");
       await loadClient();
@@ -343,30 +334,7 @@ export default function ClientDetailsPage() {
             <option value="WEEKLY">الزيارة القادمة: أسبوعي</option>
             <option value="BIWEEKLY">الزيارة القادمة: كل أسبوعين</option>
             <option value="MONTHLY">الزيارة القادمة: شهري</option>
-            <option value="CUSTOM">الزيارة القادمة: ميعاد آخر</option>
           </select>
-          {nextVisitType === "CUSTOM" && (
-            <div className="clients-date-input inline-date-control">
-              <span className={customNextVisitDate ? "clients-date-value" : "clients-date-placeholder"}>
-                {customNextVisitDateDisplay}
-              </span>
-              <span className="clients-date-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                  <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
-                </svg>
-              </span>
-              <input
-                type="date"
-                className="clients-date-native-input"
-                value={customNextVisitDate}
-                onChange={(event) => setCustomNextVisitDate(event.target.value)}
-                title="الموعد القادم"
-                lang="ar-EG"
-                disabled={actionLoading}
-                required
-              />
-            </div>
-          )}
           <input
             type="text"
             value={note}

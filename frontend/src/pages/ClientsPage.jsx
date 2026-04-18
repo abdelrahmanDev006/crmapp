@@ -164,7 +164,6 @@ export default function ClientsPage() {
   const createNextVisitDateDisplay = createForm.nextVisitDate
     ? formatDateWithWeekday(`${createForm.nextVisitDate}T00:00:00.000Z`)
     : "يوم/شهر/سنة";
-  const isCreateCustomVisitType = createForm.visitType === "CUSTOM";
 
   const buildClientListParams = useCallback((targetPage = 1, targetPageSize = 20) => {
     const params = {
@@ -236,12 +235,6 @@ export default function ClientsPage() {
   }, [data.totalPages, loading, page]);
 
   async function handleClientOutcome(client, outcome) {
-    if (outcome === "ACTIVE" && client.visitType === "CUSTOM") {
-      setError("");
-      setInfoMessage("العميل بنوع زيارة ميعاد آخر. افتح التفاصيل وحدد الموعد القادم أولًا.");
-      return;
-    }
-
     const outcomeNoteByType = {
       ACTIVE: "تم التعامل مع العميل",
       NO_ANSWER: "العميل لم يرد وتمت إعادة الجدولة لأسبوع"
@@ -286,13 +279,6 @@ export default function ClientsPage() {
 
   async function handleCreateClient(event) {
     event.preventDefault();
-
-    if (isCreateCustomVisitType && !createForm.nextVisitDate) {
-      setError("يرجى تحديد موعد الزيارة عند اختيار نوع الزيارة ميعاد آخر");
-      setInfoMessage("");
-      return;
-    }
-
     setCreateLoading(true);
     setError("");
     setInfoMessage("");
@@ -534,7 +520,6 @@ export default function ClientsPage() {
                 <option value="WEEKLY">أسبوعي</option>
                 <option value="BIWEEKLY">كل أسبوعين</option>
                 <option value="MONTHLY">شهري</option>
-                <option value="CUSTOM">ميعاد آخر</option>
               </select>
             </label>
             <label>
@@ -566,7 +551,6 @@ export default function ClientsPage() {
                   onChange={(event) => setCreateForm((prev) => ({ ...prev, nextVisitDate: event.target.value }))}
                   title="تاريخ الزيارة القادمة"
                   lang="ar-EG"
-                  required={isCreateCustomVisitType}
                 />
               </div>
             </label>

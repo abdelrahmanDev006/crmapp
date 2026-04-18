@@ -193,11 +193,6 @@ function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDa
     return normalizeToWorkDate(noAnswerRetryDate);
   }
 
-  if (visitType === VisitTypes.CUSTOM) {
-    const customBaseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(currentDate || new Date());
-    return normalizeToWorkDate(customBaseDate);
-  }
-
   if (Number.isFinite(Number(advanceDays)) && Number(advanceDays) > 0) {
     const baseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
     const advancedDate = addWorkDaysWith28DayMonth(baseDate, Number(advanceDays));
@@ -213,8 +208,7 @@ function getVisitTypeLabel(type) {
   const labels = {
     WEEKLY: "أسبوعي",
     BIWEEKLY: "كل أسبوعين",
-    MONTHLY: "شهري",
-    CUSTOM: "ميعاد آخر"
+    MONTHLY: "شهري"
   };
 
   return labels[type] || type;
@@ -250,10 +244,6 @@ async function handleClientVisit({ clientId, user, outcome, note, visitType, adv
   const nextVisitType = visitType || existingClient.visitType;
   const visitTypeChanged = existingClient.visitType !== nextVisitType;
   const newStatus = outcome;
-
-  if (newStatus === ClientStatuses.ACTIVE && nextVisitType === VisitTypes.CUSTOM && !referenceDate) {
-    throw createHttpError(400, "يرجى تحديد الموعد القادم عند اختيار نوع الزيارة ميعاد آخر");
-  }
 
   const newNextVisitDate = resolveNextVisitDate({
     currentDate: existingClient.nextVisitDate,
