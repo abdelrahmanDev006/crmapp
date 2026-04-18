@@ -562,7 +562,7 @@ td {
 
 .table-wrapper table.region-clients-table th:nth-child(1),
 .table-wrapper table.region-clients-table td:nth-child(1) {
-  width: 16%;
+  width: 14%;
 }
 
 .table-wrapper table.region-clients-table th:nth-child(2),
@@ -575,7 +575,7 @@ td {
 
 .table-wrapper table.region-clients-table th:nth-child(3),
 .table-wrapper table.region-clients-table td:nth-child(3) {
-  width: 18%;
+  width: 16%;
   white-space: normal;
   text-overflow: clip;
   overflow: visible;
@@ -593,7 +593,7 @@ td {
 
 .table-wrapper table.region-clients-table th:nth-child(5),
 .table-wrapper table.region-clients-table td:nth-child(5) {
-  width: 11%;
+  width: 10%;
   text-align: center;
 }
 
@@ -605,7 +605,7 @@ td {
 
 .table-wrapper table.region-clients-table th:nth-child(7),
 .table-wrapper table.region-clients-table td:nth-child(7) {
-  width: 17%;
+  width: 16%;
   direction: ltr;
   text-align: center;
   white-space: normal;
@@ -618,7 +618,7 @@ td {
 
 .table-wrapper table.region-clients-table th:nth-child(8),
 .table-wrapper table.region-clients-table td:nth-child(8) {
-  width: 12%;
+  width: 14%;
   text-align: center;
 }
 
@@ -641,6 +641,13 @@ td {
   min-height: 36px;
   padding: 7px 10px;
   white-space: nowrap;
+}
+
+.table-wrapper table.region-clients-table td.actions-cell .region-details-btn {
+  min-width: 100px;
+  min-height: 38px;
+  padding: 8px 14px;
+  font-weight: 700;
 }
 
 .table-wrapper table.regions-table th:nth-child(1),

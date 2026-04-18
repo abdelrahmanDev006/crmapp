@@ -155,8 +155,8 @@ export default function RegionPage() {
                         {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
                       </td>
                       <td className="actions-cell" data-label="\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644">
-                        <Link to={`/clients/${client.id}`} className="ghost-btn">
-                          عرض
+                        <Link to={`/clients/${client.id}`} className="secondary-btn region-details-btn">
+                          التفاصيل
                         </Link>
                       </td>
                     </tr>
