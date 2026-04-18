@@ -6,7 +6,8 @@ const Roles = {
 const VisitTypes = {
   WEEKLY: "WEEKLY",
   BIWEEKLY: "BIWEEKLY",
-  MONTHLY: "MONTHLY"
+  MONTHLY: "MONTHLY",
+  CUSTOM: "CUSTOM"
 };
 
 const ClientStatuses = {

@@ -125,7 +125,7 @@ export default function RegionPage() {
             <div className="table-empty">لا يوجد عملاء في هذه المنطقة</div>
           ) : (
             <div className="table-wrapper">
-              <table className="mobile-table">
+              <table className="mobile-table region-clients-table">
                 <thead>
                   <tr>
                     <th>العميل</th>

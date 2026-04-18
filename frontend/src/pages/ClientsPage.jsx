@@ -7,6 +7,7 @@ import StatusBadge from "../components/StatusBadge";
 import VisitTypeBadge from "../components/VisitTypeBadge";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { formatDate, formatDateWithWeekday } from "../utils/formatters";
+import { ClientStatus, VisitType } from "../utils/lookup";
 
 const tabs = [
   { key: "ALL", label: "جميع العملاء" },
@@ -123,6 +124,16 @@ function isNewClient(createdAt, todayDateText) {
   return diffInDays >= 0 && diffInDays < NEW_CLIENT_WINDOW_DAYS;
 }
 
+function getSafeExportText(value) {
+  const text = String(value ?? "").trim();
+
+  if (!text) {
+    return "";
+  }
+
+  return /^[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
 export default function ClientsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
@@ -142,6 +153,7 @@ export default function ClientsPage() {
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createLoading, setCreateLoading] = useState(false);
   const [copyPhonesLoading, setCopyPhonesLoading] = useState(false);
+  const [exportExcelLoading, setExportExcelLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const todayDateText = getTodayInputDate();
   const debouncedSearch = useDebouncedValue(search, 350);
@@ -152,6 +164,7 @@ export default function ClientsPage() {
   const createNextVisitDateDisplay = createForm.nextVisitDate
     ? formatDateWithWeekday(`${createForm.nextVisitDate}T00:00:00.000Z`)
     : "يوم/شهر/سنة";
+  const isCreateCustomVisitType = createForm.visitType === "CUSTOM";
 
   const buildClientListParams = useCallback((targetPage = 1, targetPageSize = 20) => {
     const params = {
@@ -222,18 +235,24 @@ export default function ClientsPage() {
     }
   }, [data.totalPages, loading, page]);
 
-  async function handleClientOutcome(clientId, outcome) {
+  async function handleClientOutcome(client, outcome) {
+    if (outcome === "ACTIVE" && client.visitType === "CUSTOM") {
+      setError("");
+      setInfoMessage("العميل بنوع زيارة ميعاد آخر. افتح التفاصيل وحدد الموعد القادم أولًا.");
+      return;
+    }
+
     const outcomeNoteByType = {
       ACTIVE: "تم التعامل مع العميل",
       NO_ANSWER: "العميل لم يرد وتمت إعادة الجدولة لأسبوع"
     };
 
-    setActionState({ clientId, outcome });
+    setActionState({ clientId: client.id, outcome });
     setError("");
     setInfoMessage("");
 
     try {
-      await clientsApi.handle(clientId, {
+      await clientsApi.handle(client.id, {
         outcome,
         note: outcomeNoteByType[outcome] || undefined
       });
@@ -267,6 +286,13 @@ export default function ClientsPage() {
 
   async function handleCreateClient(event) {
     event.preventDefault();
+
+    if (isCreateCustomVisitType && !createForm.nextVisitDate) {
+      setError("يرجى تحديد موعد الزيارة عند اختيار نوع الزيارة ميعاد آخر");
+      setInfoMessage("");
+      return;
+    }
+
     setCreateLoading(true);
     setError("");
     setInfoMessage("");
@@ -358,6 +384,71 @@ export default function ClientsPage() {
     }
   }
 
+  async function handleExportExcel() {
+    setExportExcelLoading(true);
+    setError("");
+    setInfoMessage("");
+
+    try {
+      const firstPageResponse = await clientsApi.list(buildClientListParams(1, 100));
+      const firstPageData = firstPageResponse.data || {};
+      const allItems = [...(firstPageData.items || [])];
+      const totalPages = Math.max(1, Number(firstPageData.totalPages || 1));
+
+      for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
+        const response = await clientsApi.list(buildClientListParams(currentPage, 100));
+        allItems.push(...(response.data?.items || []));
+      }
+
+      if (allItems.length === 0) {
+        setInfoMessage("لا توجد بيانات لتصديرها حسب الفلاتر الحالية.");
+        return;
+      }
+
+      const exportRows = allItems.map((client, index) => ({
+        "م": index + 1,
+        "اسم العميل": getSafeExportText(client.name),
+        "رقم الهاتف": getSafeExportText(client.phone),
+        "العنوان": getSafeExportText(client.address),
+        "اللوكيشن": getSafeExportText(client.locationUrl || ""),
+        "المنطقة": getSafeExportText(client.region?.name || ""),
+        "المنتجات": getSafeExportText(client.products),
+        "السعر": getSafeExportText(client.price || ""),
+        "نوع الزيارة": getSafeExportText(VisitType[client.visitType] || client.visitType),
+        "الحالة": getSafeExportText(ClientStatus[client.status] || client.status),
+        "الزيارة القادمة": client.status === "REJECTED" ? "-" : formatDate(client.nextVisitDate)
+      }));
+
+      const XLSX = await import("xlsx");
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+      worksheet["!cols"] = [
+        { wch: 6 },
+        { wch: 24 },
+        { wch: 18 },
+        { wch: 28 },
+        { wch: 28 },
+        { wch: 16 },
+        { wch: 24 },
+        { wch: 14 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 18 }
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "العملاء");
+
+      const fileDate = getTodayInputDate();
+      XLSX.writeFile(workbook, `clients-export-${fileDate}.xlsx`);
+
+      setInfoMessage(`تم تصدير ${allItems.length} عميل إلى ملف إكسيل بنجاح.`);
+    } catch (err) {
+      setError(err.message || "تعذر تصدير ملف الإكسيل");
+    } finally {
+      setExportExcelLoading(false);
+    }
+  }
+
   return (
     <div className="stack">
       <section className="panel">
@@ -443,6 +534,7 @@ export default function ClientsPage() {
                 <option value="WEEKLY">أسبوعي</option>
                 <option value="BIWEEKLY">كل أسبوعين</option>
                 <option value="MONTHLY">شهري</option>
+                <option value="CUSTOM">ميعاد آخر</option>
               </select>
             </label>
             <label>
@@ -474,6 +566,7 @@ export default function ClientsPage() {
                   onChange={(event) => setCreateForm((prev) => ({ ...prev, nextVisitDate: event.target.value }))}
                   title="تاريخ الزيارة القادمة"
                   lang="ar-EG"
+                  required={isCreateCustomVisitType}
                 />
               </div>
             </label>
@@ -580,6 +673,15 @@ export default function ClientsPage() {
           >
             {copyPhonesLoading ? "جاري تجميع الأرقام..." : "نسخ كل الأرقام"}
           </button>
+          <button
+            type="button"
+            className="secondary-btn"
+            disabled={exportExcelLoading || loading}
+            onClick={handleExportExcel}
+            title="تصدير ملف إكسيل حسب الفلاتر الحالية"
+          >
+            {exportExcelLoading ? "جاري تجهيز الإكسيل..." : "تصدير إكسيل"}
+          </button>
         </div>
 
         {error && <div className="error-box">{error}</div>}
@@ -667,7 +769,7 @@ export default function ClientsPage() {
                             type="button"
                             className="primary-btn"
                             disabled={isActionLoadingForClient}
-                            onClick={() => handleClientOutcome(client.id, "ACTIVE")}
+                            onClick={() => handleClientOutcome(client, "ACTIVE")}
                           >
                             {isHandleActionLoading ? "جاري..." : "تم التعامل"}
                           </button>
@@ -677,7 +779,7 @@ export default function ClientsPage() {
                             type="button"
                             className="secondary-btn"
                             disabled={isActionLoadingForClient}
-                            onClick={() => handleClientOutcome(client.id, "NO_ANSWER")}
+                            onClick={() => handleClientOutcome(client, "NO_ANSWER")}
                           >
                             {isNoAnswerActionLoading ? "جاري..." : "لم يرد"}
                           </button>

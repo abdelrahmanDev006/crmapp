@@ -193,6 +193,11 @@ function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDa
     return normalizeToWorkDate(noAnswerRetryDate);
   }
 
+  if (visitType === VisitTypes.CUSTOM) {
+    const customBaseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(currentDate || new Date());
+    return normalizeToWorkDate(customBaseDate);
+  }
+
   if (Number.isFinite(Number(advanceDays)) && Number(advanceDays) > 0) {
     const baseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
     const advancedDate = addWorkDaysWith28DayMonth(baseDate, Number(advanceDays));
@@ -208,7 +213,8 @@ function getVisitTypeLabel(type) {
   const labels = {
     WEEKLY: "أسبوعي",
     BIWEEKLY: "كل أسبوعين",
-    MONTHLY: "شهري"
+    MONTHLY: "شهري",
+    CUSTOM: "ميعاد آخر"
   };
 
   return labels[type] || type;
@@ -243,8 +249,12 @@ async function handleClientVisit({ clientId, user, outcome, note, visitType, adv
   const previousNextVisitDate = existingClient.nextVisitDate;
   const nextVisitType = visitType || existingClient.visitType;
   const visitTypeChanged = existingClient.visitType !== nextVisitType;
-
   const newStatus = outcome;
+
+  if (newStatus === ClientStatuses.ACTIVE && nextVisitType === VisitTypes.CUSTOM && !referenceDate) {
+    throw createHttpError(400, "يرجى تحديد الموعد القادم عند اختيار نوع الزيارة ميعاد آخر");
+  }
+
   const newNextVisitDate = resolveNextVisitDate({
     currentDate: existingClient.nextVisitDate,
     visitType: nextVisitType,
@@ -353,12 +363,14 @@ async function handleRegionClients({ regionId, user, note }) {
   const nextVisitDatesByType = {
     [VisitTypes.WEEKLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.WEEKLY),
     [VisitTypes.BIWEEKLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.BIWEEKLY),
-    [VisitTypes.MONTHLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.MONTHLY)
+    [VisitTypes.MONTHLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.MONTHLY),
+    [VisitTypes.CUSTOM]: addWorkDaysWith28DayMonth(currentWeekStart, 7)
   };
   const idsByVisitType = {
     [VisitTypes.WEEKLY]: [],
     [VisitTypes.BIWEEKLY]: [],
-    [VisitTypes.MONTHLY]: []
+    [VisitTypes.MONTHLY]: [],
+    [VisitTypes.CUSTOM]: []
   };
   const regionHandledNote =
     note || "\u062a\u0645 \u0627\u0644\u062a\u0639\u0627\u0645\u0644 \u0645\u0639 \u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0628\u0627\u0644\u0643\u0627\u0645\u0644";

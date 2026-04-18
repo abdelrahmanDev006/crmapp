@@ -560,6 +560,68 @@ td {
   line-height: 1.2;
 }
 
+.table-wrapper table.region-clients-table th:nth-child(1),
+.table-wrapper table.region-clients-table td:nth-child(1) {
+  width: 16%;
+}
+
+.table-wrapper table.region-clients-table th:nth-child(2),
+.table-wrapper table.region-clients-table td:nth-child(2) {
+  width: 12%;
+  direction: ltr;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-wrapper table.region-clients-table th:nth-child(3),
+.table-wrapper table.region-clients-table td:nth-child(3) {
+  width: 18%;
+  white-space: normal;
+  text-overflow: clip;
+  overflow: visible;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.table-wrapper table.region-clients-table th:nth-child(4),
+.table-wrapper table.region-clients-table td:nth-child(4) {
+  width: 8%;
+  direction: ltr;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-wrapper table.region-clients-table th:nth-child(5),
+.table-wrapper table.region-clients-table td:nth-child(5) {
+  width: 11%;
+  text-align: center;
+}
+
+.table-wrapper table.region-clients-table th:nth-child(6),
+.table-wrapper table.region-clients-table td:nth-child(6) {
+  width: 10%;
+  text-align: center;
+}
+
+.table-wrapper table.region-clients-table th:nth-child(7),
+.table-wrapper table.region-clients-table td:nth-child(7) {
+  width: 17%;
+  direction: ltr;
+  text-align: center;
+  white-space: normal;
+  text-overflow: clip;
+  overflow: visible;
+  word-break: normal;
+  overflow-wrap: break-word;
+  line-height: 1.35;
+}
+
+.table-wrapper table.region-clients-table th:nth-child(8),
+.table-wrapper table.region-clients-table td:nth-child(8) {
+  width: 8%;
+  text-align: center;
+}
+
 .table-wrapper table.regions-table th:nth-child(1),
 .table-wrapper table.regions-table td:nth-child(1) {
   width: 21%;

@@ -16,6 +16,7 @@ enum VisitType {
   WEEKLY
   BIWEEKLY
   MONTHLY
+  CUSTOM
 }
 
 enum ClientStatus {
