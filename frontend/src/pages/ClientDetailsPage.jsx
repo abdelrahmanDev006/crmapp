@@ -84,6 +84,7 @@ export default function ClientDetailsPage() {
   const [note, setNote] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editAddress, setEditAddress] = useState("");
+  const [editLocationUrl, setEditLocationUrl] = useState("");
   const [editRegionId, setEditRegionId] = useState("");
   const [editProducts, setEditProducts] = useState("");
   const [editPrice, setEditPrice] = useState("");
@@ -119,6 +120,7 @@ export default function ClientDetailsPage() {
       );
       setEditPhone(response.data.item.phone || "");
       setEditAddress(response.data.item.address || "");
+      setEditLocationUrl(response.data.item.locationUrl || "");
       setEditRegionId(String(response.data.item.region?.id || ""));
       setEditProducts(response.data.item.products || "");
       setEditPrice(response.data.item.price || "");
@@ -188,6 +190,7 @@ export default function ClientDetailsPage() {
     return (
       editPhone !== (client.phone || "") ||
       editAddress !== (client.address || "") ||
+      editLocationUrl !== (client.locationUrl || "") ||
       editRegionId !== String(client.region?.id || "") ||
       editProducts !== (client.products || "") ||
       editPrice !== (client.price || "") ||
@@ -200,6 +203,7 @@ export default function ClientDetailsPage() {
     currentNextVisitInputDate,
     editAddress,
     editCustomVisitIntervalDays,
+    editLocationUrl,
     editNextVisitDate,
     editPhone,
     editPrice,
@@ -251,6 +255,7 @@ export default function ClientDetailsPage() {
       await clientsApi.update(id, {
         phone: editPhone,
         address: editAddress,
+        locationUrl: editLocationUrl,
         regionId: editRegionId ? Number(editRegionId) : undefined,
         products: editProducts,
         price: editPrice,
@@ -392,6 +397,13 @@ export default function ClientDetailsPage() {
               value={editAddress}
               onChange={(event) => setEditAddress(event.target.value)}
               placeholder="العنوان"
+              disabled={saveDetailsLoading || actionLoading}
+            />
+            <input
+              type="text"
+              value={editLocationUrl}
+              onChange={(event) => setEditLocationUrl(event.target.value)}
+              placeholder="رابط اللوكيشن (Google Maps)"
               disabled={saveDetailsLoading || actionLoading}
             />
             <select
