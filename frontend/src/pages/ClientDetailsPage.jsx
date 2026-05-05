@@ -80,7 +80,6 @@ export default function ClientDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [saveDetailsLoading, setSaveDetailsLoading] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [note, setNote] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editAddress, setEditAddress] = useState("");
@@ -271,26 +270,6 @@ export default function ClientDetailsPage() {
     }
   }
 
-  async function handleDeleteClient() {
-    const confirmed = window.confirm(`هل تريد حذف العميل "${client.name}"؟`);
-    if (!confirmed) {
-      return;
-    }
-
-    setDeleteLoading(true);
-    setError("");
-    setInfoMessage("");
-
-    try {
-      await clientsApi.remove(id);
-      navigate("/clients");
-    } catch (err) {
-      setError(err.message || "تعذر حذف العميل");
-    } finally {
-      setDeleteLoading(false);
-    }
-  }
-
   if (loading) {
     return <section className="panel">جاري تحميل العميل...</section>;
   }
@@ -320,16 +299,6 @@ export default function ClientDetailsPage() {
             <button type="button" className="secondary-btn" onClick={goBack}>
               العودة للعملاء
             </button>
-            {isAdmin && (
-              <button
-                type="button"
-                className="danger-btn"
-                disabled={deleteLoading || actionLoading || saveDetailsLoading}
-                onClick={handleDeleteClient}
-              >
-                {deleteLoading ? "جاري الحذف..." : "حذف العميل"}
-              </button>
-            )}
           </div>
         </div>
 

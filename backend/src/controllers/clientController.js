@@ -134,28 +134,48 @@ const createClient = asyncHandler(async (req, res) => {
 
   const normalizedStatus = payload.status || ClientStatuses.ACTIVE;
 
-  const client = await prisma.client.create({
-    data: {
-      name: normalizedName,
-      phone: String(payload.phone || "").trim(),
-      address: String(payload.address || "").trim(),
-      locationUrl: payload.locationUrl ? String(payload.locationUrl).trim() : undefined,
-      regionId: payload.regionId,
-      products: String(payload.products || "").trim(),
-      price: payload.price ? String(payload.price).trim() : undefined,
-      visitType: payload.visitType,
-      customVisitIntervalDays:
-        payload.visitType === VisitTypes.CUSTOM ? Number(payload.customVisitIntervalDays) : null,
-      status: normalizedStatus,
-      noAnswerCount: normalizedStatus === ClientStatuses.NO_ANSWER ? 1 : 0,
-      nextVisitDate: payload.nextVisitDate
-        ? normalizeToWorkDate(payload.nextVisitDate)
-        : getCurrentWorkWeekStart(new Date()),
-      createdById: req.user.id
-    },
-    include: {
-      region: true
+  const client = await prisma.$transaction(async (tx) => {
+    const newClient = await tx.client.create({
+      data: {
+        name: normalizedName,
+        phone: String(payload.phone || "").trim(),
+        address: String(payload.address || "").trim(),
+        locationUrl: payload.locationUrl ? String(payload.locationUrl).trim() : undefined,
+        regionId: payload.regionId,
+        products: String(payload.products || "").trim(),
+        price: payload.price ? String(payload.price).trim() : undefined,
+        visitType: payload.visitType,
+        customVisitIntervalDays:
+          payload.visitType === VisitTypes.CUSTOM ? Number(payload.customVisitIntervalDays) : null,
+        status: normalizedStatus,
+        noAnswerCount: normalizedStatus === ClientStatuses.NO_ANSWER ? 1 : 0,
+        nextVisitDate: payload.nextVisitDate
+          ? normalizeToWorkDate(payload.nextVisitDate)
+          : getCurrentWorkWeekStart(new Date()),
+        createdById: req.user.id
+      },
+      include: {
+        region: true
+      }
+    });
+
+    if (payload.note && String(payload.note).trim() !== "") {
+      await tx.visitHistory.create({
+        data: {
+          clientId: newClient.id,
+          visitedById: req.user.id,
+          previousStatus: null,
+          newStatus: normalizedStatus,
+          note: String(payload.note).trim(),
+          previousNextVisitDate: null,
+          newNextVisitDate: newClient.nextVisitDate,
+          visitDate: new Date()
+        }
+      });
+      newClient.visits = [{ note: String(payload.note).trim() }];
     }
+
+    return newClient;
   });
 
   res.status(201).json({

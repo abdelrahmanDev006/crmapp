@@ -16,6 +16,18 @@ const clientWithRelations = {
       code: true,
       name: true
     }
+  },
+  visits: {
+    select: {
+      note: true
+    },
+    where: {
+      note: { not: null }
+    },
+    orderBy: {
+      visitDate: "desc"
+    },
+    take: 1
   }
 };
 

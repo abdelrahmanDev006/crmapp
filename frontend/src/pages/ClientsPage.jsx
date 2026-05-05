@@ -30,7 +30,8 @@ const initialCreateForm = {
   visitType: "WEEKLY",
   customVisitIntervalDays: "",
   status: "ACTIVE",
-  nextVisitDate: ""
+  nextVisitDate: "",
+  note: ""
 };
 
 const NEW_CLIENT_WINDOW_DAYS = 7;
@@ -341,7 +342,6 @@ function ClientTableRows({
             <span className="location-link-missing">-</span>
           )}
         </td>
-        <td data-label="المنطقة">{client.region?.name}</td>
         <td data-label="المنتجات">{client.products}</td>
         <td data-label="السعر">{client.price || "-"}</td>
         <td data-label="الزيارة">
@@ -352,6 +352,9 @@ function ClientTableRows({
         </td>
         <td data-label="الزيارة القادمة">
           {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
+        </td>
+        <td data-label="الملاحظات" className="details-note-text" title={client.visits?.[0]?.note || ""}>
+          {client.visits?.[0]?.note || "-"}
         </td>
         <td className="actions-cell" data-label="الإجراءات">
           {isRepresentative && (dialHref || locationHref) && (
@@ -676,7 +679,8 @@ export default function ClientsPage() {
         visitType: createForm.visitType,
         customVisitIntervalDays: customVisitIntervalDays || undefined,
         status: createForm.status,
-        nextVisitDate: createForm.nextVisitDate ? `${createForm.nextVisitDate}T00:00:00.000Z` : undefined
+        nextVisitDate: createForm.nextVisitDate ? `${createForm.nextVisitDate}T00:00:00.000Z` : undefined,
+        note: createForm.note ? createForm.note.trim() : undefined
       });
 
       setCreateForm(initialCreateForm);
@@ -773,6 +777,12 @@ export default function ClientsPage() {
   }
 
   async function handleExportExcel() {
+    const password = window.prompt("برجاء إدخال كلمة المرور لتصدير البيانات:");
+    if (password !== "123") {
+      alert("كلمة المرور غير صحيحة!");
+      return;
+    }
+
     setExportExcelLoading(true);
     setError("");
     setInfoMessage("");
@@ -799,12 +809,12 @@ export default function ClientsPage() {
         "رقم الهاتف": getSafeExportText(client.phone),
         "العنوان": getSafeExportText(client.address),
         "اللوكيشن": getSafeExportText(client.locationUrl || ""),
-        "المنطقة": getSafeExportText(client.region?.name || ""),
         "المنتجات": getSafeExportText(client.products),
         "السعر": getSafeExportText(client.price || ""),
         "نوع الزيارة": getSafeExportText(getVisitTypeLabel(client.visitType, client.customVisitIntervalDays)),
         "الحالة": getSafeExportText(getClientStatusLabel(client.status, client.noAnswerCount)),
-        "الزيارة القادمة": client.status === "REJECTED" ? "-" : formatDate(client.nextVisitDate)
+        "الزيارة القادمة": client.status === "REJECTED" ? "-" : formatDate(client.nextVisitDate),
+        "الملاحظات": getSafeExportText(client.visits?.[0]?.note || "")
       }));
 
       const XLSX = await import("xlsx");
@@ -1114,6 +1124,15 @@ export default function ClientsPage() {
                 />
               </div>
             </label>
+            <label className="full-width">
+              الملاحظات
+              <textarea
+                value={createForm.note}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, note: event.target.value }))}
+                placeholder="أضف ملاحظات عن العميل (اختياري)"
+                rows="2"
+              />
+            </label>
             <button type="submit" className="primary-btn" disabled={createLoading}>
               {createLoading ? "جارٍ الحفظ..." : "حفظ العميل"}
             </button>
@@ -1309,12 +1328,12 @@ export default function ClientsPage() {
                             <th>الهاتف</th>
                             <th>العنوان</th>
                             <th>اللوكيشن</th>
-                            <th>المنطقة</th>
                             <th>المنتجات</th>
                             <th>السعر</th>
                             <th>الزيارة</th>
                             <th>الحالة</th>
                             <th>الزيارة القادمة</th>
+                            <th>الملاحظات</th>
                             <th>الإجراءات</th>
                           </tr>
                         </thead>
