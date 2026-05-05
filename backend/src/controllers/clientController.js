@@ -1,6 +1,7 @@
 const prisma = require("../config/prisma");
+const { Prisma } = require("@prisma/client");
 const asyncHandler = require("../middlewares/asyncHandler");
-const { Roles } = require("../constants/enums");
+const { Roles, VisitTypes, ClientStatuses } = require("../constants/enums");
 const { getCurrentWorkWeekStart, normalizeToWorkDate } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
 const {
@@ -8,6 +9,97 @@ const {
   getClientById,
   handleClientVisit
 } = require("../services/clientService");
+
+function normalizeClientName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizePhoneForComparison(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/\D+/g, "");
+}
+
+async function findDuplicatePhoneClient({ normalizedPhone, excludeClientId }) {
+  if (!normalizedPhone) {
+    return null;
+  }
+
+  const exclusionSql =
+    Number.isInteger(Number(excludeClientId)) && Number(excludeClientId) > 0
+      ? Prisma.sql`AND c.id <> ${Number(excludeClientId)}`
+      : Prisma.empty;
+
+  const duplicatedRows = await prisma.$queryRaw`
+    SELECT c.id, c.name, c.phone, c."regionId"
+    FROM "Client" c
+    WHERE regexp_replace(
+      translate(c.phone, '٠١٢٣٤٥٦٧٨٩', '0123456789'),
+      '[^0-9]',
+      '',
+      'g'
+    ) = ${normalizedPhone}
+    ${exclusionSql}
+    LIMIT 1
+  `;
+
+  return duplicatedRows[0] || null;
+}
+
+async function assertClientUniqueness({
+  name,
+  phone,
+  regionId,
+  excludeClientId
+}) {
+  const normalizedName = normalizeClientName(name);
+  const normalizedPhone = normalizePhoneForComparison(phone);
+  const numericRegionId = Number(regionId);
+  const excludedId = Number(excludeClientId);
+
+  if (normalizedPhone) {
+    const duplicateByPhone = await findDuplicatePhoneClient({
+      normalizedPhone,
+      excludeClientId: excludedId
+    });
+
+    if (duplicateByPhone) {
+      throw createHttpError(
+        409,
+        `رقم الهاتف مستخدم بالفعل مع العميل "${duplicateByPhone.name}" (ID: ${duplicateByPhone.id})`
+      );
+    }
+  }
+
+  if (!normalizedName || !Number.isInteger(numericRegionId) || numericRegionId <= 0) {
+    return { normalizedName, normalizedPhone };
+  }
+
+  const duplicateByName = await prisma.client.findFirst({
+    where: {
+      regionId: numericRegionId,
+      name: {
+        equals: normalizedName,
+        mode: "insensitive"
+      },
+      ...(Number.isInteger(excludedId) && excludedId > 0 ? { id: { not: excludedId } } : {})
+    },
+    select: {
+      id: true,
+      name: true
+    }
+  });
+
+  if (duplicateByName) {
+    throw createHttpError(
+      409,
+      `اسم العميل موجود بالفعل داخل نفس المنطقة (ID: ${duplicateByName.id})`
+    );
+  }
+
+  return { normalizedName, normalizedPhone };
+}
 
 const listClientRecords = asyncHandler(async (req, res) => {
   if (req.user.role === Roles.REPRESENTATIVE && req.query.regionId && Number(req.query.regionId) !== Number(req.user.regionId)) {
@@ -34,17 +126,28 @@ const createClient = asyncHandler(async (req, res) => {
     throw createHttpError(400, "المنطقة غير موجودة");
   }
 
+  const { normalizedName } = await assertClientUniqueness({
+    name: payload.name,
+    phone: payload.phone,
+    regionId: payload.regionId
+  });
+
+  const normalizedStatus = payload.status || ClientStatuses.ACTIVE;
+
   const client = await prisma.client.create({
     data: {
-      name: payload.name,
-      phone: payload.phone,
-      address: payload.address,
+      name: normalizedName,
+      phone: String(payload.phone || "").trim(),
+      address: String(payload.address || "").trim(),
       locationUrl: payload.locationUrl ? String(payload.locationUrl).trim() : undefined,
       regionId: payload.regionId,
-      products: payload.products,
+      products: String(payload.products || "").trim(),
       price: payload.price ? String(payload.price).trim() : undefined,
       visitType: payload.visitType,
-      status: payload.status,
+      customVisitIntervalDays:
+        payload.visitType === VisitTypes.CUSTOM ? Number(payload.customVisitIntervalDays) : null,
+      status: normalizedStatus,
+      noAnswerCount: normalizedStatus === ClientStatuses.NO_ANSWER ? 1 : 0,
       nextVisitDate: payload.nextVisitDate
         ? normalizeToWorkDate(payload.nextVisitDate)
         : getCurrentWorkWeekStart(new Date()),
@@ -71,17 +174,56 @@ const updateClient = asyncHandler(async (req, res) => {
     throw createHttpError(404, "العميل غير موجود");
   }
 
+  const nextRegionId = req.body.regionId ? Number(req.body.regionId) : existing.regionId;
+
   if (req.body.regionId) {
-    const region = await prisma.region.findUnique({ where: { id: Number(req.body.regionId) } });
+    const region = await prisma.region.findUnique({ where: { id: nextRegionId } });
     if (!region) {
       throw createHttpError(400, "المنطقة غير موجودة");
     }
   }
 
+  const hasNameInPayload = Object.prototype.hasOwnProperty.call(req.body, "name");
+  const hasPhoneInPayload = Object.prototype.hasOwnProperty.call(req.body, "phone");
+
+  const nextName = hasNameInPayload ? req.body.name : existing.name;
+  const nextPhone = hasPhoneInPayload ? req.body.phone : existing.phone;
+
+  const { normalizedName } = await assertClientUniqueness({
+    name: nextName,
+    phone: nextPhone,
+    regionId: nextRegionId,
+    excludeClientId: clientId
+  });
+
+  const hasCustomIntervalInPayload = Object.prototype.hasOwnProperty.call(req.body, "customVisitIntervalDays");
+  const finalVisitType = req.body.visitType || existing.visitType;
+  const finalCustomVisitIntervalDays =
+    finalVisitType === VisitTypes.CUSTOM
+      ? hasCustomIntervalInPayload
+        ? Number(req.body.customVisitIntervalDays)
+        : existing.customVisitIntervalDays
+      : null;
+
+  if (finalVisitType === VisitTypes.CUSTOM && !Number.isInteger(finalCustomVisitIntervalDays)) {
+    throw createHttpError(400, "حدد عدد الأيام لنوع الزيارة (ميعاد آخر)");
+  }
+
   const updatePayload = {
     ...req.body,
+    ...(hasNameInPayload ? { name: normalizedName } : {}),
+    ...(hasPhoneInPayload ? { phone: String(nextPhone || "").trim() } : {}),
+    customVisitIntervalDays: finalCustomVisitIntervalDays,
     ...(req.body.nextVisitDate ? { nextVisitDate: normalizeToWorkDate(req.body.nextVisitDate) } : {})
   };
+
+  if (Object.prototype.hasOwnProperty.call(req.body, "status")) {
+    if (req.body.status === ClientStatuses.NO_ANSWER) {
+      updatePayload.noAnswerCount = Math.max(1, Number(existing.noAnswerCount || 0));
+    } else {
+      updatePayload.noAnswerCount = 0;
+    }
+  }
 
   if (Object.prototype.hasOwnProperty.call(req.body, "locationUrl")) {
     const normalizedLocationUrl = String(req.body.locationUrl || "").trim();
@@ -114,6 +256,7 @@ const handleClient = asyncHandler(async (req, res) => {
     outcome: req.body.outcome,
     note: req.body.note,
     visitType: req.body.visitType,
+    customVisitIntervalDays: req.body.customVisitIntervalDays,
     advanceDays: req.body.advanceDays,
     referenceDate: req.body.referenceDate
   });

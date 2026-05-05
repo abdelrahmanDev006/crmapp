@@ -1,5 +1,4 @@
 const prisma = require("../config/prisma");
-const env = require("../config/env");
 const { Roles, ClientStatuses, VisitTypes } = require("../constants/enums");
 const {
   normalizeToWorkDate,
@@ -166,21 +165,27 @@ async function getClientById(id, user, includeVisits = false) {
   return client;
 }
 
-function canRetryRejectedClient(client, referenceDate = new Date()) {
-  if (client.status !== ClientStatuses.REJECTED) {
-    return true;
+function normalizeCustomVisitIntervalDays(value) {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 365) {
+    return null;
   }
 
-  const today = normalizeToWorkDate(referenceDate);
-  const retryDate = normalizeToWorkDate(client.nextVisitDate);
-  return today.getTime() >= retryDate.getTime();
+  return parsed;
 }
 
-function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDays, advanceDays, referenceDate }) {
+function resolveNextVisitDate({
+  currentDate,
+  visitType,
+  customVisitIntervalDays,
+  outcome,
+  advanceDays,
+  referenceDate
+}) {
   if (outcome === ClientStatuses.REJECTED) {
-    // After rejection, schedule a future retry date.
-    const retryDate = addWorkDaysWith28DayMonth(normalizeToWorkDate(new Date()), rejectedRetryDays);
-    return normalizeToWorkDate(retryDate);
+    // Keep canceled clients available for manual reactivation/offers at any time.
+    return referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
   }
 
   if (outcome === ClientStatuses.NO_ANSWER) {
@@ -200,78 +205,111 @@ function resolveNextVisitDate({ currentDate, visitType, outcome, rejectedRetryDa
   }
 
   const nextVisitBaseDate = currentDate ? normalizeToWorkDate(currentDate) : normalizeToWorkDate(new Date());
+
+  if (visitType === VisitTypes.CUSTOM) {
+    const customIntervalDays = normalizeCustomVisitIntervalDays(customVisitIntervalDays);
+
+    if (!customIntervalDays) {
+      throw createHttpError(400, "حدد عدد الأيام لنوع الزيارة (ميعاد آخر)");
+    }
+
+    return normalizeToWorkDate(addWorkDaysWith28DayMonth(nextVisitBaseDate, customIntervalDays));
+  }
+
   const calculatedNextVisitDate = calculateNextVisitDate(nextVisitBaseDate, visitType);
   return normalizeToWorkDate(calculatedNextVisitDate);
 }
 
-function getVisitTypeLabel(type) {
+function getVisitTypeLabel(type, customVisitIntervalDays = null) {
   const labels = {
     WEEKLY: "أسبوعي",
-    BIWEEKLY: "كل أسبوعين",
-    MONTHLY: "شهري"
+    BIWEEKLY: "أسبوعين",
+    MONTHLY: "شهري",
+    CUSTOM: "ميعاد آخر"
   };
+
+  if (type === VisitTypes.CUSTOM) {
+    const customIntervalDays = normalizeCustomVisitIntervalDays(customVisitIntervalDays);
+    if (customIntervalDays) {
+      return `ميعاد آخر (كل ${customIntervalDays} يوم)`;
+    }
+  }
 
   return labels[type] || type;
 }
 
-function formatWorkDateForMessage(dateValue) {
-  const normalized = normalizeToWorkDate(dateValue);
-  const day = String(normalized.getUTCDate()).padStart(2, "0");
-  const month = String(normalized.getUTCMonth() + 1).padStart(2, "0");
-  const year = String(normalized.getUTCFullYear());
-
-  return `${day}/${month}/${year}`;
-}
-
-async function handleClientVisit({ clientId, user, outcome, note, visitType, advanceDays, referenceDate }) {
+async function handleClientVisit({
+  clientId,
+  user,
+  outcome,
+  note,
+  visitType,
+  customVisitIntervalDays,
+  advanceDays,
+  referenceDate
+}) {
   const existingClient = await getClientById(clientId, user, false);
-  const isRejectedRecoveryOutcome =
-    existingClient.status === ClientStatuses.REJECTED &&
-    (outcome === ClientStatuses.NO_ANSWER || outcome === ClientStatuses.ACTIVE);
-
-  if (isRejectedRecoveryOutcome) {
-    const canRetry = canRetryRejectedClient(existingClient, referenceDate || new Date());
-    if (!canRetry) {
-      throw createHttpError(
-        400,
-        `يمكن إعادة المحاولة مع هذا العميل بعد ${formatWorkDateForMessage(existingClient.nextVisitDate)}`
-      );
-    }
-  }
 
   const previousStatus = existingClient.status;
   const previousNextVisitDate = existingClient.nextVisitDate;
+  const previousNoAnswerCount = Number(existingClient.noAnswerCount || 0);
+  const previousCustomVisitIntervalDays = normalizeCustomVisitIntervalDays(existingClient.customVisitIntervalDays);
   const nextVisitType = visitType || existingClient.visitType;
   const visitTypeChanged = existingClient.visitType !== nextVisitType;
+  const requestedCustomVisitIntervalDays = normalizeCustomVisitIntervalDays(customVisitIntervalDays);
+  const nextCustomVisitIntervalDays =
+    nextVisitType === VisitTypes.CUSTOM
+      ? requestedCustomVisitIntervalDays ||
+        (existingClient.visitType === VisitTypes.CUSTOM ? previousCustomVisitIntervalDays : null)
+      : null;
+
+  if (nextVisitType === VisitTypes.CUSTOM && !nextCustomVisitIntervalDays) {
+    throw createHttpError(400, "حدد عدد الأيام لنوع الزيارة (ميعاد آخر)");
+  }
+
+  const customIntervalChanged =
+    nextVisitType === VisitTypes.CUSTOM &&
+    Number(previousCustomVisitIntervalDays || 0) !== Number(nextCustomVisitIntervalDays || 0);
   const newStatus = outcome;
+  const newNoAnswerCount =
+    newStatus === ClientStatuses.NO_ANSWER
+      ? previousNoAnswerCount + 1
+      : 0;
 
   const newNextVisitDate = resolveNextVisitDate({
     currentDate: existingClient.nextVisitDate,
     visitType: nextVisitType,
+    customVisitIntervalDays: nextCustomVisitIntervalDays,
     outcome,
-    rejectedRetryDays: env.rejectedRetryDays,
     advanceDays,
     referenceDate
   });
 
   const statusRecoveryNote =
     previousStatus === ClientStatuses.REJECTED && newStatus === ClientStatuses.ACTIVE
-      ? "تمت إعادة تفعيل العميل بعد فترة سقوط"
+      ? "تمت إعادة تفعيل العميل بعد الكنسلة"
       : null;
 
   const visitTypeChangeNote = visitTypeChanged
-    ? `تم تغيير نوع الزيارة من ${getVisitTypeLabel(existingClient.visitType)} إلى ${getVisitTypeLabel(nextVisitType)}`
+    ? `تم تغيير نوع الزيارة من ${getVisitTypeLabel(existingClient.visitType, previousCustomVisitIntervalDays)} إلى ${getVisitTypeLabel(nextVisitType, nextCustomVisitIntervalDays)}`
     : null;
 
-  const generatedNote = [note, statusRecoveryNote, visitTypeChangeNote].filter(Boolean).join(" | ") || null;
+  const customIntervalChangeNote = customIntervalChanged
+    ? `تم تحديث ميعاد الزيارة المخصص إلى كل ${nextCustomVisitIntervalDays} يوم`
+    : null;
+
+  const generatedNote =
+    [note, statusRecoveryNote, visitTypeChangeNote, customIntervalChangeNote].filter(Boolean).join(" | ") || null;
 
   return prisma.$transaction(async (tx) => {
     const updatedClient = await tx.client.update({
       where: { id: existingClient.id },
       data: {
         status: newStatus,
+        noAnswerCount: newNoAnswerCount,
         nextVisitDate: newNextVisitDate,
-        visitType: nextVisitType
+        visitType: nextVisitType,
+        customVisitIntervalDays: nextCustomVisitIntervalDays
       },
       include: clientWithRelations
     });
@@ -317,7 +355,9 @@ async function handleRegionClients({ regionId, user, note }) {
     select: {
       id: true,
       status: true,
+      noAnswerCount: true,
       visitType: true,
+      customVisitIntervalDays: true,
       nextVisitDate: true
     }
   });
@@ -330,14 +370,7 @@ async function handleRegionClients({ regionId, user, note }) {
     };
   }
 
-  const currentWorkDate = normalizeToWorkDate(new Date());
-  const eligibleClients = clients.filter((client) => {
-    if (client.status !== ClientStatuses.REJECTED) {
-      return true;
-    }
-
-    return canRetryRejectedClient(client, currentWorkDate);
-  });
+  const eligibleClients = clients.filter((client) => client.status !== ClientStatuses.REJECTED);
 
   const skippedRejectedCount = clients.length - eligibleClients.length;
 
@@ -350,23 +383,25 @@ async function handleRegionClients({ regionId, user, note }) {
   }
 
   const currentWeekStart = getCurrentWorkWeekStart(new Date());
-  const nextVisitDatesByType = {
-    [VisitTypes.WEEKLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.WEEKLY),
-    [VisitTypes.BIWEEKLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.BIWEEKLY),
-    [VisitTypes.MONTHLY]: calculateNextVisitDate(currentWeekStart, VisitTypes.MONTHLY),
-    [VisitTypes.CUSTOM]: addWorkDaysWith28DayMonth(currentWeekStart, 7)
-  };
-  const idsByVisitType = {
-    [VisitTypes.WEEKLY]: [],
-    [VisitTypes.BIWEEKLY]: [],
-    [VisitTypes.MONTHLY]: [],
-    [VisitTypes.CUSTOM]: []
-  };
+  const updateBuckets = new Map();
   const regionHandledNote =
     note || "\u062a\u0645 \u0627\u0644\u062a\u0639\u0627\u0645\u0644 \u0645\u0639 \u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0628\u0627\u0644\u0643\u0627\u0645\u0644";
 
   const visitHistoryPayload = eligibleClients.map((client) => {
-    idsByVisitType[client.visitType].push(client.id);
+    const nextVisitDate =
+      client.visitType === VisitTypes.CUSTOM
+        ? addWorkDaysWith28DayMonth(currentWeekStart, normalizeCustomVisitIntervalDays(client.customVisitIntervalDays) || 7)
+        : calculateNextVisitDate(currentWeekStart, client.visitType);
+
+    const bucketKey = `${client.visitType}:${nextVisitDate.toISOString()}`;
+    if (!updateBuckets.has(bucketKey)) {
+      updateBuckets.set(bucketKey, {
+        visitType: client.visitType,
+        nextVisitDate,
+        ids: []
+      });
+    }
+    updateBuckets.get(bucketKey).ids.push(client.id);
 
     return {
       clientId: client.id,
@@ -375,19 +410,20 @@ async function handleRegionClients({ regionId, user, note }) {
       newStatus: ClientStatuses.ACTIVE,
       note: regionHandledNote,
       previousNextVisitDate: client.nextVisitDate,
-      newNextVisitDate: nextVisitDatesByType[client.visitType],
+      newNextVisitDate: nextVisitDate,
       visitDate: new Date()
     };
   });
 
   await prisma.$transaction(async (tx) => {
-    const clientUpdateOperations = Object.entries(idsByVisitType).flatMap(([visitType, ids]) =>
-      chunkArray(ids, 500).map((idBatch) =>
+    const clientUpdateOperations = Array.from(updateBuckets.values()).flatMap((bucket) =>
+      chunkArray(bucket.ids, 500).map((idBatch) =>
         tx.client.updateMany({
           where: { id: { in: idBatch } },
           data: {
             status: ClientStatuses.ACTIVE,
-            nextVisitDate: nextVisitDatesByType[visitType]
+            noAnswerCount: 0,
+            nextVisitDate: bucket.nextVisitDate
           }
         })
       )
@@ -414,6 +450,5 @@ module.exports = {
   getClientById,
   handleClientVisit,
   handleRegionClients,
-  enforceClientScope,
-  canRetryRejectedClient
+  enforceClientScope
 };

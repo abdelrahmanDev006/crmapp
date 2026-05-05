@@ -1,12 +1,37 @@
 export const VisitType = {
   WEEKLY: "أسبوعي",
-  BIWEEKLY: "كل أسبوعين",
+  BIWEEKLY: "أسبوعين",
   MONTHLY: "شهري",
-  CUSTOM: "شهري"
+  CUSTOM: "ميعاد آخر"
 };
 
 export const ClientStatus = {
   ACTIVE: "نشط",
   NO_ANSWER: "لم يرد",
-  REJECTED: "ساقط"
+  REJECTED: "كانسل"
 };
+
+export function getClientStatusLabel(status, noAnswerCount) {
+  if (status === "NO_ANSWER") {
+    const parsedCount = Number(noAnswerCount);
+
+    if (Number.isInteger(parsedCount) && parsedCount > 0) {
+      return `لم يرد ${parsedCount}`;
+    }
+  }
+
+  return ClientStatus[status] || status;
+}
+
+export function getVisitTypeLabel(type, customVisitIntervalDays) {
+  if (type === "CUSTOM") {
+    const parsed = Number(customVisitIntervalDays);
+    if (Number.isInteger(parsed) && parsed >= 1) {
+      return `ميعاد آخر (كل ${parsed} يوم)`;
+    }
+
+    return VisitType.CUSTOM;
+  }
+
+  return VisitType[type] || type;
+}

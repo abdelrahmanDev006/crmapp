@@ -14,6 +14,9 @@ export default function DashboardPage() {
   const [actionSuccessMessage, setActionSuccessMessage] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
   const [deletingRegionId, setDeletingRegionId] = useState(null);
+  const [updatingRegionId, setUpdatingRegionId] = useState(null);
+  const [editingRegionId, setEditingRegionId] = useState(null);
+  const [editingRegionName, setEditingRegionName] = useState("");
   const [showCreateRegionForm, setShowCreateRegionForm] = useState(false);
   const [newRegionName, setNewRegionName] = useState("");
 
@@ -90,6 +93,48 @@ export default function DashboardPage() {
     }
   }
 
+  function startEditingRegion(region) {
+    setEditingRegionId(region.id);
+    setEditingRegionName(region.name || "");
+    setActionError("");
+    setActionSuccessMessage("");
+  }
+
+  function cancelEditingRegion() {
+    setEditingRegionId(null);
+    setEditingRegionName("");
+  }
+
+  async function handleUpdateRegionName(region) {
+    const nextRegionName = String(editingRegionName || "").trim();
+
+    if (!nextRegionName) {
+      setActionSuccessMessage("");
+      setActionError("اسم المنطقة مطلوب");
+      return;
+    }
+
+    if (nextRegionName === String(region.name || "").trim()) {
+      cancelEditingRegion();
+      return;
+    }
+
+    setUpdatingRegionId(region.id);
+    setActionError("");
+    setActionSuccessMessage("");
+
+    try {
+      await regionsApi.update(region.id, { name: nextRegionName });
+      await loadSummary();
+      setActionSuccessMessage(`تم تحديث اسم المنطقة إلى "${nextRegionName}"`);
+      cancelEditingRegion();
+    } catch (err) {
+      setActionError(err.message || "تعذر تعديل اسم المنطقة");
+    } finally {
+      setUpdatingRegionId(null);
+    }
+  }
+
   if (loading) {
     return <div className="panel">جاري تحميل لوحة التحكم...</div>;
   }
@@ -114,7 +159,7 @@ export default function DashboardPage() {
           <strong>{data?.totals?.noAnswerClients || 0}</strong>
         </article>
         <article className="metric-card">
-          <h3>ساقط</h3>
+          <h3>كانسل</h3>
           <strong>{data?.totals?.rejectedClients || 0}</strong>
         </article>
       </section>
@@ -175,7 +220,39 @@ export default function DashboardPage() {
           <div className="regions-grid">
             {data?.regions?.map((region) => (
               <article key={region.id} className="region-card">
-                <h4>{region.name}</h4>
+                {isAdmin && editingRegionId === region.id ? (
+                  <form
+                    className="region-edit-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      handleUpdateRegionName(region);
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={editingRegionName}
+                      onChange={(event) => setEditingRegionName(event.target.value)}
+                      placeholder="اسم المنطقة"
+                      disabled={updatingRegionId === region.id}
+                      required
+                    />
+                    <div className="region-edit-actions">
+                      <button type="submit" className="primary-btn" disabled={updatingRegionId === region.id}>
+                        {updatingRegionId === region.id ? "جاري الحفظ..." : "حفظ"}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        disabled={updatingRegionId === region.id}
+                        onClick={cancelEditingRegion}
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <h4>{region.name}</h4>
+                )}
                 <ul>
                   <li>عدد العملاء: {region.clientsCount}</li>
                   <li>عدد المندوبين: {region.representativesCount}</li>
@@ -189,8 +266,18 @@ export default function DashboardPage() {
                   {isAdmin && (
                     <button
                       type="button"
+                      className="ghost-btn"
+                      disabled={updatingRegionId === region.id}
+                      onClick={() => startEditingRegion(region)}
+                    >
+                      تعديل الاسم
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      type="button"
                       className="danger-btn"
-                      disabled={deletingRegionId === region.id}
+                      disabled={deletingRegionId === region.id || updatingRegionId === region.id}
                       onClick={() => handleDeleteRegion(region)}
                     >
                       {deletingRegionId === region.id ? "جاري الحذف..." : "حذف المنطقة"}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { clientsApi, regionsApi } from "../api/crmApi";
 import { useAuth } from "../auth/AuthContext";
@@ -7,15 +7,16 @@ import StatusBadge from "../components/StatusBadge";
 import VisitTypeBadge from "../components/VisitTypeBadge";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { formatDate, formatDateWithWeekday } from "../utils/formatters";
-import { ClientStatus, VisitType } from "../utils/lookup";
+import { getClientStatusLabel, getVisitTypeLabel } from "../utils/lookup";
 
 const tabs = [
   { key: "ALL", label: "جميع العملاء" },
   { key: "WEEKLY", label: "أسبوعي" },
-  { key: "BIWEEKLY", label: "كل أسبوعين" },
+  { key: "BIWEEKLY", label: "أسبوعين" },
   { key: "MONTHLY", label: "شهري" },
+  { key: "CUSTOM", label: "ميعاد آخر" },
   { key: "NO_ANSWER", label: "لم يرد" },
-  { key: "REJECTED", label: "ساقط" }
+  { key: "REJECTED", label: "كانسل" }
 ];
 
 const initialCreateForm = {
@@ -27,6 +28,7 @@ const initialCreateForm = {
   products: "",
   price: "",
   visitType: "WEEKLY",
+  customVisitIntervalDays: "",
   status: "ACTIVE",
   nextVisitDate: ""
 };
@@ -106,6 +108,19 @@ function getLocationHref(locationUrl) {
   }
 }
 
+function getDialHref(phoneValue) {
+  const normalizedPhone = String(phoneValue || "")
+    .trim()
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/[^\d+]/g, "");
+
+  if (!normalizedPhone) {
+    return null;
+  }
+
+  return `tel:${normalizedPhone}`;
+}
+
 function isNewClient(createdAt, todayDateText) {
   const createdDateText = getDateTextOrNull(createdAt);
 
@@ -134,26 +149,278 @@ function getSafeExportText(value) {
   return /^[=+\-@]/.test(text) ? `'${text}` : text;
 }
 
+function parseCustomVisitIntervalDays(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 365) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function normalizeImportKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\u200f\u200e]/g, "")
+    .replace(/[()]/g, "")
+    .replace(/\s+/g, "");
+}
+
+function pickImportValue(row, candidateKeys) {
+  const normalizedEntries = Object.entries(row || {}).map(([key, value]) => [normalizeImportKey(key), value]);
+
+  for (const candidateKey of candidateKeys) {
+    const normalizedCandidateKey = normalizeImportKey(candidateKey);
+    const matchingEntry = normalizedEntries.find(([key]) => key === normalizedCandidateKey);
+
+    if (matchingEntry && String(matchingEntry[1] ?? "").trim()) {
+      return matchingEntry[1];
+    }
+  }
+
+  return "";
+}
+
+function normalizeVisitType(value) {
+  const text = String(value || "").trim();
+  const normalizedText = normalizeImportKey(text);
+
+  if (!normalizedText) {
+    return { visitType: "WEEKLY", customVisitIntervalDays: null };
+  }
+
+  if (["weekly", "أسبوعي", "اسبوعي"].map(normalizeImportKey).includes(normalizedText)) {
+    return { visitType: "WEEKLY", customVisitIntervalDays: null };
+  }
+
+  if (
+    ["biweekly", "كلأسبوعين", "كلاسبوعين", "أسبوعين", "اسبوعين"].map(normalizeImportKey).includes(normalizedText)
+  ) {
+    return { visitType: "BIWEEKLY", customVisitIntervalDays: null };
+  }
+
+  if (["monthly", "شهري"].map(normalizeImportKey).includes(normalizedText)) {
+    return { visitType: "MONTHLY", customVisitIntervalDays: null };
+  }
+
+  if (normalizedText.includes(normalizeImportKey("ميعاد آخر")) || normalizedText.includes(normalizeImportKey("معاد آخر"))) {
+    const customDaysMatch = text.match(/(\d+)/);
+    return {
+      visitType: "CUSTOM",
+      customVisitIntervalDays: customDaysMatch ? parseCustomVisitIntervalDays(customDaysMatch[1]) : null
+    };
+  }
+
+  return { visitType: "WEEKLY", customVisitIntervalDays: null };
+}
+
+function normalizeStatus(value) {
+  const normalizedText = normalizeImportKey(value);
+  const normalizedNoAnswerText = normalizeImportKey("لم يرد");
+  const normalizedRejectedKeywords = ["ساقط", "مرفوض", "كانسل", "ملغي", "مرتجع", "rejected", "cancelled"].map(normalizeImportKey);
+
+  if (
+    normalizedText.startsWith(normalizedNoAnswerText) ||
+    ["لميَرُد", "noanswer", "no_answer"].map(normalizeImportKey).includes(normalizedText)
+  ) {
+    return "NO_ANSWER";
+  }
+
+  if (normalizedRejectedKeywords.some((keyword) => normalizedText.startsWith(keyword))) {
+    return "REJECTED";
+  }
+
+  return "ACTIVE";
+}
+
+function formatImportDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeNextVisitDate(XLSX, value) {
+  if (!value && value !== 0) {
+    return "";
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return formatImportDate(value);
+  }
+
+  if (typeof value === "number") {
+    const parsedCode = XLSX.SSF.parse_date_code(value);
+
+    if (parsedCode) {
+      return formatImportDate(new Date(parsedCode.y, parsedCode.m - 1, parsedCode.d));
+    }
+  }
+
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return "";
+  }
+
+  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return text;
+  }
+
+  const slashMatch = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (slashMatch) {
+    const [, day, month, year] = slashMatch;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  const parsedDate = new Date(text);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  return formatImportDate(parsedDate);
+}
+
+function chunkArray(items, size) {
+  const chunks = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
+}
+
+function ClientTableRows({
+  clients,
+  todayDateText,
+  actionState,
+  onHandleClient,
+  isRepresentative
+}) {
+  return clients.map((client) => {
+    const clientIsNew = isNewClient(client.createdAt, todayDateText);
+    const locationHref = getLocationHref(client.locationUrl);
+    const dialHref = getDialHref(client.phone);
+    const isActionLoadingForClient = actionState.clientId === client.id;
+    const isHandleActionLoading = isActionLoadingForClient && actionState.outcome === "ACTIVE";
+    const isNoAnswerActionLoading = isActionLoadingForClient && actionState.outcome === "NO_ANSWER";
+
+    return (
+      <tr key={client.id}>
+        <td data-label="العميل">
+          <div className="client-name-cell">
+            <span className="client-name-text">{client.name}</span>
+            <span className={clientIsNew ? "client-freshness-pill client-freshness-new" : "client-freshness-pill client-freshness-old"}>
+              {clientIsNew ? "جديد" : "قديم"}
+            </span>
+          </div>
+        </td>
+        <td data-label="الهاتف">{client.phone}</td>
+        <td data-label="العنوان">{client.address}</td>
+        <td data-label="اللوكيشن">
+          {locationHref ? (
+            <a
+              href={locationHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="location-link-icon"
+              aria-label={`فتح لوكيشن العميل ${client.name}`}
+              title="فتح اللوكيشن"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" />
+                <circle cx="12" cy="10" r="2.6" />
+              </svg>
+            </a>
+          ) : (
+            <span className="location-link-missing">-</span>
+          )}
+        </td>
+        <td data-label="المنطقة">{client.region?.name}</td>
+        <td data-label="المنتجات">{client.products}</td>
+        <td data-label="السعر">{client.price || "-"}</td>
+        <td data-label="الزيارة">
+          <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
+        </td>
+        <td data-label="الحالة">
+          <StatusBadge status={client.status} noAnswerCount={client.noAnswerCount} />
+        </td>
+        <td data-label="الزيارة القادمة">
+          {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
+        </td>
+        <td className="actions-cell" data-label="الإجراءات">
+          {isRepresentative && (dialHref || locationHref) && (
+            <div className="rep-quick-actions" aria-label={`اختصارات العميل ${client.name}`}>
+              {dialHref && (
+                <a className="ghost-btn quick-action-btn" href={dialHref}>
+                  اتصال
+                </a>
+              )}
+              {locationHref && (
+                <a className="ghost-btn quick-action-btn" href={locationHref} target="_blank" rel="noopener noreferrer">
+                  خريطة
+                </a>
+              )}
+            </div>
+          )}
+          <Link className="ghost-btn" to={`/clients/${client.id}`}>
+            التفاصيل
+          </Link>
+          {client.status !== "REJECTED" && (
+            <button
+              type="button"
+              className="primary-btn"
+              disabled={isActionLoadingForClient}
+              onClick={() => onHandleClient(client, "ACTIVE")}
+            >
+              {isHandleActionLoading ? "جاري..." : "تم التعامل"}
+            </button>
+          )}
+          {client.status !== "REJECTED" && (
+            <button
+              type="button"
+              className="secondary-btn"
+              disabled={isActionLoadingForClient}
+              onClick={() => onHandleClient(client, "NO_ANSWER")}
+            >
+              {isNoAnswerActionLoading ? "جاري..." : "لم يرد"}
+            </button>
+          )}
+        </td>
+      </tr>
+    );
+  });
+}
+
 export default function ClientsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const isRepresentative = user?.role === "REPRESENTATIVE";
+  const importFileInputRef = useRef(null);
 
   const [regions, setRegions] = useState([]);
+  const [regionRepresentatives, setRegionRepresentatives] = useState({});
+  const [loadingRegionRepresentativeIds, setLoadingRegionRepresentativeIds] = useState({});
+  const [expandedRegionIds, setExpandedRegionIds] = useState({});
   const [activeTab, setActiveTab] = useState("ALL");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [selectedRegionId, setSelectedRegionId] = useState("");
   const [selectedDueDate, setSelectedDueDate] = useState("");
   const [data, setData] = useState({ items: [], totalPages: 1, total: 0, page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionState, setActionState] = useState({ clientId: null, outcome: null });
-  const [deleteClientId, setDeleteClientId] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createLoading, setCreateLoading] = useState(false);
   const [copyPhonesLoading, setCopyPhonesLoading] = useState(false);
   const [exportExcelLoading, setExportExcelLoading] = useState(false);
+  const [importExcelLoading, setImportExcelLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const todayDateText = getTodayInputDate();
   const debouncedSearch = useDebouncedValue(search, 350);
@@ -164,6 +431,74 @@ export default function ClientsPage() {
   const createNextVisitDateDisplay = createForm.nextVisitDate
     ? formatDateWithWeekday(`${createForm.nextVisitDate}T00:00:00.000Z`)
     : "يوم/شهر/سنة";
+  const groupedClientsByRegion = useMemo(() => {
+    const groupedMap = new Map();
+
+    data.items.forEach((client) => {
+      const regionId = client.region?.id || 0;
+
+      if (!groupedMap.has(regionId)) {
+        groupedMap.set(regionId, {
+          regionId,
+          regionCode: client.region?.code || Number.MAX_SAFE_INTEGER,
+          regionName: client.region?.name || "بدون منطقة",
+          clients: []
+        });
+      }
+
+      groupedMap.get(regionId).clients.push(client);
+    });
+
+    return Array.from(groupedMap.values()).sort((firstGroup, secondGroup) => {
+      if (firstGroup.regionCode !== secondGroup.regionCode) {
+        return firstGroup.regionCode - secondGroup.regionCode;
+      }
+
+      return firstGroup.regionName.localeCompare(secondGroup.regionName, "ar");
+    });
+  }, [data.items]);
+
+  const toggleRegionGroup = useCallback(async (regionId) => {
+    const shouldExpand = !expandedRegionIds[regionId];
+
+    setExpandedRegionIds((prev) => ({
+      ...prev,
+      [regionId]: shouldExpand
+    }));
+
+    if (!shouldExpand || !regionId || Object.prototype.hasOwnProperty.call(regionRepresentatives, regionId)) {
+      return;
+    }
+
+    setLoadingRegionRepresentativeIds((prev) => ({
+      ...prev,
+      [regionId]: true
+    }));
+
+    try {
+      const response = await regionsApi.getById(regionId);
+      const representatives = response.data?.item?.representatives || [];
+      const activeRepresentativeNames = representatives
+        .filter((representative) => representative.isActive !== false)
+        .map((representative) => representative.name)
+        .filter(Boolean);
+
+      setRegionRepresentatives((prev) => ({
+        ...prev,
+        [regionId]: activeRepresentativeNames
+      }));
+    } catch {
+      setRegionRepresentatives((prev) => ({
+        ...prev,
+        [regionId]: []
+      }));
+    } finally {
+      setLoadingRegionRepresentativeIds((prev) => ({
+        ...prev,
+        [regionId]: false
+      }));
+    }
+  }, [expandedRegionIds, regionRepresentatives]);
 
   const buildClientListParams = useCallback((targetPage = 1, targetPageSize = 20) => {
     const params = {
@@ -178,12 +513,8 @@ export default function ClientsPage() {
       Object.assign(params, queryFilters);
     }
 
-    if (isAdmin && selectedRegionId) {
-      params.regionId = Number(selectedRegionId);
-    }
-
     return params;
-  }, [debouncedSearch, hasDueDateFilter, isAdmin, queryFilters, selectedDueDate, selectedRegionId]);
+  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -204,10 +535,6 @@ export default function ClientsPage() {
   }, [loadClients]);
 
   useEffect(() => {
-    if (!isAdmin) {
-      return;
-    }
-
     let mounted = true;
 
     async function loadRegions() {
@@ -217,7 +544,7 @@ export default function ClientsPage() {
           setRegions(response.data.items || []);
         }
       } catch {
-        // Regions filter is optional on this page.
+        // Region metadata is only used to show grouping details.
       }
     }
 
@@ -226,7 +553,73 @@ export default function ClientsPage() {
     return () => {
       mounted = false;
     };
-  }, [isAdmin]);
+  }, []);
+
+  useEffect(() => {
+    if (groupedClientsByRegion.length === 0) {
+      setExpandedRegionIds({});
+      return;
+    }
+
+    setExpandedRegionIds((prev) => {
+      const nextState = {};
+
+      groupedClientsByRegion.forEach((group) => {
+        nextState[group.regionId] = prev[group.regionId] ?? false;
+      });
+
+      return nextState;
+    });
+  }, [groupedClientsByRegion]);
+
+  useEffect(() => {
+    const pendingRegionIds = groupedClientsByRegion
+      .map((group) => Number(group.regionId))
+      .filter((regionId) => regionId > 0)
+      .filter((regionId) => !Object.prototype.hasOwnProperty.call(regionRepresentatives, regionId))
+      .filter((regionId) => !loadingRegionRepresentativeIds[regionId]);
+
+    if (pendingRegionIds.length === 0) {
+      return;
+    }
+
+    setLoadingRegionRepresentativeIds((prev) => {
+      const nextState = { ...prev };
+      pendingRegionIds.forEach((regionId) => {
+        nextState[regionId] = true;
+      });
+      return nextState;
+    });
+
+    async function loadVisibleRegionRepresentatives() {
+      const responses = await Promise.allSettled(pendingRegionIds.map((regionId) => regionsApi.getById(regionId)));
+
+      const nextRepresentatives = {};
+      const nextLoadingState = {};
+
+      responses.forEach((response, index) => {
+        const regionId = pendingRegionIds[index];
+        nextLoadingState[regionId] = false;
+
+        if (response.status !== "fulfilled") {
+          nextRepresentatives[regionId] = [];
+          return;
+        }
+
+        const representatives = response.value.data?.item?.representatives || [];
+
+        nextRepresentatives[regionId] = representatives
+          .filter((representative) => representative.isActive !== false)
+          .map((representative) => representative.name)
+          .filter(Boolean);
+      });
+
+      setRegionRepresentatives((prev) => ({ ...prev, ...nextRepresentatives }));
+      setLoadingRegionRepresentativeIds((prev) => ({ ...prev, ...nextLoadingState }));
+    }
+
+    loadVisibleRegionRepresentatives();
+  }, [groupedClientsByRegion, loadingRegionRepresentativeIds, regionRepresentatives]);
 
   useEffect(() => {
     if (!loading && data.totalPages > 0 && page > data.totalPages) {
@@ -237,7 +630,8 @@ export default function ClientsPage() {
   async function handleClientOutcome(client, outcome) {
     const outcomeNoteByType = {
       ACTIVE: "تم التعامل مع العميل",
-      NO_ANSWER: "العميل لم يرد وتمت إعادة الجدولة لأسبوع"
+      NO_ANSWER: "العميل لم يرد وتمت إعادة الجدولة لأسبوع",
+      REJECTED: "تم تحويل العميل إلى قائمة الكانسل"
     };
 
     setActionState({ clientId: client.id, outcome });
@@ -257,26 +651,6 @@ export default function ClientsPage() {
     }
   }
 
-  async function handleDeleteClient(client) {
-    const confirmed = window.confirm(`هل تريد حذف العميل "${client.name}"؟`);
-    if (!confirmed) {
-      return;
-    }
-
-    setDeleteClientId(client.id);
-    setError("");
-    setInfoMessage("");
-
-    try {
-      await clientsApi.remove(client.id);
-      await loadClients();
-    } catch (err) {
-      setError(err.message || "تعذر حذف العميل");
-    } finally {
-      setDeleteClientId(null);
-    }
-  }
-
   async function handleCreateClient(event) {
     event.preventDefault();
     setCreateLoading(true);
@@ -284,6 +658,13 @@ export default function ClientsPage() {
     setInfoMessage("");
 
     try {
+      const customVisitIntervalDays =
+        createForm.visitType === "CUSTOM" ? parseCustomVisitIntervalDays(createForm.customVisitIntervalDays) : null;
+
+      if (createForm.visitType === "CUSTOM" && !customVisitIntervalDays) {
+        throw new Error("حدد عدد الأيام لنوع الزيارة (ميعاد آخر)");
+      }
+
       await clientsApi.create({
         name: createForm.name,
         phone: createForm.phone,
@@ -293,6 +674,7 @@ export default function ClientsPage() {
         products: createForm.products,
         price: createForm.price || undefined,
         visitType: createForm.visitType,
+        customVisitIntervalDays: customVisitIntervalDays || undefined,
         status: createForm.status,
         nextVisitDate: createForm.nextVisitDate ? `${createForm.nextVisitDate}T00:00:00.000Z` : undefined
       });
@@ -315,6 +697,26 @@ export default function ClientsPage() {
   function onDueDateChange(value) {
     setSelectedDueDate(value);
     setPage(1);
+  }
+
+  function applyRepresentativeQuickFilter(type) {
+    setSearch("");
+    setPage(1);
+
+    if (type === "TODAY_DUE") {
+      setSelectedDueDate(todayDateText);
+      setActiveTab("ALL");
+      return;
+    }
+
+    if (type === "NO_ANSWER") {
+      setSelectedDueDate("");
+      setActiveTab("NO_ANSWER");
+      return;
+    }
+
+    setSelectedDueDate("");
+    setActiveTab("ALL");
   }
 
   async function handleCopyAllPhones() {
@@ -400,8 +802,8 @@ export default function ClientsPage() {
         "المنطقة": getSafeExportText(client.region?.name || ""),
         "المنتجات": getSafeExportText(client.products),
         "السعر": getSafeExportText(client.price || ""),
-        "نوع الزيارة": getSafeExportText(VisitType[client.visitType] || client.visitType),
-        "الحالة": getSafeExportText(ClientStatus[client.status] || client.status),
+        "نوع الزيارة": getSafeExportText(getVisitTypeLabel(client.visitType, client.customVisitIntervalDays)),
+        "الحالة": getSafeExportText(getClientStatusLabel(client.status, client.noAnswerCount)),
         "الزيارة القادمة": client.status === "REJECTED" ? "-" : formatDate(client.nextVisitDate)
       }));
 
@@ -435,8 +837,143 @@ export default function ClientsPage() {
     }
   }
 
+  function handleImportButtonClick() {
+    importFileInputRef.current?.click();
+  }
+
+  async function handleImportExcel(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (!isAdmin) {
+      setError("فقط الأدمن يمكنه توريد العملاء.");
+      return;
+    }
+
+    if (regions.length === 0) {
+      setError("تعذر تحميل المناطق. حدّث الصفحة أولًا ثم حاول مرة أخرى.");
+      return;
+    }
+
+    setImportExcelLoading(true);
+    setError("");
+    setInfoMessage("");
+
+    try {
+      const XLSX = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+      const firstSheetName = workbook.SheetNames[0];
+
+      if (!firstSheetName) {
+        throw new Error("ملف الإكسيل فارغ.");
+      }
+
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, {
+        defval: "",
+        raw: false
+      });
+
+      if (!rows.length) {
+        throw new Error("ملف الإكسيل لا يحتوي على بيانات.");
+      }
+
+      const regionByName = new Map(regions.map((region) => [normalizeImportKey(region.name), region.id]));
+      const regionByCode = new Map(regions.map((region) => [String(region.code), region.id]));
+      const preparedRows = [];
+      const failedRows = [];
+
+      rows.forEach((row, index) => {
+        const rowNumber = index + 2;
+        const name = String(pickImportValue(row, ["اسم العميل", "العميل", "name"])).trim();
+        const phone = String(pickImportValue(row, ["رقم الهاتف", "الهاتف", "phone"])).trim();
+        const address = String(pickImportValue(row, ["العنوان", "address"])).trim();
+        const locationUrl = String(pickImportValue(row, ["اللوكيشن", "لوكيشن العميل", "location", "locationUrl"])).trim();
+        const products = String(pickImportValue(row, ["المنتجات", "products"])).trim();
+        const price = String(pickImportValue(row, ["السعر", "price"])).trim();
+        const regionName = String(pickImportValue(row, ["المنطقة", "region", "regionName"])).trim();
+        const regionCode = String(pickImportValue(row, ["كود المنطقة", "regionCode", "code"])).trim();
+        const visitTypeValue = pickImportValue(row, ["نوع الزيارة", "الزيارة", "visitType"]);
+        const statusValue = pickImportValue(row, ["الحالة", "status"]);
+        const nextVisitDateValue = pickImportValue(row, ["الزيارة القادمة", "تاريخ الزيارة القادمة", "nextVisitDate"]);
+        const customDaysValue = pickImportValue(row, ["كل كام يوم", "عدد الأيام", "customVisitIntervalDays"]);
+        const normalizedVisitType = normalizeVisitType(visitTypeValue);
+        const customVisitIntervalDays =
+          normalizedVisitType.visitType === "CUSTOM"
+            ? parseCustomVisitIntervalDays(customDaysValue) || normalizedVisitType.customVisitIntervalDays
+            : null;
+        const nextVisitDate = normalizeNextVisitDate(XLSX, nextVisitDateValue);
+        const regionId = regionByCode.get(regionCode) || regionByName.get(normalizeImportKey(regionName));
+
+        if (!name || !phone || !address || !products) {
+          failedRows.push(`السطر ${rowNumber}: بيانات أساسية ناقصة`);
+          return;
+        }
+
+        if (!regionId) {
+          failedRows.push(`السطر ${rowNumber}: المنطقة غير معروفة`);
+          return;
+        }
+
+        if (normalizedVisitType.visitType === "CUSTOM" && !customVisitIntervalDays) {
+          failedRows.push(`السطر ${rowNumber}: نوع "ميعاد آخر" يحتاج عدد أيام`);
+          return;
+        }
+
+        preparedRows.push({
+          name,
+          phone,
+          address,
+          locationUrl: locationUrl || undefined,
+          regionId,
+          products,
+          price: price || undefined,
+          visitType: normalizedVisitType.visitType,
+          customVisitIntervalDays: customVisitIntervalDays || undefined,
+          status: normalizeStatus(statusValue),
+          nextVisitDate: nextVisitDate ? `${nextVisitDate}T00:00:00.000Z` : undefined
+        });
+      });
+
+      if (!preparedRows.length) {
+        throw new Error(failedRows[0] || "لم يتم العثور على صفوف صالحة للتوريد.");
+      }
+
+      let importedCount = 0;
+
+      for (const chunk of chunkArray(preparedRows, 5)) {
+        const results = await Promise.allSettled(chunk.map((row) => clientsApi.create(row)));
+
+        results.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            importedCount += 1;
+            return;
+          }
+
+          const failedRowIndex = importedCount + failedRows.length + index + 2;
+          failedRows.push(`سطر تقريبي ${failedRowIndex}: ${result.reason?.message || "تعذر التوريد"}`);
+        });
+      }
+
+      await loadClients();
+
+      const failedSummary = failedRows.length ? ` تعذر توريد ${failedRows.length} صف.` : "";
+      const failedPreview = failedRows.length ? ` ${failedRows.slice(0, 5).join(" | ")}` : "";
+      setInfoMessage(`تم توريد ${importedCount} عميل بنجاح.${failedSummary}${failedPreview}`);
+    } catch (err) {
+      setError(err.message || "تعذر توريد ملف الإكسيل");
+    } finally {
+      setImportExcelLoading(false);
+    }
+  }
+
   return (
-    <div className="stack">
+    <div className={`stack clients-page${isRepresentative ? " clients-page-representative" : ""}`}>
       <section className="panel">
         <div className="panel-header split">
           <h3>العملاء</h3>
@@ -515,13 +1052,36 @@ export default function ClientsPage() {
               نوع الزيارة
               <select
                 value={createForm.visitType}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, visitType: event.target.value }))}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    visitType: event.target.value,
+                    customVisitIntervalDays:
+                      event.target.value === "CUSTOM" ? prev.customVisitIntervalDays || "3" : ""
+                  }))
+                }
               >
                 <option value="WEEKLY">أسبوعي</option>
-                <option value="BIWEEKLY">كل أسبوعين</option>
+                <option value="BIWEEKLY">أسبوعين</option>
                 <option value="MONTHLY">شهري</option>
+                <option value="CUSTOM">ميعاد آخر</option>
               </select>
             </label>
+            {createForm.visitType === "CUSTOM" && (
+              <label>
+                كل كام يوم؟
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={createForm.customVisitIntervalDays}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, customVisitIntervalDays: event.target.value }))
+                  }
+                  required
+                />
+              </label>
+            )}
             <label>
               الحالة
               <select
@@ -530,7 +1090,7 @@ export default function ClientsPage() {
               >
                 <option value="ACTIVE">نشط</option>
                 <option value="NO_ANSWER">لم يرد</option>
-                <option value="REJECTED">ساقط</option>
+                <option value="REJECTED">كانسل</option>
               </select>
             </label>
             <label>
@@ -574,6 +1134,36 @@ export default function ClientsPage() {
             </button>
           ))}
         </div>
+
+        {isRepresentative && (
+          <div className="rep-mobile-shortcuts" role="group" aria-label="اختصارات سريعة للمندوب">
+            <button
+              type="button"
+              className={
+                hasDueDateFilter && selectedDueDate === todayDateText
+                  ? "primary-btn rep-shortcut-btn"
+                  : "ghost-btn rep-shortcut-btn"
+              }
+              onClick={() => applyRepresentativeQuickFilter("TODAY_DUE")}
+            >
+              مستحق اليوم
+            </button>
+            <button
+              type="button"
+              className={!hasDueDateFilter && activeTab === "NO_ANSWER" ? "primary-btn rep-shortcut-btn" : "ghost-btn rep-shortcut-btn"}
+              onClick={() => applyRepresentativeQuickFilter("NO_ANSWER")}
+            >
+              لم يرد
+            </button>
+            <button
+              type="button"
+              className={!hasDueDateFilter && activeTab === "ALL" ? "primary-btn rep-shortcut-btn" : "ghost-btn rep-shortcut-btn"}
+              onClick={() => applyRepresentativeQuickFilter("ALL")}
+            >
+              كل العملاء
+            </button>
+          </div>
+        )}
 
         {hasDueDateFilter && (
           <div className="info-box">
@@ -628,23 +1218,6 @@ export default function ClientsPage() {
             </button>
           </div>
 
-          {isAdmin && (
-            <select
-              value={selectedRegionId}
-              onChange={(event) => {
-                setSelectedRegionId(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">كل المناطق</option>
-              {regions.map((region) => (
-                <option key={region.id} value={region.id}>
-                  {region.name}
-                </option>
-              ))}
-            </select>
-          )}
-
           <button type="button" className="secondary-btn" onClick={loadClients}>
             تحديث
           </button>
@@ -666,6 +1239,26 @@ export default function ClientsPage() {
           >
             {exportExcelLoading ? "جاري تجهيز الإكسيل..." : "تصدير إكسيل"}
           </button>
+          {isAdmin && (
+            <>
+              <input
+                ref={importFileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                style={{ display: "none" }}
+                onChange={handleImportExcel}
+              />
+              <button
+                type="button"
+                className="primary-btn"
+                disabled={importExcelLoading || loading}
+                onClick={handleImportButtonClick}
+                title="توريد العملاء من ملف إكسيل"
+              >
+                {importExcelLoading ? "جاري التوريد..." : "توريد"}
+              </button>
+            </>
+          )}
         </div>
 
         {error && <div className="error-box">{error}</div>}
@@ -676,114 +1269,70 @@ export default function ClientsPage() {
         ) : data.items.length === 0 ? (
           <div className="table-empty">لا توجد بيانات في هذا التصنيف</div>
         ) : (
-          <div className="table-wrapper">
-            <table className="mobile-table clients-table">
-              <thead>
-                <tr>
-                  <th>العميل</th>
-                  <th>الهاتف</th>
-                  <th>العنوان</th>
-                  <th>اللوكيشن</th>
-                  <th>المنطقة</th>
-                  <th>المنتجات</th>
-                  <th>السعر</th>
-                  <th>الزيارة</th>
-                  <th>الحالة</th>
-                  <th>الزيارة القادمة</th>
-                  <th>الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((client) => {
-                  const clientIsNew = isNewClient(client.createdAt, todayDateText);
-                  const locationHref = getLocationHref(client.locationUrl);
-                  const isActionLoadingForClient = actionState.clientId === client.id;
-                  const isHandleActionLoading = isActionLoadingForClient && actionState.outcome === "ACTIVE";
-                  const isNoAnswerActionLoading = isActionLoadingForClient && actionState.outcome === "NO_ANSWER";
+          <div className="clients-region-groups">
+            {groupedClientsByRegion.map((group) => {
+              const representativeNames = regionRepresentatives[group.regionId] || [];
+              const isLoadingRepresentatives = Boolean(loadingRegionRepresentativeIds[group.regionId]);
+              const isExpanded = Boolean(expandedRegionIds[group.regionId]);
 
-                  return (
-                    <tr key={client.id}>
-                      <td data-label="\u0627\u0644\u0639\u0645\u064a\u0644">
-                        <div className="client-name-cell">
-                          <span className="client-name-text">{client.name}</span>
-                          <span className={clientIsNew ? "client-freshness-pill client-freshness-new" : "client-freshness-pill client-freshness-old"}>
-                            {clientIsNew ? "جديد" : "قديم"}
-                          </span>
-                        </div>
-                      </td>
-                      <td data-label="\u0627\u0644\u0647\u0627\u062a\u0641">{client.phone}</td>
-                      <td data-label="\u0627\u0644\u0639\u0646\u0648\u0627\u0646">{client.address}</td>
-                      <td data-label="\u0627\u0644\u0644\u0648\u0643\u064a\u0634\u0646">
-                        {locationHref ? (
-                          <a
-                            href={locationHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="location-link-icon"
-                            aria-label={`فتح لوكيشن العميل ${client.name}`}
-                            title="فتح اللوكيشن"
-                          >
-                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                              <path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" />
-                              <circle cx="12" cy="10" r="2.6" />
-                            </svg>
-                          </a>
-                        ) : (
-                          <span className="location-link-missing">-</span>
-                        )}
-                      </td>
-                      <td data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">{client.region?.name}</td>
-                      <td data-label="\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a">{client.products}</td>
-                      <td data-label="\u0627\u0644\u0633\u0639\u0631">{client.price || "-"}</td>
-                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629">
-                        <VisitTypeBadge type={client.visitType} />
-                      </td>
-                      <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">
-                        <StatusBadge status={client.status} />
-                      </td>
-                      <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">
-                        {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
-                      </td>
-                      <td className="actions-cell" data-label="\u0627\u0644\u0625\u062c\u0631\u0627\u0621\u0627\u062a">
-                        <Link className="ghost-btn" to={`/clients/${client.id}`}>
-                          التفاصيل
-                        </Link>
-                        {client.status !== "REJECTED" && (
-                          <button
-                            type="button"
-                            className="primary-btn"
-                            disabled={isActionLoadingForClient}
-                            onClick={() => handleClientOutcome(client, "ACTIVE")}
-                          >
-                            {isHandleActionLoading ? "جاري..." : "تم التعامل"}
-                          </button>
-                        )}
-                        {client.status !== "REJECTED" && (
-                          <button
-                            type="button"
-                            className="secondary-btn"
-                            disabled={isActionLoadingForClient}
-                            onClick={() => handleClientOutcome(client, "NO_ANSWER")}
-                          >
-                            {isNoAnswerActionLoading ? "جاري..." : "لم يرد"}
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            className="danger-btn"
-                            disabled={deleteClientId === client.id}
-                            onClick={() => handleDeleteClient(client)}
-                          >
-                            {deleteClientId === client.id ? "جاري الحذف..." : "حذف"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              return (
+                <section key={group.regionId || group.regionName} className="clients-region-group">
+                  <div className="clients-region-group-header">
+                    <div className="clients-region-group-meta">
+                      <h4>{group.regionName}</h4>
+                      <p>
+                        {isLoadingRepresentatives
+                          ? "جاري تحميل بيانات المندوب..."
+                          : representativeNames.length > 0
+                          ? `المندوب: ${representativeNames.join(" - ")}`
+                          : "لا يوجد مندوب محدد لهذه المنطقة"}
+                      </p>
+                    </div>
+                    <div className="clients-region-group-actions">
+                      <strong>{group.clients.length} عميل</strong>
+                      <button
+                        type="button"
+                        className={isExpanded ? "secondary-btn clients-region-toggle" : "primary-btn clients-region-toggle"}
+                        onClick={() => toggleRegionGroup(group.regionId)}
+                      >
+                        {isExpanded ? "إخفاء" : "عرض"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="table-wrapper">
+                      <table className="mobile-table clients-table">
+                        <thead>
+                          <tr>
+                            <th>العميل</th>
+                            <th>الهاتف</th>
+                            <th>العنوان</th>
+                            <th>اللوكيشن</th>
+                            <th>المنطقة</th>
+                            <th>المنتجات</th>
+                            <th>السعر</th>
+                            <th>الزيارة</th>
+                            <th>الحالة</th>
+                            <th>الزيارة القادمة</th>
+                            <th>الإجراءات</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <ClientTableRows
+                            clients={group.clients}
+                            todayDateText={todayDateText}
+                            actionState={actionState}
+                            onHandleClient={handleClientOutcome}
+                            isRepresentative={isRepresentative}
+                          />
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
 

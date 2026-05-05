@@ -1,3 +1,3 @@
 UPDATE "Client"
 SET "visitType" = 'MONTHLY'
-WHERE "visitType" = 'CUSTOM';
+WHERE "visitType"::text = 'CUSTOM';

@@ -71,7 +71,7 @@ export default function RegionPage() {
 
       if (skippedRejectedCount > 0) {
         setInfoMessage(
-          `تم تحديث ${updatedCount} عميل. تم تخطي ${skippedRejectedCount} عميل ساقط لأن موعد إعادة المحاولة لم يحن بعد.`
+          `تم تحديث ${updatedCount} عميل. تم تخطي ${skippedRejectedCount} عميل في قائمة الكانسل.`
         );
       } else {
         setInfoMessage(`تم تحديث ${updatedCount} عميل في المنطقة.`);
@@ -146,17 +146,20 @@ export default function RegionPage() {
                       <td data-label="\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a">{client.products}</td>
                       <td data-label="\u0627\u0644\u0633\u0639\u0631">{client.price || "-"}</td>
                       <td data-label="\u0646\u0648\u0639 \u0627\u0644\u0632\u064a\u0627\u0631\u0629">
-                        <VisitTypeBadge type={client.visitType} />
+                        <VisitTypeBadge
+                          type={client.visitType}
+                          customVisitIntervalDays={client.customVisitIntervalDays}
+                        />
                       </td>
                       <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">
-                        <StatusBadge status={client.status} />
+                        <StatusBadge status={client.status} noAnswerCount={client.noAnswerCount} />
                       </td>
                       <td data-label="\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629">
                         {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
                       </td>
                       <td className="actions-cell" data-label="\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644">
-                        <Link to={`/clients/${client.id}`} className="secondary-btn region-details-btn">
-                          التفاصيل
+                        <Link to={`/clients/${client.id}`} className="ghost-btn region-details-btn">
+                          عرض
                         </Link>
                       </td>
                     </tr>

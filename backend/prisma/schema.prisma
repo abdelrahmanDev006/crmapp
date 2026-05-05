@@ -64,7 +64,9 @@ model Client {
   regionId      Int
   region        Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
   visitType     VisitType
+  customVisitIntervalDays Int?
   status        ClientStatus @default(ACTIVE)
+  noAnswerCount Int          @default(0)
   nextVisitDate DateTime
   createdById   Int?
   createdBy     User?        @relation("ClientCreator", fields: [createdById], references: [id], onDelete: SetNull)

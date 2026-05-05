@@ -1,5 +1,12 @@
-import { VisitType } from "../utils/lookup";
+import { getVisitTypeLabel } from "../utils/lookup";
 
-export default function VisitTypeBadge({ type }) {
-  return <span className="visit-pill">{VisitType[type] || type}</span>;
+export default function VisitTypeBadge({ type, customVisitIntervalDays = null }) {
+  const label = getVisitTypeLabel(type, customVisitIntervalDays);
+  const badgeClassName = type === "CUSTOM" ? "visit-pill visit-pill-custom" : "visit-pill";
+
+  return (
+    <span className={badgeClassName} title={label}>
+      {label}
+    </span>
+  );
 }

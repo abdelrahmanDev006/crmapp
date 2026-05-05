@@ -57,6 +57,7 @@ function buildClientPayload(index, regions, adminId) {
     price,
     visitType,
     status,
+    noAnswerCount: status === ClientStatus.NO_ANSWER ? 1 : 0,
     nextVisitDate: getSafeWorkDate(visitOffset),
     regionId: region.id,
     createdById: adminId

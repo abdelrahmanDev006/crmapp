@@ -27,7 +27,7 @@ const apiBaseUrl = configuredApiUrl || (import.meta.env.DEV ? "http://localhost:
 
 const http = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 15000,
+  timeout: 30000,
   withCredentials: true
 });
 

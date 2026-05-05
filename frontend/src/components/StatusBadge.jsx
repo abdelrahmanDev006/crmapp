@@ -1,4 +1,4 @@
-import { ClientStatus } from "../utils/lookup";
+import { getClientStatusLabel } from "../utils/lookup";
 
 const statusClassMap = {
   ACTIVE: "status-pill status-active",
@@ -6,6 +6,6 @@ const statusClassMap = {
   REJECTED: "status-pill status-rejected"
 };
 
-export default function StatusBadge({ status }) {
-  return <span className={statusClassMap[status] || "status-pill"}>{ClientStatus[status] || status}</span>;
+export default function StatusBadge({ status, noAnswerCount }) {
+  return <span className={statusClassMap[status] || "status-pill"}>{getClientStatusLabel(status, noAnswerCount)}</span>;
 }
