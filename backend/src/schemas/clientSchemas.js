@@ -71,7 +71,8 @@ const createClientSchema = z
     visitType: z.enum(visitTypeValues),
     customVisitIntervalDays: customVisitIntervalDaysSchema,
     status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
-    nextVisitDate: dateInputSchema.optional()
+    nextVisitDate: dateInputSchema.optional(),
+    note: z.string().max(500).optional()
   })
   .superRefine((data, ctx) => {
     if (data.visitType === VisitTypes.CUSTOM && !Number.isInteger(data.customVisitIntervalDays)) {
@@ -94,7 +95,8 @@ const updateClientSchema = z.object({
   visitType: z.enum(visitTypeValues).optional(),
   customVisitIntervalDays: customVisitIntervalDaysSchema,
   status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
-  nextVisitDate: dateInputSchema.optional()
+  nextVisitDate: dateInputSchema.optional(),
+  note: z.string().max(500).optional()
 });
 
 const clientQuerySchema = z.object({

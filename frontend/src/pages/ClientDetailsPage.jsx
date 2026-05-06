@@ -195,7 +195,8 @@ export default function ClientDetailsPage() {
       editPrice !== (client.price || "") ||
       editNextVisitDate !== currentNextVisitInputDate ||
       (client.visitType === "CUSTOM" &&
-        editCustomVisitIntervalDays !== String(client.customVisitIntervalDays || ""))
+        editCustomVisitIntervalDays !== String(client.customVisitIntervalDays || "")) ||
+      note.trim().length > 0
     );
   }, [
     client,
@@ -259,8 +260,10 @@ export default function ClientDetailsPage() {
         products: editProducts,
         price: editPrice,
         customVisitIntervalDays: client.visitType === "CUSTOM" ? customVisitIntervalDays : undefined,
-        nextVisitDate: editNextVisitDate ? `${editNextVisitDate}T00:00:00.000Z` : undefined
+        nextVisitDate: editNextVisitDate ? `${editNextVisitDate}T00:00:00.000Z` : undefined,
+        note: note.trim() || undefined
       });
+      setNote("");
       setInfoMessage("تم تحديث بيانات العميل بنجاح");
       await loadClient();
     } catch (err) {
@@ -500,6 +503,15 @@ export default function ClientDetailsPage() {
             onClick={() => submitOutcome("REJECTED")}
           >
             كانسل
+          </button>
+          <button
+            type="button"
+            className="ghost-btn full-width"
+            disabled={actionLoading || !note.trim()}
+            onClick={() => submitOutcome(client.status)}
+            style={{ gridColumn: "1 / -1", marginTop: "4px" }}
+          >
+            حفظ الملاحظة
           </button>
         </div>
 

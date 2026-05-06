@@ -255,12 +255,32 @@ const updateClient = asyncHandler(async (req, res) => {
     updatePayload.price = normalizedPrice || null;
   }
 
-  const updated = await prisma.client.update({
-    where: { id: clientId },
-    data: updatePayload,
-    include: {
-      region: true
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedClient = await tx.client.update({
+      where: { id: clientId },
+      data: updatePayload,
+      include: {
+        region: true
+      }
+    });
+
+    if (req.body.note && String(req.body.note).trim() !== "") {
+      await tx.visitHistory.create({
+        data: {
+          clientId: updatedClient.id,
+          visitedById: req.user.id,
+          previousStatus: existing.status,
+          newStatus: updatedClient.status,
+          note: String(req.body.note).trim(),
+          previousNextVisitDate: existing.nextVisitDate,
+          newNextVisitDate: updatedClient.nextVisitDate,
+          visitDate: new Date()
+        }
+      });
+      updatedClient.visits = [{ note: String(req.body.note).trim() }];
     }
+
+    return updatedClient;
   });
 
   res.json({
