@@ -504,15 +504,6 @@ export default function ClientDetailsPage() {
           >
             كانسل
           </button>
-          <button
-            type="button"
-            className="ghost-btn full-width"
-            disabled={actionLoading || !note.trim()}
-            onClick={() => submitOutcome(client.status)}
-            style={{ gridColumn: "1 / -1", marginTop: "4px" }}
-          >
-            حفظ الملاحظة
-          </button>
         </div>
 
         {infoMessage && <div className="info-box">{infoMessage}</div>}
