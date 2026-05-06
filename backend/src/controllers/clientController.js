@@ -236,6 +236,7 @@ const updateClient = asyncHandler(async (req, res) => {
     customVisitIntervalDays: finalCustomVisitIntervalDays,
     ...(req.body.nextVisitDate ? { nextVisitDate: normalizeToWorkDate(req.body.nextVisitDate) } : {})
   };
+  delete updatePayload.note;
 
   if (Object.prototype.hasOwnProperty.call(req.body, "status")) {
     if (req.body.status === ClientStatuses.NO_ANSWER) {

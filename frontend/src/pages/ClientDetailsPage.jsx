@@ -208,7 +208,8 @@ export default function ClientDetailsPage() {
     editPhone,
     editPrice,
     editProducts,
-    editRegionId
+    editRegionId,
+    note
   ]);
 
   async function submitOutcome(outcome) {
