@@ -1493,7 +1493,6 @@ export default function ClientsPage() {
                       </p>
                     </div>
                     <div className="clients-region-group-actions">
-                      {hasDueDateFilter && (
                         <button
                           type="button"
                           className="secondary-btn"
@@ -1502,7 +1501,6 @@ export default function ClientsPage() {
                         >
                           🖨️ طباعة
                         </button>
-                      )}
                       <strong>{group.clients.length} عميل</strong>
                       <button
                         type="button"
