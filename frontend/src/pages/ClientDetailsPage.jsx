@@ -340,6 +340,10 @@ export default function ClientDetailsPage() {
             <strong>{client.price || "-"}</strong>
           </div>
           <div>
+            <span>الحالة</span>
+            <StatusBadge status={client.status} noAnswerCount={client.noAnswerCount} />
+          </div>
+          <div>
             <span>نوع الزيارة</span>
             <VisitTypeBadge
               type={client.visitType}
@@ -463,10 +467,10 @@ export default function ClientDetailsPage() {
             }}
             disabled={actionLoading}
           >
-            <option value="WEEKLY">الزيارة القادمة: أسبوعي</option>
-            <option value="BIWEEKLY">الزيارة القادمة: أسبوعين</option>
-            <option value="MONTHLY">الزيارة القادمة: شهري</option>
-            <option value="CUSTOM">الزيارة القادمة: ميعاد آخر</option>
+            <option value="WEEKLY">نوع الزيارة: أسبوعي</option>
+            <option value="BIWEEKLY">نوع الزيارة: أسبوعين</option>
+            <option value="MONTHLY">نوع الزيارة: شهري</option>
+            <option value="CUSTOM">نوع الزيارة: ميعاد آخر</option>
           </select>
           {nextVisitType === "CUSTOM" && (
             <input

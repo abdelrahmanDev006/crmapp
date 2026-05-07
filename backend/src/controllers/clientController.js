@@ -7,7 +7,9 @@ const { createHttpError } = require("../utils/httpError");
 const {
   listClients,
   getClientById,
-  handleClientVisit
+  handleClientVisit,
+  approveClientVisit,
+  rejectClientVisit
 } = require("../services/clientService");
 
 function normalizeClientName(value) {
@@ -327,11 +329,29 @@ const deleteClient = asyncHandler(async (req, res) => {
   });
 });
 
+const approveVisit = asyncHandler(async (req, res) => {
+  const updatedClient = await approveClientVisit(req.params.id, req.user);
+  res.json({
+    message: "تم اعتماد الزيارة بنجاح",
+    item: updatedClient
+  });
+});
+
+const rejectVisit = asyncHandler(async (req, res) => {
+  const updatedClient = await rejectClientVisit(req.params.id, req.user);
+  res.json({
+    message: "تم رفض الزيارة وإعادة العميل للحالة النشطة",
+    item: updatedClient
+  });
+});
+
 module.exports = {
   listClientRecords,
   getClientDetails,
   createClient,
   updateClient,
   handleClient,
-  deleteClient
+  deleteClient,
+  approveVisit,
+  rejectVisit
 };

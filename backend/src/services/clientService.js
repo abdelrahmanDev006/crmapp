@@ -313,6 +313,20 @@ async function handleClientVisit({
   const generatedNote =
     [note, statusRecoveryNote, visitTypeChangeNote, customIntervalChangeNote].filter(Boolean).join(" | ") || null;
 
+  if (user.role === Roles.REPRESENTATIVE) {
+    return prisma.client.update({
+      where: { id: existingClient.id },
+      data: {
+        status: ClientStatuses.PENDING_APPROVAL,
+        pendingOutcome: newStatus,
+        pendingNote: generatedNote,
+        pendingVisitType: nextVisitType,
+        pendingCustomVisitIntervalDays: nextCustomVisitIntervalDays
+      },
+      include: clientWithRelations
+    });
+  }
+
   return prisma.$transaction(async (tx) => {
     const updatedClient = await tx.client.update({
       where: { id: existingClient.id },
@@ -321,7 +335,12 @@ async function handleClientVisit({
         noAnswerCount: newNoAnswerCount,
         nextVisitDate: newNextVisitDate,
         visitType: nextVisitType,
-        customVisitIntervalDays: nextCustomVisitIntervalDays
+        customVisitIntervalDays: nextCustomVisitIntervalDays,
+        // Clear pending fields if they were set
+        pendingOutcome: null,
+        pendingNote: null,
+        pendingVisitType: null,
+        pendingCustomVisitIntervalDays: null
       },
       include: clientWithRelations
     });
@@ -340,6 +359,55 @@ async function handleClientVisit({
     });
 
     return updatedClient;
+  });
+}
+
+async function approveClientVisit(clientId, user) {
+  if (user.role !== Roles.ADMIN) {
+    throw createHttpError(403, "ليس لديك صلاحية لاعتماد الزيارات");
+  }
+
+  const client = await prisma.client.findUnique({
+    where: { id: Number(clientId) }
+  });
+
+  if (!client || client.status !== ClientStatuses.PENDING_APPROVAL) {
+    throw createHttpError(400, "لا يوجد زيارة معلقة لاعتمادها");
+  }
+
+  return handleClientVisit({
+    clientId: client.id,
+    user, // Admin user
+    outcome: client.pendingOutcome,
+    note: client.pendingNote,
+    visitType: client.pendingVisitType,
+    customVisitIntervalDays: client.pendingCustomVisitIntervalDays
+  });
+}
+
+async function rejectClientVisit(clientId, user) {
+  if (user.role !== Roles.ADMIN) {
+    throw createHttpError(403, "ليس لديك صلاحية لرفض الزيارات");
+  }
+
+  const client = await prisma.client.findUnique({
+    where: { id: Number(clientId) }
+  });
+
+  if (!client || client.status !== ClientStatuses.PENDING_APPROVAL) {
+    throw createHttpError(400, "لا يوجد زيارة معلقة لرفضها");
+  }
+
+  return prisma.client.update({
+    where: { id: client.id },
+    data: {
+      status: ClientStatuses.ACTIVE, // Revert to active
+      pendingOutcome: null,
+      pendingNote: null,
+      pendingVisitType: null,
+      pendingCustomVisitIntervalDays: null
+    },
+    include: clientWithRelations
   });
 }
 
@@ -462,5 +530,7 @@ module.exports = {
   getClientById,
   handleClientVisit,
   handleRegionClients,
-  enforceClientScope
+  enforceClientScope,
+  approveClientVisit,
+  rejectClientVisit
 };

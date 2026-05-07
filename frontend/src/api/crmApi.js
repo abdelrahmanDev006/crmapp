@@ -25,6 +25,8 @@ export const clientsApi = {
   create: (payload) => http.post("/clients", payload),
   update: (id, payload) => http.patch(`/clients/${id}`, payload),
   handle: (id, payload) => http.post(`/clients/${id}/handle`, payload),
+  approve: (id) => http.post(`/clients/${id}/approve`),
+  reject: (id) => http.post(`/clients/${id}/reject`),
   remove: (id) => http.delete(`/clients/${id}`)
 };
 

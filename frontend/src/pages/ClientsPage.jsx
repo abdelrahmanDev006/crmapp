@@ -16,7 +16,8 @@ const tabs = [
   { key: "MONTHLY", label: "شهري" },
   { key: "CUSTOM", label: "ميعاد آخر" },
   { key: "NO_ANSWER", label: "لم يرد" },
-  { key: "REJECTED", label: "كانسل" }
+  { key: "REJECTED", label: "كانسل" },
+  { key: "PENDING", label: "في انتظار الاعتماد" }
 ];
 
 const initialCreateForm = {
@@ -47,6 +48,10 @@ function mapTabToFilters(tab) {
 
   if (tab === "REJECTED") {
     return { status: "REJECTED" };
+  }
+
+  if (tab === "PENDING") {
+    return { status: "PENDING_APPROVAL" };
   }
 
   return {
@@ -301,6 +306,8 @@ function ClientTableRows({
   todayDateText,
   actionState,
   onHandleClient,
+  onApproveVisit,
+  onRejectVisit,
   isRepresentative
 }) {
   return clients.map((client) => {
@@ -310,10 +317,13 @@ function ClientTableRows({
     const isActionLoadingForClient = actionState.clientId === client.id;
     const isHandleActionLoading = isActionLoadingForClient && actionState.outcome === "ACTIVE";
     const isNoAnswerActionLoading = isActionLoadingForClient && actionState.outcome === "NO_ANSWER";
+    const isApproveLoading = isActionLoadingForClient && actionState.outcome === "APPROVE";
+    const isRejectLoading = isActionLoadingForClient && actionState.outcome === "REJECT";
+    const isCancelActionLoading = isActionLoadingForClient && actionState.outcome === "REJECTED";
 
     return (
       <tr key={client.id}>
-        <td data-label="العميل">
+        <td className="col-name" data-label="العميل">
           <div className="client-name-cell">
             <span className="client-name-text">{client.name}</span>
             <span className={clientIsNew ? "client-freshness-pill client-freshness-new" : "client-freshness-pill client-freshness-old"}>
@@ -321,9 +331,9 @@ function ClientTableRows({
             </span>
           </div>
         </td>
-        <td data-label="الهاتف">{client.phone}</td>
-        <td data-label="العنوان">{client.address}</td>
-        <td data-label="اللوكيشن">
+        <td className="col-phone" data-label="الهاتف">{client.phone}</td>
+        <td className="col-address" data-label="العنوان">{client.address}</td>
+        <td className="col-location" data-label="اللوكيشن">
           {locationHref ? (
             <a
               href={locationHref}
@@ -342,21 +352,25 @@ function ClientTableRows({
             <span className="location-link-missing">-</span>
           )}
         </td>
-        <td data-label="المنتجات">{client.products}</td>
-        <td data-label="السعر">{client.price || "-"}</td>
-        <td data-label="الزيارة">
+
+        <td className="col-products" data-label="المنتجات">{client.products}</td>
+        <td className="col-price" data-label="السعر">{client.price || "-"}</td>
+
+        {!isRepresentative && (
+          <>
+          </>
+        )}
+        <td className="col-visit-type" data-label="الزيارة">
           <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
         </td>
-        <td data-label="الحالة">
-          <StatusBadge status={client.status} noAnswerCount={client.noAnswerCount} />
-        </td>
-        <td data-label="الزيارة القادمة">
+        <td className="col-next-visit" data-label="الزيارة القادمة">
           {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
         </td>
-        <td data-label="الملاحظات" className="details-note-text" title={client.visits?.[0]?.note || ""}>
+        <td className="col-notes" data-label="الملاحظات" className="details-note-text" title={client.visits?.[0]?.note || ""}>
           {client.visits?.[0]?.note || "-"}
         </td>
-        <td className="actions-cell" data-label="الإجراءات">
+
+        <td className="actions-cell col-actions" data-label="الإجراءات">
           {isRepresentative && (dialHref || locationHref) && (
             <div className="rep-quick-actions" aria-label={`اختصارات العميل ${client.name}`}>
               {dialHref && (
@@ -371,28 +385,64 @@ function ClientTableRows({
               )}
             </div>
           )}
-          <Link className="ghost-btn" to={`/clients/${client.id}`}>
-            التفاصيل
-          </Link>
-          {client.status !== "REJECTED" && (
-            <button
-              type="button"
-              className="primary-btn"
-              disabled={isActionLoadingForClient}
-              onClick={() => onHandleClient(client, "ACTIVE")}
-            >
-              {isHandleActionLoading ? "جاري..." : "تم التعامل"}
-            </button>
+
+          {!isRepresentative && (
+            <Link className="ghost-btn" to={`/clients/${client.id}`}>
+              التفاصيل
+            </Link>
           )}
-          {client.status !== "REJECTED" && (
-            <button
-              type="button"
-              className="secondary-btn"
-              disabled={isActionLoadingForClient}
-              onClick={() => onHandleClient(client, "NO_ANSWER")}
-            >
-              {isNoAnswerActionLoading ? "جاري..." : "لم يرد"}
-            </button>
+
+          {!isRepresentative && client.status === "PENDING_APPROVAL" && (
+            <div className="admin-approval-actions" style={{ display: "flex", gap: "5px" }}>
+              <button
+                type="button"
+                className="primary-btn"
+                disabled={isActionLoadingForClient}
+                onClick={() => onApproveVisit(client)}
+                style={{ background: "#28a745", borderColor: "#28a745" }}
+              >
+                {isApproveLoading ? "..." : "اعتماد"}
+              </button>
+              <button
+                type="button"
+                className="danger-btn"
+                disabled={isActionLoadingForClient}
+                onClick={() => onRejectVisit(client)}
+              >
+                {isRejectLoading ? "..." : "رفض"}
+              </button>
+            </div>
+          )}
+
+          {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && (
+            <>
+              <button
+                type="button"
+                className="primary-btn"
+                disabled={isActionLoadingForClient}
+                onClick={() => onHandleClient(client, "ACTIVE")}
+              >
+                {isHandleActionLoading ? "جاري..." : "تم التعامل"}
+              </button>
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={isActionLoadingForClient}
+                onClick={() => onHandleClient(client, "NO_ANSWER")}
+              >
+                {isNoAnswerActionLoading ? "جاري..." : "لم يرد"}
+              </button>
+              {isRepresentative && (
+                <button
+                  type="button"
+                  className="danger-btn"
+                  disabled={isActionLoadingForClient}
+                  onClick={() => onHandleClient(client, "REJECTED")}
+                >
+                  {isCancelActionLoading ? "جاري..." : "كانسل"}
+                </button>
+              )}
+            </>
           )}
         </td>
       </tr>
@@ -503,10 +553,10 @@ export default function ClientsPage() {
     }
   }, [expandedRegionIds, regionRepresentatives]);
 
-  const buildClientListParams = useCallback((targetPage = 1, targetPageSize = 20) => {
+  const buildClientListParams = useCallback(() => {
     const params = {
-      page: targetPage,
-      pageSize: targetPageSize,
+      page: 1,
+      pageSize: 50000,
       search: debouncedSearch || undefined
     };
 
@@ -524,14 +574,16 @@ export default function ClientsPage() {
     setError("");
 
     try {
-      const response = await clientsApi.list(buildClientListParams(page, 20));
+      const response = await clientsApi.list(buildClientListParams());
       setData(response.data);
+      // Reset to first page when data changes (e.g. search/filter)
+      setPage(1);
     } catch (err) {
       setError(err.message || "تعذر تحميل العملاء");
     } finally {
       setLoading(false);
     }
-  }, [buildClientListParams, page]);
+  }, [buildClientListParams]);
 
   useEffect(() => {
     loadClients();
@@ -630,23 +682,54 @@ export default function ClientsPage() {
     }
   }, [data.totalPages, loading, page]);
 
-  async function handleClientOutcome(client, outcome) {
-    const outcomeNoteByType = {
-      ACTIVE: "تم التعامل مع العميل",
-      NO_ANSWER: "العميل لم يرد وتمت إعادة الجدولة لأسبوع",
-      REJECTED: "تم تحويل العميل إلى قائمة الكانسل"
-    };
+  async function handleApproveVisit(client) {
+    if (actionState.clientId) return;
+    setActionState({ clientId: client.id, outcome: "APPROVE" });
+    setError("");
+    setInfoMessage("");
+    try {
+      await clientsApi.approve(client.id);
+      await loadClients();
+      setInfoMessage("تم اعتماد الزيارة بنجاح.");
+    } catch (err) {
+      setError(err.message || "تعذر اعتماد الزيارة");
+    } finally {
+      setActionState({ clientId: null, outcome: null });
+    }
+  }
 
+  async function handleRejectVisit(client) {
+    if (actionState.clientId) return;
+    setActionState({ clientId: client.id, outcome: "REJECT" });
+    setError("");
+    setInfoMessage("");
+    try {
+      await clientsApi.reject(client.id);
+      await loadClients();
+      setInfoMessage("تم رفض الزيارة بنجاح.");
+    } catch (err) {
+      setError(err.message || "تعذر رفض الزيارة");
+    } finally {
+      setActionState({ clientId: null, outcome: null });
+    }
+  }
+
+  async function handleClientOutcome(client, outcome) {
     setActionState({ clientId: client.id, outcome });
     setError("");
     setInfoMessage("");
 
     try {
       await clientsApi.handle(client.id, {
-        outcome,
-        note: outcomeNoteByType[outcome] || undefined
+        outcome
       });
       await loadClients();
+
+      if (isRepresentative) {
+        setInfoMessage("تم إرسال الطلب بنجاح وهو الآن في انتظار اعتماد الإدارة.");
+      } else {
+        setInfoMessage("تم تحديث حالة العميل بنجاح.");
+      }
     } catch (err) {
       setError(err.message || "تعذر تحديث حالة العميل");
     } finally {
@@ -982,6 +1065,10 @@ export default function ClientsPage() {
     }
   }
 
+  const regionPageSize = 10;
+  const totalRegionPages = Math.ceil(groupedClientsByRegion.length / regionPageSize);
+  const paginatedGroups = groupedClientsByRegion.slice((page - 1) * regionPageSize, page * regionPageSize);
+
   return (
     <div className={`stack clients-page${isRepresentative ? " clients-page-representative" : ""}`}>
       <section className="panel">
@@ -1139,20 +1226,22 @@ export default function ClientsPage() {
           </form>
         )}
 
-        <div className="tabs-row">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={activeTab === tab.key ? "tab-btn active" : "tab-btn"}
-              onClick={() => onTabChange(tab.key)}
-              disabled={hasDueDateFilter}
-              title={hasDueDateFilter ? "ألغِ فلتر التاريخ أولًا لاستخدام التبويبات" : tab.label}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {isAdmin && (
+          <div className="tabs-row">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={activeTab === tab.key ? "tab-btn active" : "tab-btn"}
+                onClick={() => onTabChange(tab.key)}
+                disabled={hasDueDateFilter}
+                title={hasDueDateFilter ? "ألغِ فلتر التاريخ أولًا لاستخدام التبويبات" : tab.label}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {isRepresentative && (
           <div className="rep-mobile-shortcuts" role="group" aria-label="اختصارات سريعة للمندوب">
@@ -1202,6 +1291,29 @@ export default function ClientsPage() {
             placeholder="بحث بالاسم أو الهاتف أو العنوان..."
           />
 
+          {isAdmin && (
+            <>
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={copyPhonesLoading || loading}
+                onClick={handleCopyAllPhones}
+                title="نسخ كل الأرقام حسب الفلاتر الحالية"
+              >
+                {copyPhonesLoading ? "جاري تجميع الأرقام..." : "نسخ كل الأرقام"}
+              </button>
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={exportExcelLoading || loading}
+                onClick={handleExportExcel}
+                title="تصدير ملف إكسيل حسب الفلاتر الحالية"
+              >
+                {exportExcelLoading ? "جاري التصدير..." : "تصدير إكسيل"}
+              </button>
+            </>
+          )}
+
           <div className="clients-date-filter">
             <span className="clients-date-label">تاريخ الاستحقاق</span>
             <div className="clients-date-input">
@@ -1240,24 +1352,6 @@ export default function ClientsPage() {
           <button type="button" className="secondary-btn" onClick={loadClients}>
             تحديث
           </button>
-          <button
-            type="button"
-            className="secondary-btn"
-            disabled={copyPhonesLoading || loading}
-            onClick={handleCopyAllPhones}
-            title="نسخ كل الأرقام حسب الفلاتر الحالية"
-          >
-            {copyPhonesLoading ? "جاري تجميع الأرقام..." : "نسخ كل الأرقام"}
-          </button>
-          <button
-            type="button"
-            className="secondary-btn"
-            disabled={exportExcelLoading || loading}
-            onClick={handleExportExcel}
-            title="تصدير ملف إكسيل حسب الفلاتر الحالية"
-          >
-            {exportExcelLoading ? "جاري تجهيز الإكسيل..." : "تصدير إكسيل"}
-          </button>
           {isAdmin && (
             <>
               <input
@@ -1289,7 +1383,7 @@ export default function ClientsPage() {
           <div className="table-empty">لا توجد بيانات في هذا التصنيف</div>
         ) : (
           <div className="clients-region-groups">
-            {groupedClientsByRegion.map((group) => {
+            {paginatedGroups.map((group) => {
               const representativeNames = regionRepresentatives[group.regionId] || [];
               const isLoadingRepresentatives = Boolean(loadingRegionRepresentativeIds[group.regionId]);
               const isExpanded = Boolean(expandedRegionIds[group.regionId]);
@@ -1324,17 +1418,20 @@ export default function ClientsPage() {
                       <table className="mobile-table clients-table">
                         <thead>
                           <tr>
-                            <th>العميل</th>
-                            <th>الهاتف</th>
-                            <th>العنوان</th>
-                            <th>اللوكيشن</th>
-                            <th>المنتجات</th>
-                            <th>السعر</th>
-                            <th>الزيارة</th>
-                            <th>الحالة</th>
-                            <th>الزيارة القادمة</th>
-                            <th>الملاحظات</th>
-                            <th>الإجراءات</th>
+                            <th className="col-name">العميل</th>
+                            <th className="col-phone">الهاتف</th>
+                            <th className="col-address">العنوان</th>
+                            <th className="col-location">اللوكيشن</th>
+                            <th className="col-products">المنتجات</th>
+                            <th className="col-price">السعر</th>
+                            {!isRepresentative && (
+                              <>
+                              </>
+                            )}
+                            <th className="col-visit-type">الزيارة</th>
+                            <th className="col-next-visit">الزيارة القادمة</th>
+                            <th className="col-notes">الملاحظات</th>
+                            <th className="col-actions">الإجراءات</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1343,6 +1440,8 @@ export default function ClientsPage() {
                             todayDateText={todayDateText}
                             actionState={actionState}
                             onHandleClient={handleClientOutcome}
+                            onApproveVisit={handleApproveVisit}
+                            onRejectVisit={handleRejectVisit}
                             isRepresentative={isRepresentative}
                           />
                         </tbody>
@@ -1355,7 +1454,7 @@ export default function ClientsPage() {
           </div>
         )}
 
-        <Pagination page={data.page} totalPages={data.totalPages} onChange={setPage} />
+        <Pagination page={page} totalPages={totalRegionPages} onChange={setPage} />
       </section>
     </div>
   );

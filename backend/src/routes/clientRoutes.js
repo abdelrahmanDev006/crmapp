@@ -15,7 +15,9 @@ const {
   createClient,
   updateClient,
   handleClient,
-  deleteClient
+  deleteClient,
+  approveVisit,
+  rejectVisit
 } = require("../controllers/clientController");
 
 const router = express.Router();
@@ -25,6 +27,8 @@ router.use(authenticate);
 router.get("/", validate(clientQuerySchema, "query"), listClientRecords);
 router.get("/:id", validate(idParamSchema, "params"), getClientDetails);
 router.post("/:id/handle", validate(idParamSchema, "params"), validate(handleClientSchema), handleClient);
+router.post("/:id/approve", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), approveVisit);
+router.post("/:id/reject", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), rejectVisit);
 router.post("/", authorizeRoles(Roles.ADMIN), validate(createClientSchema), createClient);
 router.patch("/:id", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), validate(updateClientSchema), updateClient);
 router.delete("/:id", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), deleteClient);

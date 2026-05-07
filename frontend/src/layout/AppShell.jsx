@@ -20,9 +20,11 @@ export default function AppShell() {
         </div>
 
         <nav className="sidebar-nav">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
-            لوحة التحكم
-          </NavLink>
+          {isAdmin && (
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+              لوحة التحكم
+            </NavLink>
+          )}
           <NavLink to="/clients" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
             العملاء
           </NavLink>

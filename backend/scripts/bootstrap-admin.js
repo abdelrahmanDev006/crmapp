@@ -1,4 +1,4 @@
-﻿const path = require("path");
+const path = require("path");
 const dotenv = require("dotenv");
 const bcrypt = require("bcryptjs");
 const { PrismaClient, Role } = require("@prisma/client");

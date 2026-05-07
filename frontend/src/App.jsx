@@ -25,6 +25,7 @@ function PublicRoute({ children }) {
 }
 
 export default function App() {
+  const { user } = useAuth();
   return (
     <Routes>
       <Route
@@ -38,12 +39,20 @@ export default function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
-          <Route index element={<DashboardPage />} />
+          <Route
+            index
+            element={
+              user?.role === "ADMIN" ? (
+                <DashboardPage />
+              ) : (
+                <Navigate to="/clients" replace />
+              )
+            }
+          />
           <Route path="clients" element={<ClientsPage />} />
-          <Route path="clients/:id" element={<ClientDetailsPage />} />
           <Route path="regions/:id" element={<RegionPage />} />
-
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
+            <Route path="clients/:id" element={<ClientDetailsPage />} />
             <Route path="users" element={<UsersPage />} />
           </Route>
         </Route>

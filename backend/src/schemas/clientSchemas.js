@@ -70,7 +70,7 @@ const createClientSchema = z
     price: priceSchema.optional(),
     visitType: z.enum(visitTypeValues),
     customVisitIntervalDays: customVisitIntervalDaysSchema,
-    status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
+    status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED, ClientStatuses.PENDING_APPROVAL]).optional(),
     nextVisitDate: dateInputSchema.optional(),
     note: z.string().max(500).optional()
   })
@@ -94,7 +94,7 @@ const updateClientSchema = z.object({
   price: priceSchema.optional(),
   visitType: z.enum(visitTypeValues).optional(),
   customVisitIntervalDays: customVisitIntervalDaysSchema,
-  status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
+  status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED, ClientStatuses.PENDING_APPROVAL]).optional(),
   nextVisitDate: dateInputSchema.optional(),
   note: z.string().max(500).optional()
 });
@@ -106,10 +106,10 @@ const clientQuerySchema = z.object({
     .int()
     .min(1)
     .default(20)
-    .transform((value) => Math.min(value, 100)),
+    .transform((value) => Math.min(value, 50000)),
   search: z.string().trim().optional(),
   visitType: z.enum(visitTypeValues).optional(),
-  status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
+  status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED, ClientStatuses.PENDING_APPROVAL]).optional(),
   regionId: z.coerce.number().int().positive().optional(),
   dueDate: dateInputSchema.optional(),
   createdDate: dateInputSchema.optional(),

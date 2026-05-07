@@ -23,6 +23,7 @@ enum ClientStatus {
   ACTIVE
   NO_ANSWER
   REJECTED
+  PENDING_APPROVAL
 }
 
 model Region {
@@ -68,6 +69,12 @@ model Client {
   status        ClientStatus @default(ACTIVE)
   noAnswerCount Int          @default(0)
   nextVisitDate DateTime
+  
+  pendingOutcome     ClientStatus?
+  pendingNote        String?
+  pendingVisitType   VisitType?
+  pendingCustomVisitIntervalDays Int?
+
   createdById   Int?
   createdBy     User?        @relation("ClientCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt     DateTime     @default(now())
