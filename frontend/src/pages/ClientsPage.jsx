@@ -563,6 +563,11 @@ export default function ClientsPage() {
     const representativeNames = regionRepresentatives[group.regionId] || [];
     const representativeText = representativeNames.length > 0 ? representativeNames.join(" - ") : "غير محدد";
 
+    const totalPrice = group.clients.reduce((sum, c) => {
+      const priceVal = parseFloat(String(c.price || "0").replace(/[^0-9.]/g, ""));
+      return sum + (isNaN(priceVal) ? 0 : priceVal);
+    }, 0);
+
     const html = `
       <html dir="rtl" lang="ar">
         <head>
@@ -570,10 +575,11 @@ export default function ClientsPage() {
           <style>
             body { font-family: 'Arial', sans-serif; padding: 20px; color: #333; }
             .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-            .meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; }
+            .meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; flex-wrap: wrap; gap: 10px; }
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
             th, td { border: 1px solid #ddd; padding: 10px; text-align: right; font-size: 13px; }
             th { background-color: #f8f9fa; }
+            .total-row { margin-top: 20px; text-align: left; font-size: 18px; font-weight: bold; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; }
             .footer { margin-top: 30px; text-align: left; font-size: 12px; color: #777; }
             @media print {
               button { display: none; }
@@ -589,6 +595,7 @@ export default function ClientsPage() {
             <div><strong>تاريخ التقرير:</strong> ${filterDateStr}</div>
             <div><strong>المندوب:</strong> ${representativeText}</div>
             <div><strong>عدد العملاء:</strong> ${group.clients.length}</div>
+            <div><strong>إجمالي المبالغ:</strong> ${totalPrice.toLocaleString("ar-EG")}</div>
           </div>
           <table>
             <thead>
