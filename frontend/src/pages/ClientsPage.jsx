@@ -556,7 +556,7 @@ export default function ClientsPage() {
   const buildClientListParams = useCallback(() => {
     const params = {
       page: 1,
-      pageSize: 50000,
+      pageSize: 5000,
       search: debouncedSearch || undefined
     };
 
