@@ -106,7 +106,7 @@ const clientQuerySchema = z.object({
     .int()
     .min(1)
     .default(20)
-    .transform((value) => Math.min(value, 5000)),
+    .transform((value) => Math.min(value, 1000)),
   search: z.string().trim().optional(),
   visitType: z.enum(visitTypeValues).optional(),
   status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED, ClientStatuses.PENDING_APPROVAL]).optional(),
