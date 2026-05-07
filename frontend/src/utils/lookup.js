@@ -8,7 +8,8 @@ export const VisitType = {
 export const ClientStatus = {
   ACTIVE: "نشط",
   NO_ANSWER: "لم يرد",
-  REJECTED: "كانسل"
+  REJECTED: "كانسل",
+  PENDING_APPROVAL: "في انتظار الاعتماد"
 };
 
 export function getClientStatusLabel(status, noAnswerCount) {

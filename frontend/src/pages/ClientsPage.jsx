@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { clientsApi, regionsApi } from "../api/crmApi";
 import { useAuth } from "../auth/AuthContext";
 import Pagination from "../components/Pagination";
-import StatusBadge from "../components/StatusBadge";
 import VisitTypeBadge from "../components/VisitTypeBadge";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { formatDate, formatDateWithWeekday } from "../utils/formatters";
@@ -356,17 +355,13 @@ function ClientTableRows({
         <td className="col-products" data-label="المنتجات">{client.products}</td>
         <td className="col-price" data-label="السعر">{client.price || "-"}</td>
 
-        {!isRepresentative && (
-          <>
-          </>
-        )}
         <td className="col-visit-type" data-label="الزيارة">
           <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
         </td>
         <td className="col-next-visit" data-label="الزيارة القادمة">
           {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
         </td>
-        <td className="col-notes" data-label="الملاحظات" className="details-note-text" title={client.visits?.[0]?.note || ""}>
+        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.[0]?.note || ""}>
           {client.visits?.[0]?.note || "-"}
         </td>
 
@@ -465,8 +460,6 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [selectedDueDate, setSelectedDueDate] = useState("");
   const [data, setData] = useState({ items: [], totalPages: 1, total: 0, page: 1 });
-  const [isExporting, setIsExporting] = useState(false);
-  const [isBackingUp, setIsBackingUp] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionState, setActionState] = useState({ clientId: null, outcome: null });
@@ -644,10 +637,10 @@ export default function ClientsPage() {
     printWindow.document.close();
   };
 
-  const buildClientListParams = useCallback(() => {
+  const buildClientListParams = useCallback((pageOverride, pageSizeOverride) => {
     const params = {
-      page: 1,
-      pageSize: 1000,
+      page: pageOverride ?? 1,
+      pageSize: pageSizeOverride ?? 1000,
       search: debouncedSearch || undefined
     };
 
@@ -952,7 +945,7 @@ export default function ClientsPage() {
 
   async function handleExportExcel() {
     const password = window.prompt("برجاء إدخال كلمة المرور لتصدير البيانات:");
-    if (password !== "123") {
+    if (password !== "CRM@Export2026#Secure") {
       alert("كلمة المرور غير صحيحة!");
       return;
     }
@@ -1523,10 +1516,6 @@ export default function ClientsPage() {
                             <th className="col-location">اللوكيشن</th>
                             <th className="col-products">المنتجات</th>
                             <th className="col-price">السعر</th>
-                            {!isRepresentative && (
-                              <>
-                              </>
-                            )}
                             <th className="col-visit-type">الزيارة</th>
                             <th className="col-next-visit">الزيارة القادمة</th>
                             <th className="col-notes">الملاحظات</th>

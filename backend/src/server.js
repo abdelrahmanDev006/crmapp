@@ -1,4 +1,4 @@
-﻿const app = require("./app");
+const app = require("./app");
 const env = require("./config/env");
 const prisma = require("./config/prisma");
 
@@ -25,6 +25,13 @@ async function shutdown(reason, error) {
   } else {
     console.log(`Shutting down (${reason})`);
   }
+
+  // Force exit after 10 seconds if graceful shutdown hangs
+  const forceExitTimer = setTimeout(() => {
+    console.error("Graceful shutdown timed out, forcing exit");
+    process.exit(error ? 1 : 0);
+  }, 10000);
+  forceExitTimer.unref();
 
   if (server) {
     server.close(async () => {

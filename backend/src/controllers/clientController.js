@@ -166,7 +166,7 @@ const createClient = asyncHandler(async (req, res) => {
         data: {
           clientId: newClient.id,
           visitedById: req.user.id,
-          previousStatus: null,
+          previousStatus: normalizedStatus,
           newStatus: normalizedStatus,
           note: String(payload.note).trim(),
           previousNextVisitDate: null,
@@ -242,7 +242,7 @@ const updateClient = asyncHandler(async (req, res) => {
 
   if (Object.prototype.hasOwnProperty.call(req.body, "status")) {
     if (req.body.status === ClientStatuses.NO_ANSWER) {
-      updatePayload.noAnswerCount = Math.max(1, Number(existing.noAnswerCount || 0));
+      updatePayload.noAnswerCount = Number(existing.noAnswerCount || 0) + 1;
     } else {
       updatePayload.noAnswerCount = 0;
     }

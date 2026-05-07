@@ -402,7 +402,7 @@ td {
 
 .table-wrapper table.clients-table th.col-address,
 .table-wrapper table.clients-table td.col-address {
-  width: 13%;
+  width: 18%;
 }
 
 .table-wrapper table.clients-table th.col-location,
@@ -1350,6 +1350,12 @@ tbody tr:hover {
   background: rgba(178, 61, 47, 0.14);
   color: #8d2c23;
   border-color: rgba(178, 61, 47, 0.3);
+}
+
+.status-pending {
+  background: rgba(103, 58, 183, 0.14);
+  color: #4a2785;
+  border-color: rgba(103, 58, 183, 0.3);
 }
 
 .visit-pill {

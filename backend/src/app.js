@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
@@ -22,7 +22,11 @@ app.use(
         return;
       }
 
-      callback(null, allowedOrigins.has(origin));
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
     },
     credentials: env.corsCredentials
   })
