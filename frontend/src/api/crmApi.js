@@ -7,8 +7,7 @@ export const authApi = {
 };
 
 export const dashboardApi = {
-  getSummary: () => http.get("/dashboard/summary"),
-  getBackup: () => http.get("/dashboard/backup", { responseType: "blob" })
+  getSummary: () => http.get("/dashboard/summary")
 };
 
 export const regionsApi = {

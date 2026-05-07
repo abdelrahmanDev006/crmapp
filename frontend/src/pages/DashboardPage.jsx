@@ -19,7 +19,6 @@ export default function DashboardPage() {
   const [editingRegionName, setEditingRegionName] = useState("");
   const [showCreateRegionForm, setShowCreateRegionForm] = useState(false);
   const [newRegionName, setNewRegionName] = useState("");
-  const [isBackingUp, setIsBackingUp] = useState(false);
 
   const loadSummary = useCallback(async () => {
     setLoading(true);
@@ -136,31 +135,6 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleBackup() {
-    setIsBackingUp(true);
-    setActionError("");
-    setActionSuccessMessage("");
-
-    try {
-      const response = await dashboardApi.getBackup();
-      const blob = new Blob([response.data], { type: "application/json" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      link.setAttribute("download", `crm-backup-${timestamp}.json`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      setActionSuccessMessage("تم تحميل النسخة الاحتياطية بنجاح");
-    } catch (err) {
-      setActionError(err.message || "تعذر تحميل النسخة الاحتياطية");
-    } finally {
-      setIsBackingUp(false);
-    }
-  }
-
   if (loading) {
     return <div className="panel">جاري تحميل لوحة التحكم...</div>;
   }
@@ -208,17 +182,6 @@ export default function DashboardPage() {
               }}
             >
               {showCreateRegionForm ? "إغلاق الإضافة" : "إضافة منطقة"}
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              type="button"
-              className="secondary-btn"
-              style={{ background: "#6c757d", color: "white" }}
-              disabled={isBackingUp}
-              onClick={handleBackup}
-            >
-              {isBackingUp ? "جاري التحميل..." : "📥 تحميل نسخة احتياطية (Backup)"}
             </button>
           )}
         </div>
