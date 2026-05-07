@@ -21,7 +21,7 @@ const summary = asyncHandler(async (req, res) => {
       where: {
         ...globalWhere,
         nextVisitDate: { lte: today },
-        status: { not: "REJECTED" }
+        status: { in: ["ACTIVE", "NO_ANSWER"] }
       }
     }),
     prisma.client.count({

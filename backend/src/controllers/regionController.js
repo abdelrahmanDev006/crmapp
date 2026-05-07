@@ -25,7 +25,7 @@ async function getRegionSummary() {
     _count: { _all: true },
     where: {
       nextVisitDate: { lte: today },
-      status: { not: "REJECTED" }
+      status: { in: ["ACTIVE", "NO_ANSWER"] }
     }
   });
 
