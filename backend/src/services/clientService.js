@@ -347,10 +347,10 @@ async function handleClientVisit({
 
     await tx.visitHistory.create({
       data: {
-        clientId: existingClient.id,
-        visitedById: user.id,
-        previousStatus,
-        newStatus,
+        client: { connect: { id: existingClient.id } },
+        visitedBy: { connect: { id: user.id } },
+        previousStatus: previousStatus || ClientStatuses.ACTIVE,
+        newStatus: newStatus || ClientStatuses.ACTIVE,
         note: generatedNote,
         previousNextVisitDate,
         newNextVisitDate,

@@ -561,35 +561,195 @@ export default function ClientsPage() {
       return sum + (isNaN(priceVal) ? 0 : priceVal);
     }, 0);
 
+    const clientRows = group.clients
+      .map(
+        (c, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td style="font-weight:600">${c.name}</td>
+          <td style="direction:ltr;text-align:center">${c.phone}</td>
+          <td>${c.address}</td>
+          <td>${c.products || "-"}</td>
+          <td style="text-align:center;font-weight:600">${c.price || "-"}</td>
+          <td class="col-notes"></td>
+        </tr>
+      `
+      )
+      .join("");
+
     const html = `
       <html dir="rtl" lang="ar">
         <head>
+          <meta charset="UTF-8">
           <title>طباعة منطقة: ${group.regionName}</title>
           <style>
-            body { font-family: 'Arial', sans-serif; padding: 20px; color: #333; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-            .meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; flex-wrap: wrap; gap: 10px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { border: 1px solid #ddd; padding: 10px; text-align: right; font-size: 13px; }
-            th { background-color: #f8f9fa; }
-            .total-row { margin-top: 20px; text-align: left; font-size: 18px; font-weight: bold; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; }
-            .footer { margin-top: 30px; text-align: left; font-size: 12px; color: #777; }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+              font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+              padding: 28px 32px;
+              color: #1a2a32;
+              background: #fff;
+              line-height: 1.5;
+            }
+            .report-header {
+              background: linear-gradient(135deg, #0e7a78 0%, #0a5f5d 100%);
+              color: #fff;
+              border-radius: 12px;
+              padding: 22px 28px;
+              margin-bottom: 22px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 16px;
+            }
+            .report-header h1 {
+              font-size: 22px;
+              font-weight: 800;
+              letter-spacing: -0.3px;
+            }
+            .report-header .brand {
+              font-size: 12px;
+              opacity: 0.85;
+              background: rgba(255,255,255,0.18);
+              padding: 5px 14px;
+              border-radius: 20px;
+              font-weight: 700;
+              letter-spacing: 0.5px;
+              white-space: nowrap;
+            }
+            .meta-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 12px;
+              margin-bottom: 22px;
+            }
+            .meta-card {
+              background: #f4fafa;
+              border: 1px solid #d4e8e7;
+              border-radius: 10px;
+              padding: 14px 16px;
+              text-align: center;
+            }
+            .meta-card .meta-label {
+              font-size: 11px;
+              color: #5a7a80;
+              font-weight: 700;
+              margin-bottom: 4px;
+              letter-spacing: 0.3px;
+            }
+            .meta-card .meta-value {
+              font-size: 16px;
+              font-weight: 800;
+              color: #0e7a78;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              border-radius: 10px;
+              overflow: hidden;
+              border: 1px solid #d4e5e4;
+            }
+            thead tr {
+              background: linear-gradient(135deg, #0e7a78 0%, #0a5f5d 100%);
+            }
+            th {
+              color: #fff;
+              font-weight: 700;
+              font-size: 12px;
+              padding: 12px 10px;
+              text-align: right;
+              letter-spacing: 0.2px;
+            }
+            td {
+              padding: 10px;
+              font-size: 12.5px;
+              text-align: right;
+              border-bottom: 1px solid #e8f0ef;
+              color: #2a3d45;
+            }
+            tbody tr:nth-child(even) {
+              background: #f8fcfc;
+            }
+            td:first-child, th:first-child {
+              text-align: center;
+              width: 40px;
+              color: #7a9a9e;
+              font-weight: 700;
+            }
+            .col-notes {
+              min-width: 100px;
+            }
+            .total-bar {
+              margin-top: 18px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              background: linear-gradient(135deg, #f0f9f9 0%, #e4f3f2 100%);
+              border: 1px solid #c5dedd;
+              border-radius: 10px;
+              padding: 14px 22px;
+            }
+            .total-bar .total-label {
+              font-size: 14px;
+              font-weight: 700;
+              color: #2a4a50;
+            }
+            .total-bar .total-amount {
+              font-size: 22px;
+              font-weight: 900;
+              color: #0e7a78;
+              direction: ltr;
+            }
+            .report-footer {
+              margin-top: 28px;
+              padding-top: 14px;
+              border-top: 2px solid #e8f0ef;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              font-size: 11px;
+              color: #8a9da3;
+            }
+            .report-footer .footer-brand {
+              font-weight: 700;
+              color: #0e7a78;
+            }
             @media print {
-              button { display: none; }
-              body { padding: 0; }
+              body { padding: 12px 16px; }
+              .report-header { border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              tbody tr:nth-child(even) { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              .meta-grid { margin-bottom: 16px; }
+              .meta-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              .total-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h2>تقرير زيارات المنطقة: ${group.regionName}</h2>
+          <div class="report-header">
+            <h1>تقرير منطقة: ${group.regionName}</h1>
+            <span class="brand">CRM SYSTEM</span>
           </div>
-          <div class="meta">
-            <div><strong>تاريخ التقرير:</strong> ${filterDateStr}</div>
-            <div><strong>المندوب:</strong> ${representativeText}</div>
-            <div><strong>عدد العملاء:</strong> ${group.clients.length}</div>
-            <div><strong>إجمالي المبالغ:</strong> ${totalPrice.toLocaleString("ar-EG")}</div>
+
+          <div class="meta-grid">
+            <div class="meta-card">
+              <div class="meta-label">تاريخ التقرير</div>
+              <div class="meta-value">${filterDateStr}</div>
+            </div>
+            <div class="meta-card">
+              <div class="meta-label">المندوب</div>
+              <div class="meta-value" style="font-size:13px">${representativeText}</div>
+            </div>
+            <div class="meta-card">
+              <div class="meta-label">عدد العملاء</div>
+              <div class="meta-value">${group.clients.length}</div>
+            </div>
+            <div class="meta-card">
+              <div class="meta-label">إجمالي المبالغ</div>
+              <div class="meta-value">${totalPrice.toLocaleString("ar-EG")}</div>
+            </div>
           </div>
+
           <table>
             <thead>
               <tr>
@@ -599,36 +759,29 @@ export default function ClientsPage() {
                 <th>العنوان</th>
                 <th>المنتجات</th>
                 <th>السعر</th>
-                <th>ملاحظات</th>
+                <th class="col-notes">ملاحظات</th>
               </tr>
             </thead>
             <tbody>
-              ${group.clients
-                .map(
-                  (c, i) => `
-                <tr>
-                  <td>${i + 1}</td>
-                  <td>${c.name}</td>
-                  <td>${c.phone}</td>
-                  <td>${c.address}</td>
-                  <td>${c.products || "-"}</td>
-                  <td>${c.price || "-"}</td>
-                  <td></td>
-                </tr>
-              `
-                )
-                .join("")}
+              ${clientRows}
             </tbody>
           </table>
-          <div class="footer">
-            طبع بواسطة نظام CRM - ${new Date().toLocaleString("ar-EG")}
+
+          <div class="total-bar">
+            <span class="total-label">إجمالي المبالغ لجميع العملاء</span>
+            <span class="total-amount">${totalPrice.toLocaleString("ar-EG")} جنيه</span>
           </div>
+
+          <div class="report-footer">
+            <span>طُبع بتاريخ: ${new Date().toLocaleString("ar-EG")}</span>
+            <span class="footer-brand">CRM System</span>
+          </div>
+
           <script>
             window.onload = () => {
               window.print();
-              // window.close();
             };
-          </script>
+          <\/script>
         </body>
       </html>
     `;

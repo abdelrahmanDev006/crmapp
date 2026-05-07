@@ -164,10 +164,10 @@ const createClient = asyncHandler(async (req, res) => {
     if (payload.note && String(payload.note).trim() !== "") {
       await tx.visitHistory.create({
         data: {
-          clientId: newClient.id,
-          visitedById: req.user.id,
-          previousStatus: normalizedStatus,
-          newStatus: normalizedStatus,
+          client: { connect: { id: newClient.id } },
+          visitedBy: { connect: { id: req.user.id } },
+          previousStatus: normalizedStatus || ClientStatuses.ACTIVE,
+          newStatus: normalizedStatus || ClientStatuses.ACTIVE,
           note: String(payload.note).trim(),
           previousNextVisitDate: null,
           newNextVisitDate: newClient.nextVisitDate,
@@ -270,10 +270,10 @@ const updateClient = asyncHandler(async (req, res) => {
     if (req.body.note && String(req.body.note).trim() !== "") {
       await tx.visitHistory.create({
         data: {
-          clientId: updatedClient.id,
-          visitedById: req.user.id,
-          previousStatus: existing.status,
-          newStatus: updatedClient.status,
+          client: { connect: { id: updatedClient.id } },
+          visitedBy: { connect: { id: req.user.id } },
+          previousStatus: existing.status || ClientStatuses.ACTIVE,
+          newStatus: updatedClient.status || ClientStatuses.ACTIVE,
           note: String(req.body.note).trim(),
           previousNextVisitDate: existing.nextVisitDate,
           newNextVisitDate: updatedClient.nextVisitDate,
