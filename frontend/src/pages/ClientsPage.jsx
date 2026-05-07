@@ -465,6 +465,8 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [selectedDueDate, setSelectedDueDate] = useState("");
   const [data, setData] = useState({ items: [], totalPages: 1, total: 0, page: 1 });
+  const [isExporting, setIsExporting] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionState, setActionState] = useState({ clientId: null, outcome: null });
@@ -552,6 +554,88 @@ export default function ClientsPage() {
       }));
     }
   }, [expandedRegionIds, regionRepresentatives]);
+
+  const handlePrintRegion = (group) => {
+    const printWindow = window.open("", "_blank");
+    const todayStr = new Date().toLocaleDateString("ar-EG");
+    const filterDateStr = hasDueDateFilter ? selectedDueDate : todayStr;
+
+    const representativeNames = regionRepresentatives[group.regionId] || [];
+    const representativeText = representativeNames.length > 0 ? representativeNames.join(" - ") : "غير محدد";
+
+    const html = `
+      <html dir="rtl" lang="ar">
+        <head>
+          <title>طباعة منطقة: ${group.regionName}</title>
+          <style>
+            body { font-family: 'Arial', sans-serif; padding: 20px; color: #333; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+            .meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #ddd; padding: 10px; text-align: right; font-size: 13px; }
+            th { background-color: #f8f9fa; }
+            .footer { margin-top: 30px; text-align: left; font-size: 12px; color: #777; }
+            @media print {
+              button { display: none; }
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>تقرير زيارات المنطقة: ${group.regionName}</h2>
+          </div>
+          <div class="meta">
+            <div><strong>تاريخ التقرير:</strong> ${filterDateStr}</div>
+            <div><strong>المندوب:</strong> ${representativeText}</div>
+            <div><strong>عدد العملاء:</strong> ${group.clients.length}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>اسم العميل</th>
+                <th>الهاتف</th>
+                <th>العنوان</th>
+                <th>المنتجات</th>
+                <th>السعر</th>
+                <th>ملاحظات</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${group.clients
+                .map(
+                  (c, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>${c.name}</td>
+                  <td>${c.phone}</td>
+                  <td>${c.address}</td>
+                  <td>${c.products || "-"}</td>
+                  <td>${c.price || "-"}</td>
+                  <td></td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            طبع بواسطة نظام CRM - ${new Date().toLocaleString("ar-EG")}
+          </div>
+          <script>
+            window.onload = () => {
+              window.print();
+              // window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
 
   const buildClientListParams = useCallback(() => {
     const params = {
@@ -1402,6 +1486,16 @@ export default function ClientsPage() {
                       </p>
                     </div>
                     <div className="clients-region-group-actions">
+                      {hasDueDateFilter && (
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          style={{ marginLeft: "10px", background: "#f0f0f0", color: "#333" }}
+                          onClick={() => handlePrintRegion(group)}
+                        >
+                          🖨️ طباعة
+                        </button>
+                      )}
                       <strong>{group.clients.length} عميل</strong>
                       <button
                         type="button"

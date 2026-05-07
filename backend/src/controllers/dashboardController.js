@@ -59,6 +59,32 @@ const summary = asyncHandler(async (req, res) => {
   });
 });
 
+const backup = asyncHandler(async (req, res) => {
+  if (req.user.role !== Roles.ADMIN) {
+    return res.status(403).json({ message: "غير مسموح بالوصول لهذا الإجراء" });
+  }
+
+  const [users, regions, clients, visits] = await Promise.all([
+    prisma.user.findMany({ select: { id: true, name: true, email: true, role: true, regionId: true, isActive: true } }),
+    prisma.region.findMany(),
+    prisma.client.findMany(),
+    prisma.visitHistory.findMany()
+  ]);
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  res.setHeader("Content-Disposition", `attachment; filename=crm-backup-${timestamp}.json`);
+  res.setHeader("Content-Type", "application/json");
+
+  res.json({
+    timestamp,
+    users,
+    regions,
+    clients,
+    visits
+  });
+});
+
 module.exports = {
-  summary
+  summary,
+  backup
 };
