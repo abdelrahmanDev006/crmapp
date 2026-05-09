@@ -13,14 +13,11 @@ function sanitizeUser(user) {
     role: user.role,
     isActive: user.isActive,
     allowedDate: user.allowedDate,
-    regionId: user.regionId,
-    region: user.region
-      ? {
-          id: user.region.id,
-          code: user.region.code,
-          name: user.region.name
-        }
-      : null
+    regions: user.regions?.map(r => ({
+      id: r.id,
+      code: r.code,
+      name: r.name
+    })) || []
   };
 }
 

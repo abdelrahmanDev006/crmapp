@@ -45,7 +45,8 @@ function buildClientWhere(filters, user) {
   const where = {};
 
   if (user.role === Roles.REPRESENTATIVE) {
-    where.regionId = user.regionId;
+    const userRegionIds = user.regions?.map(r => r.id) || [];
+    where.regionId = { in: userRegionIds };
 
     if (user.allowedDate) {
       const selectedDate = normalizeToWorkDate(user.allowedDate);

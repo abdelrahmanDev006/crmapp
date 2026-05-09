@@ -20,7 +20,7 @@ const listUsers = asyncHandler(async (req, res) => {
   const [items, total] = await Promise.all([
     prisma.user.findMany({
       where,
-      include: { region: true },
+      include: { regions: true },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize
@@ -38,7 +38,7 @@ const listUsers = asyncHandler(async (req, res) => {
 });
 
 const createUser = asyncHandler(async (req, res) => {
-  const { name, email, password, role, regionId, isActive } = req.body;
+  const { name, email, password, role, regionIds, isActive } = req.body;
   const normalizedEmail = String(email || "").trim().toLowerCase();
 
   const existingUser = await prisma.user.findFirst({
@@ -53,18 +53,22 @@ const createUser = asyncHandler(async (req, res) => {
     throw createHttpError(409, "البريد الإلكتروني مستخدم بالفعل");
   }
 
-  let validatedRegionId = null;
+  let validRegionIds = [];
 
   if (role === Roles.REPRESENTATIVE) {
-    const region = await prisma.region.findUnique({
-      where: { id: Number(regionId) }
-    });
-
-    if (!region) {
-      throw createHttpError(400, "المنطقة غير موجودة");
+    if (!regionIds || regionIds.length === 0) {
+      throw createHttpError(400, "يجب تحديد منطقة واحدة على الأقل للمندوب");
     }
 
-    validatedRegionId = region.id;
+    const regions = await prisma.region.findMany({
+      where: { id: { in: regionIds } }
+    });
+
+    if (regions.length !== regionIds.length) {
+      throw createHttpError(400, "بعض المناطق غير موجودة");
+    }
+
+    validRegionIds = regions.map(r => r.id);
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -75,10 +79,12 @@ const createUser = asyncHandler(async (req, res) => {
       email: normalizedEmail,
       passwordHash,
       role,
-      regionId: validatedRegionId,
+      regions: {
+        connect: validRegionIds.map(id => ({ id }))
+      },
       isActive: isActive ?? true
     },
-    include: { region: true }
+    include: { regions: true }
   });
 
   res.status(201).json({
@@ -89,9 +95,13 @@ const createUser = asyncHandler(async (req, res) => {
 
 const updateUser = asyncHandler(async (req, res) => {
   const userId = Number(req.params.id);
-  const { name, password, role, regionId, isActive } = req.body;
+  const { name, password, role, regionIds, isActive } = req.body;
 
-  const existing = await prisma.user.findUnique({ where: { id: userId } });
+  const existing = await prisma.user.findUnique({ 
+    where: { id: userId },
+    include: { regions: true }
+  });
+  
   if (!existing) {
     throw createHttpError(404, "المستخدم غير موجود");
   }
@@ -120,33 +130,40 @@ const updateUser = asyncHandler(async (req, res) => {
     data.role = role;
   }
 
+  let nextRegionIds = existing.regions.map(r => r.id);
+
   if (nextRole === Roles.ADMIN) {
-    data.regionId = null;
-  } else if (regionId !== undefined) {
-    if (regionId === null) {
-      data.regionId = null;
+    data.regions = { set: [] };
+    nextRegionIds = [];
+  } else if (regionIds !== undefined) {
+    if (regionIds.length === 0) {
+      if (nextRole === Roles.REPRESENTATIVE) {
+        throw createHttpError(400, "المندوب يجب أن يكون مرتبطًا بمنطقة واحدة على الأقل");
+      }
+      data.regions = { set: [] };
+      nextRegionIds = [];
     } else {
-      const region = await prisma.region.findUnique({
-        where: { id: Number(regionId) }
+      const regions = await prisma.region.findMany({
+        where: { id: { in: regionIds } }
       });
 
-      if (!region) {
-        throw createHttpError(400, "المنطقة غير موجودة");
+      if (regions.length !== regionIds.length) {
+        throw createHttpError(400, "بعض المناطق غير موجودة");
       }
 
-      data.regionId = region.id;
+      data.regions = { set: regions.map(r => ({ id: r.id })) };
+      nextRegionIds = regions.map(r => r.id);
     }
   }
 
-  const nextRegionId = data.regionId !== undefined ? data.regionId : existing.regionId;
   const nextIsActive = data.isActive !== undefined ? data.isActive : existing.isActive;
 
   if (req.user.id === userId && nextIsActive === false) {
     throw createHttpError(400, "لا يمكنك إيقاف حسابك الحالي");
   }
 
-  if (nextRole === Roles.REPRESENTATIVE && nextRegionId === null) {
-    throw createHttpError(400, "المندوب يجب أن يكون مرتبطًا بمنطقة");
+  if (nextRole === Roles.REPRESENTATIVE && nextRegionIds.length === 0) {
+    throw createHttpError(400, "المندوب يجب أن يكون مرتبطًا بمنطقة واحدة على الأقل");
   }
 
   const adminPrivilegesRemoved = existing.role === Roles.ADMIN && nextRole !== Roles.ADMIN;
@@ -169,7 +186,7 @@ const updateUser = asyncHandler(async (req, res) => {
   const updated = await prisma.user.update({
     where: { id: userId },
     data,
-    include: { region: true }
+    include: { regions: true }
   });
 
   res.json({

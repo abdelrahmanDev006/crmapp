@@ -20,7 +20,7 @@ async function authenticate(req, res, next) {
     const payload = verifyToken(token);
     const user = await prisma.user.findUnique({
       where: { id: Number(payload.sub) },
-      include: { region: true }
+      include: { regions: true }
     });
 
     if (!user || !user.isActive) {
@@ -57,7 +57,8 @@ function canAccessRegion(user, regionId) {
     return true;
   }
 
-  return Number(user.regionId) === Number(regionId);
+  const userRegionIds = user.regions?.map(r => Number(r.id)) || [];
+  return userRegionIds.includes(Number(regionId));
 }
 
 function enforceRegionAccess(user, regionId) {

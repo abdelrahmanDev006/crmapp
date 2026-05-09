@@ -7,15 +7,15 @@ const createUserSchema = z
     email: z.string().email("البريد الإلكتروني غير صالح"),
     password: z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل"),
     role: z.enum([Roles.ADMIN, Roles.REPRESENTATIVE]),
-    regionId: z.coerce.number().int().positive().optional(),
+    regionIds: z.array(z.coerce.number().int().positive()).optional(),
     isActive: z.boolean().optional()
   })
   .superRefine((data, ctx) => {
-    if (data.role === Roles.REPRESENTATIVE && !data.regionId) {
+    if (data.role === Roles.REPRESENTATIVE && (!data.regionIds || data.regionIds.length === 0)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "يجب تحديد منطقة للمندوب",
-        path: ["regionId"]
+        message: "يجب تحديد منطقة واحدة على الأقل للمندوب",
+        path: ["regionIds"]
       });
     }
   });
@@ -25,16 +25,16 @@ const updateUserSchema = z
     name: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل").optional(),
     password: z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل").optional(),
     role: z.enum([Roles.ADMIN, Roles.REPRESENTATIVE]).optional(),
-    regionId: z.coerce.number().int().positive().nullable().optional(),
+    regionIds: z.array(z.coerce.number().int().positive()).optional(),
     isActive: z.boolean().optional(),
     allowedDate: z.string().nullable().optional()
   })
   .superRefine((data, ctx) => {
-    if (data.role === Roles.REPRESENTATIVE && (data.regionId === undefined || data.regionId === null)) {
+    if (data.role === Roles.REPRESENTATIVE && data.regionIds && data.regionIds.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "تحديد المنطقة للمندوب إجباري",
-        path: ["regionId"]
+        message: "يجب تحديد منطقة واحدة على الأقل للمندوب",
+        path: ["regionIds"]
       });
     }
   });

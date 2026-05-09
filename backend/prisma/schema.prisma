@@ -42,8 +42,7 @@ model User {
   email        String   @unique
   passwordHash String
   role         Role     @default(REPRESENTATIVE)
-  regionId     Int?
-  region       Region?  @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  regions      Region[]
   isActive     Boolean  @default(true)
   allowedDate  String?
   createdAt    DateTime @default(now())
@@ -52,7 +51,7 @@ model User {
   createdClients Client[]      @relation("ClientCreator")
   visits         VisitHistory[] @relation("VisitUser")
 
-  @@index([role, regionId])
+  @@index([role])
 }
 
 model Client {

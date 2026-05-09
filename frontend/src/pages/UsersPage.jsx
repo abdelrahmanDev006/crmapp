@@ -8,7 +8,7 @@ const initialForm = {
   email: "",
   password: "",
   role: "REPRESENTATIVE",
-  regionId: ""
+  regionIds: []
 };
 
 export default function UsersPage() {
@@ -57,7 +57,7 @@ export default function UsersPage() {
       const nextRegion = { ...previous };
       usersData.items.forEach((item) => {
         if (item.role === "REPRESENTATIVE") {
-          nextRegion[item.id] = nextRegion[item.id] ?? String(item.region?.id || "");
+          nextRegion[item.id] = nextRegion[item.id] ?? (item.regions?.map(r => r.id) || []);
         } else {
           delete nextRegion[item.id];
         }
@@ -116,7 +116,7 @@ export default function UsersPage() {
         email: form.email,
         password: form.password,
         role: form.role,
-        regionId: form.role === "REPRESENTATIVE" ? Number(form.regionId) : undefined
+        regionIds: form.role === "REPRESENTATIVE" ? form.regionIds.map(Number) : undefined
       });
 
       setForm(initialForm);
@@ -162,18 +162,22 @@ export default function UsersPage() {
   }
 
   async function saveRepresentativeRegion(item) {
-    const selectedRegionId = Number(regionDraftByUserId[item.id] || 0);
+    const selectedRegionIds = regionDraftByUserId[item.id] || [];
 
     if (item.role !== "REPRESENTATIVE") {
       return;
     }
 
-    if (!selectedRegionId) {
-      setError("اختر منطقة صحيحة للمندوب");
+    if (selectedRegionIds.length === 0) {
+      setError("اختر منطقة واحدة على الأقل للمندوب");
       return;
     }
 
-    if (selectedRegionId === Number(item.region?.id)) {
+    const existingRegionIds = item.regions?.map(r => r.id) || [];
+    const isSame = selectedRegionIds.length === existingRegionIds.length && 
+                   selectedRegionIds.every(id => existingRegionIds.includes(id));
+
+    if (isSame) {
       return;
     }
 
@@ -181,7 +185,7 @@ export default function UsersPage() {
     setSaveRegionLoadingId(item.id);
 
     try {
-      await usersApi.update(item.id, { regionId: selectedRegionId });
+      await usersApi.update(item.id, { regionIds: selectedRegionIds });
       await loadUsers();
     } catch (err) {
       setError(err.message || "تعذر تحديث منطقة المندوب");
@@ -274,23 +278,28 @@ export default function UsersPage() {
               <option value="ADMIN">أدمن</option>
             </select>
           </label>
-          <label className="users-create-region-field">
-            المنطقة
-            <select
-              className="users-create-region-select"
-              value={form.regionId}
-              disabled={form.role !== "REPRESENTATIVE"}
-              onChange={(event) => setForm((prev) => ({ ...prev, regionId: event.target.value }))}
-              required={form.role === "REPRESENTATIVE"}
-            >
-              <option value="">اختر المنطقة</option>
+          <div className="users-create-region-field">
+            المناطق
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
               {regions.map((region) => (
-                <option key={region.id} value={region.id}>
+                <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <input
+                    type="checkbox"
+                    disabled={form.role !== "REPRESENTATIVE"}
+                    checked={form.regionIds?.includes(region.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setForm(prev => ({ ...prev, regionIds: [...(prev.regionIds || []), region.id] }));
+                      } else {
+                        setForm(prev => ({ ...prev, regionIds: (prev.regionIds || []).filter(id => id !== region.id) }));
+                      }
+                    }}
+                  />
                   {region.name}
-                </option>
+                </label>
               ))}
-            </select>
-          </label>
+            </div>
+          </div>
           <button type="submit" className="primary-btn users-create-btn" disabled={createLoading}>
             {createLoading ? "جاري الحفظ..." : "إنشاء المستخدم"}
           </button>
@@ -340,34 +349,37 @@ export default function UsersPage() {
                     <td data-label="\u0627\u0644\u0627\u0633\u0645">{item.name}</td>
                     <td data-label="\u0627\u0644\u0628\u0631\u064a\u062f">{item.email}</td>
                     <td data-label="\u0627\u0644\u062f\u0648\u0631">{item.role === "ADMIN" ? "\u0623\u062f\u0645\u0646" : "\u0645\u0646\u062f\u0648\u0628"}</td>
-                    <td className="user-region-cell" data-label="\u0627\u0644\u0645\u0646\u0637\u0642\u0629">
+                    <td className="user-region-cell" data-label="المنطقة">
                       {item.role === "REPRESENTATIVE" ? (
-                        <div className="user-region-control">
-                          <select
-                            className="user-region-select"
-                            value={regionDraftByUserId[item.id] ?? String(item.region?.id || "")}
-                            onChange={(event) =>
-                              setRegionDraftByUserId((prev) => ({
-                                ...prev,
-                                [item.id]: event.target.value
-                              }))
-                            }
-                            disabled={saveRegionLoadingId === item.id}
-                          >
-                            <option value="">اختر المنطقة</option>
-                            {regions.map((region) => (
-                              <option key={region.id} value={region.id}>
-                                {region.name}
-                              </option>
-                            ))}
-                          </select>
+                        <div className="user-region-control" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', maxHeight: '100px', overflowY: 'auto', padding: '5px', border: '1px solid #ccc', borderRadius: '4px' }}>
+                            {regions.map((region) => {
+                              const drafts = regionDraftByUserId[item.id] || [];
+                              const isChecked = drafts.includes(region.id);
+                              return (
+                                <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.85rem' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    disabled={saveRegionLoadingId === item.id}
+                                    onChange={(e) => {
+                                      const newDrafts = e.target.checked 
+                                        ? [...drafts, region.id] 
+                                        : drafts.filter(id => id !== region.id);
+                                      setRegionDraftByUserId(prev => ({ ...prev, [item.id]: newDrafts }));
+                                    }}
+                                  />
+                                  {region.name}
+                                </label>
+                              );
+                            })}
+                          </div>
                           <button
                             type="button"
                             className="secondary-btn user-region-save-btn"
                             disabled={
                               saveRegionLoadingId === item.id ||
-                              !regionDraftByUserId[item.id] ||
-                              Number(regionDraftByUserId[item.id]) === Number(item.region?.id)
+                              !(regionDraftByUserId[item.id]?.length > 0)
                             }
                             onClick={() => saveRepresentativeRegion(item)}
                           >
