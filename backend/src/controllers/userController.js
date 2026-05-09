@@ -4,6 +4,7 @@ const asyncHandler = require("../middlewares/asyncHandler");
 const { Roles } = require("../constants/enums");
 const { createHttpError } = require("../utils/httpError");
 const { sanitizeUser } = require("./authController");
+const { logActivity } = require("../services/logService");
 
 const listUsers = asyncHandler(async (req, res) => {
   const { page, pageSize, search } = req.query;
@@ -85,6 +86,15 @@ const createUser = asyncHandler(async (req, res) => {
       isActive: isActive ?? true
     },
     include: { regions: true }
+  });
+
+  await logActivity({
+    userId: req.user.id,
+    action: "CREATE_USER",
+    entityType: "USER",
+    entityId: user.id,
+    entityName: user.name,
+    details: `تم إضافة ${role === Roles.ADMIN ? 'مدير' : 'مندوب'} جديد: ${user.name}`
   });
 
   res.status(201).json({

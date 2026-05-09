@@ -8,9 +8,9 @@ const {
   listClients,
   getClientById,
   handleClientVisit,
-  approveClientVisit,
   rejectClientVisit
 } = require("../services/clientService");
+const { logActivity } = require("../services/logService");
 
 function normalizeClientName(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
@@ -180,6 +180,15 @@ const createClient = asyncHandler(async (req, res) => {
     }
 
     return newClient;
+  });
+
+  await logActivity({
+    userId: req.user.id,
+    action: "CREATE_CLIENT",
+    entityType: "CLIENT",
+    entityId: client.id,
+    entityName: client.name,
+    details: `تم إضافة عميل جديد: ${client.name}`
   });
 
   res.status(201).json({

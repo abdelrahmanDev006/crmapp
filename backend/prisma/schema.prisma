@@ -48,37 +48,38 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  createdClients Client[]      @relation("ClientCreator")
+  createdClients Client[]       @relation("ClientCreator")
   visits         VisitHistory[] @relation("VisitUser")
+  activityLogs   ActivityLog[]  @relation("UserLogs")
 
   @@index([role])
 }
 
 model Client {
-  id            Int          @id @default(autoincrement())
-  name          String
-  phone         String
-  address       String
-  locationUrl   String?
-  products      String
-  price         String?
-  regionId      Int
-  region        Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
-  visitType     VisitType
+  id                      Int          @id @default(autoincrement())
+  name                    String
+  phone                   String
+  address                 String
+  locationUrl             String?
+  products                String
+  price                   String?
+  regionId                Int
+  region                  Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  visitType               VisitType
   customVisitIntervalDays Int?
-  status        ClientStatus @default(ACTIVE)
-  noAnswerCount Int          @default(0)
-  nextVisitDate DateTime
-  
-  pendingOutcome     ClientStatus?
-  pendingNote        String?
-  pendingVisitType   VisitType?
+  status                  ClientStatus @default(ACTIVE)
+  noAnswerCount           Int          @default(0)
+  nextVisitDate           DateTime
+
+  pendingOutcome                 ClientStatus?
+  pendingNote                    String?
+  pendingVisitType               VisitType?
   pendingCustomVisitIntervalDays Int?
 
-  createdById   Int?
-  createdBy     User?        @relation("ClientCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdById Int?
+  createdBy   User?    @relation("ClientCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   visits VisitHistory[]
 
@@ -103,4 +104,20 @@ model VisitHistory {
 
   @@index([clientId, visitDate])
   @@index([visitedById, visitDate])
+}
+
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation("UserLogs", fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  entityType String
+  entityId   Int?
+  entityName String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }
