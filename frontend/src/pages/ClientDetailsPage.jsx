@@ -290,8 +290,8 @@ export default function ClientDetailsPage() {
       try {
         await clientsApi.update(id, updatePayload);
       } catch (apiErr) {
-        if (apiErr.response?.status === 409 && apiErr.response?.data?.message) {
-          const confirmAdd = window.confirm(apiErr.response.data.message + "\n\nهل تريد المتابعة وتحديث العميل على أي حال؟");
+        if (apiErr.status === 409 && apiErr.message) {
+          const confirmAdd = window.confirm(apiErr.message + "\n\nهل تريد المتابعة وتحديث العميل على أي حال؟");
           if (confirmAdd) {
             await clientsApi.update(id, { ...updatePayload, force: true });
           } else {

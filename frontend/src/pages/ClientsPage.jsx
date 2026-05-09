@@ -1006,8 +1006,8 @@ export default function ClientsPage() {
       try {
         await clientsApi.create(createPayload);
       } catch (apiErr) {
-        if (apiErr.response?.status === 409 && apiErr.response?.data?.message) {
-          const confirmAdd = window.confirm(apiErr.response.data.message + "\n\nهل تريد المتابعة وإضافة العميل على أي حال؟");
+        if (apiErr.status === 409 && apiErr.message) {
+          const confirmAdd = window.confirm(apiErr.message + "\n\nهل تريد المتابعة وإضافة العميل على أي حال؟");
           if (confirmAdd) {
             await clientsApi.create({ ...createPayload, force: true });
           } else {
