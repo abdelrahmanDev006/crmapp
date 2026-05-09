@@ -25,7 +25,9 @@ export default function UsersPage() {
   const [deleteLoadingId, setDeleteLoadingId] = useState(null);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
   const [saveRegionLoadingId, setSaveRegionLoadingId] = useState(null);
+  const [saveDateLoadingId, setSaveDateLoadingId] = useState(null);
   const [regionDraftByUserId, setRegionDraftByUserId] = useState({});
+  const [allowedDateDraftByUserId, setAllowedDateDraftByUserId] = useState({});
   const debouncedSearch = useDebouncedValue(search, 350);
 
   const loadUsers = useCallback(async () => {
@@ -52,17 +54,27 @@ export default function UsersPage() {
 
   useEffect(() => {
     setRegionDraftByUserId((previous) => {
-      const next = { ...previous };
-
+      const nextRegion = { ...previous };
       usersData.items.forEach((item) => {
         if (item.role === "REPRESENTATIVE") {
-          next[item.id] = next[item.id] ?? String(item.region?.id || "");
+          nextRegion[item.id] = nextRegion[item.id] ?? String(item.region?.id || "");
         } else {
-          delete next[item.id];
+          delete nextRegion[item.id];
         }
       });
+      return nextRegion;
+    });
 
-      return next;
+    setAllowedDateDraftByUserId((previous) => {
+      const nextDate = { ...previous };
+      usersData.items.forEach((item) => {
+        if (item.role === "REPRESENTATIVE") {
+          nextDate[item.id] = nextDate[item.id] ?? (item.allowedDate || "");
+        } else {
+          delete nextDate[item.id];
+        }
+      });
+      return nextDate;
     });
   }, [usersData.items]);
 
@@ -178,6 +190,49 @@ export default function UsersPage() {
     }
   }
 
+  async function saveAllowedDate(item) {
+    const selectedDate = allowedDateDraftByUserId[item.id];
+
+    if (item.role !== "REPRESENTATIVE" || !selectedDate) {
+      return;
+    }
+
+    if (selectedDate === item.allowedDate) {
+      return;
+    }
+
+    setError("");
+    setSaveDateLoadingId(item.id);
+
+    try {
+      await usersApi.update(item.id, { allowedDate: selectedDate });
+      await loadUsers();
+    } catch (err) {
+      setError(err.message || "تعذر تحديث يوم عرض المندوب");
+    } finally {
+      setSaveDateLoadingId(null);
+    }
+  }
+
+  async function clearAllowedDate(item) {
+    if (item.role !== "REPRESENTATIVE" || !item.allowedDate) {
+      return;
+    }
+
+    setError("");
+    setSaveDateLoadingId(item.id);
+
+    try {
+      await usersApi.update(item.id, { allowedDate: null });
+      setAllowedDateDraftByUserId((prev) => ({ ...prev, [item.id]: "" }));
+      await loadUsers();
+    } catch (err) {
+      setError(err.message || "تعذر إخفاء العملاء عن المندوب");
+    } finally {
+      setSaveDateLoadingId(null);
+    }
+  }
+
   function isCurrentUser(item) {
     return Number(item.id) === Number(currentUser?.id);
   }
@@ -274,6 +329,7 @@ export default function UsersPage() {
                   <th>البريد</th>
                   <th>الدور</th>
                   <th>المنطقة</th>
+                  <th>عرض يوم</th>
                   <th>الحالة</th>
                   <th>إجراء</th>
                 </tr>
@@ -322,7 +378,47 @@ export default function UsersPage() {
                         <span className="user-region-empty">-</span>
                       )}
                     </td>
-                    <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629">{item.isActive ? "\u0646\u0634\u0637" : "\u0645\u0648\u0642\u0648\u0641"}</td>
+                    <td className="user-date-cell" data-label="عرض يوم">
+                      {item.role === "REPRESENTATIVE" ? (
+                        <div className="user-date-control" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                          <input
+                            type="date"
+                            style={{ padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }}
+                            value={allowedDateDraftByUserId[item.id] ?? (item.allowedDate || "")}
+                            onChange={(e) =>
+                              setAllowedDateDraftByUserId((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.value
+                              }))
+                            }
+                            disabled={saveDateLoadingId === item.id}
+                          />
+                          <button
+                            type="button"
+                            className="secondary-btn user-region-save-btn"
+                            disabled={
+                              saveDateLoadingId === item.id ||
+                              !allowedDateDraftByUserId[item.id] ||
+                              allowedDateDraftByUserId[item.id] === item.allowedDate
+                            }
+                            onClick={() => saveAllowedDate(item)}
+                          >
+                            {saveDateLoadingId === item.id ? "..." : "تعيين"}
+                          </button>
+                          <button
+                            type="button"
+                            className={item.allowedDate ? "danger-btn" : "ghost-btn"}
+                            disabled={saveDateLoadingId === item.id || !item.allowedDate}
+                            onClick={() => clearAllowedDate(item)}
+                          >
+                            إخفاء
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="user-date-empty">-</span>
+                      )}
+                    </td>
+                    <td data-label="الحالة">{item.isActive ? "نشط" : "موقوف"}</td>
                     <td className="actions-cell" data-label="\u0627\u0644\u0625\u062c\u0631\u0627\u0621">
                       <button
                         type="button"

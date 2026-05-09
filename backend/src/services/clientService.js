@@ -46,6 +46,19 @@ function buildClientWhere(filters, user) {
 
   if (user.role === Roles.REPRESENTATIVE) {
     where.regionId = user.regionId;
+
+    if (user.allowedDate) {
+      const selectedDate = normalizeToWorkDate(user.allowedDate);
+      const nextDay = new Date(selectedDate);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+      where.nextVisitDate = {
+        gte: selectedDate,
+        lt: nextDay
+      };
+    } else {
+      where.id = -1; // Hide all clients if no allowedDate is set
+    }
   }
 
   if (filters.regionId) {
@@ -88,7 +101,7 @@ function buildClientWhere(filters, user) {
     }
   }
 
-  if (filters.dueDate) {
+  if (filters.dueDate && user.role !== Roles.REPRESENTATIVE) {
     const selectedDate = normalizeToWorkDate(filters.dueDate);
     const nextDay = new Date(selectedDate);
     nextDay.setUTCDate(nextDay.getUTCDate() + 1);

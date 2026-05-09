@@ -12,6 +12,7 @@ function sanitizeUser(user) {
     email: user.email,
     role: user.role,
     isActive: user.isActive,
+    allowedDate: user.allowedDate,
     regionId: user.regionId,
     region: user.region
       ? {

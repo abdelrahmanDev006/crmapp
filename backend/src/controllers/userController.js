@@ -1,4 +1,4 @@
-﻿const bcrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 const prisma = require("../config/prisma");
 const asyncHandler = require("../middlewares/asyncHandler");
 const { Roles } = require("../constants/enums");
@@ -104,6 +104,10 @@ const updateUser = asyncHandler(async (req, res) => {
 
   if (isActive !== undefined) {
     data.isActive = isActive;
+  }
+
+  if (req.body.allowedDate !== undefined) {
+    data.allowedDate = req.body.allowedDate;
   }
 
   if (password) {

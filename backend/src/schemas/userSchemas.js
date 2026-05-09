@@ -26,7 +26,8 @@ const updateUserSchema = z
     password: z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل").optional(),
     role: z.enum([Roles.ADMIN, Roles.REPRESENTATIVE]).optional(),
     regionId: z.coerce.number().int().positive().nullable().optional(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    allowedDate: z.string().nullable().optional()
   })
   .superRefine((data, ctx) => {
     if (data.role === Roles.REPRESENTATIVE && (data.regionId === undefined || data.regionId === null)) {
