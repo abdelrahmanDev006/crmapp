@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { useAuth } from "../auth/AuthContext";
+import { logsApi } from "../api/crmApi";
 
 export default function LogsPage() {
   const [logs, setLogs] = useState([]);
@@ -15,10 +15,7 @@ export default function LogsPage() {
     async function loadLogs() {
       try {
         setLoading(true);
-        const token = localStorage.getItem("crm_auth_token");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/logs?page=${page}&pageSize=10`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await logsApi.list({ page, pageSize: 10 });
         setLogs(res.data.items || []);
         setTotalPages(res.data.totalPages || 1);
       } catch (err) {

@@ -36,3 +36,7 @@ export const usersApi = {
   update: (id, payload) => http.patch(`/users/${id}`, payload),
   remove: (id) => http.delete(`/users/${id}`)
 };
+
+export const logsApi = {
+  list: (params) => http.get("/logs", { params })
+};
