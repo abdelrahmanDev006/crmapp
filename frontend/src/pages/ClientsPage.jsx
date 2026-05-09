@@ -988,7 +988,7 @@ export default function ClientsPage() {
         throw new Error("حدد عدد الأيام لنوع الزيارة (ميعاد آخر)");
       }
 
-      await clientsApi.create({
+      const createPayload = {
         name: createForm.name,
         phone: createForm.phone,
         address: createForm.address,
@@ -1001,7 +1001,22 @@ export default function ClientsPage() {
         status: createForm.status,
         nextVisitDate: createForm.nextVisitDate ? `${createForm.nextVisitDate}T00:00:00.000Z` : undefined,
         note: createForm.note ? createForm.note.trim() : undefined
-      });
+      };
+
+      try {
+        await clientsApi.create(createPayload);
+      } catch (apiErr) {
+        if (apiErr.response?.status === 409 && apiErr.response?.data?.message) {
+          const confirmAdd = window.confirm(apiErr.response.data.message + "\n\nهل تريد المتابعة وإضافة العميل على أي حال؟");
+          if (confirmAdd) {
+            await clientsApi.create({ ...createPayload, force: true });
+          } else {
+            return; // User cancelled
+          }
+        } else {
+          throw apiErr;
+        }
+      }
 
       setCreateForm(initialCreateForm);
       setShowCreate(false);

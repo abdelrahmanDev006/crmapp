@@ -272,7 +272,7 @@ export default function ClientDetailsPage() {
         throw new Error("حدد عدد الأيام لنوع الزيارة (ميعاد آخر)");
       }
 
-      await clientsApi.update(id, {
+      const updatePayload = {
         name: editName,
         phone: editPhone,
         address: editAddress,
@@ -285,7 +285,23 @@ export default function ClientDetailsPage() {
         customVisitIntervalDays: editVisitType === "CUSTOM" ? customVisitIntervalDays : undefined,
         nextVisitDate: editNextVisitDate ? `${editNextVisitDate}T00:00:00.000Z` : undefined,
         note: editNote.trim()
-      });
+      };
+
+      try {
+        await clientsApi.update(id, updatePayload);
+      } catch (apiErr) {
+        if (apiErr.response?.status === 409 && apiErr.response?.data?.message) {
+          const confirmAdd = window.confirm(apiErr.response.data.message + "\n\nهل تريد المتابعة وتحديث العميل على أي حال؟");
+          if (confirmAdd) {
+            await clientsApi.update(id, { ...updatePayload, force: true });
+          } else {
+            return; // User cancelled
+          }
+        } else {
+          throw apiErr;
+        }
+      }
+
       setInfoMessage("تم تحديث بيانات العميل بنجاح");
       await loadClient();
     } catch (err) {

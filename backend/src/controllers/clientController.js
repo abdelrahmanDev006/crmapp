@@ -53,51 +53,52 @@ async function assertClientUniqueness({
   name,
   phone,
   regionId,
-  excludeClientId
+  excludeClientId,
+  force = false
 }) {
   const normalizedName = normalizeClientName(name);
   const normalizedPhone = normalizePhoneForComparison(phone);
   const numericRegionId = Number(regionId);
   const excludedId = Number(excludeClientId);
 
-  if (normalizedPhone) {
-    const duplicateByPhone = await findDuplicatePhoneClient({
-      normalizedPhone,
-      excludeClientId: excludedId
-    });
+  if (!force) {
+    if (normalizedPhone) {
+      const duplicateByPhone = await findDuplicatePhoneClient({
+        normalizedPhone,
+        excludeClientId: excludedId
+      });
 
-    if (duplicateByPhone) {
-      throw createHttpError(
-        409,
-        `رقم الهاتف مستخدم بالفعل مع العميل "${duplicateByPhone.name}" (ID: ${duplicateByPhone.id})`
-      );
+      if (duplicateByPhone) {
+        throw createHttpError(
+          409,
+          `رقم الهاتف مستخدم بالفعل مع العميل "${duplicateByPhone.name}" (ID: ${duplicateByPhone.id})`
+        );
+      }
     }
-  }
 
-  if (!normalizedName || !Number.isInteger(numericRegionId) || numericRegionId <= 0) {
-    return { normalizedName, normalizedPhone };
-  }
+    if (normalizedName && Number.isInteger(numericRegionId) && numericRegionId > 0) {
+      const duplicateByName = await prisma.client.findFirst({
+        where: {
+          regionId: numericRegionId,
+          name: {
+            equals: normalizedName,
+            mode: "insensitive"
+          },
+          ...(Number.isInteger(excludedId) && excludedId > 0 ? { id: { not: excludedId } } : {})
+        },
+        select: {
+          id: true,
+          name: true
+        }
+      });
 
-  const duplicateByName = await prisma.client.findFirst({
-    where: {
-      regionId: numericRegionId,
-      name: {
-        equals: normalizedName,
-        mode: "insensitive"
-      },
-      ...(Number.isInteger(excludedId) && excludedId > 0 ? { id: { not: excludedId } } : {})
-    },
-    select: {
-      id: true,
-      name: true
+      if (duplicateByName) {
+        throw createHttpError(
+          409,
+          `اسم العميل موجود بالفعل داخل نفس المنطقة (ID: ${duplicateByName.id})`
+        );
+      }
     }
-  });
-
-  if (duplicateByName) {
-    throw createHttpError(
-      409,
-      `اسم العميل موجود بالفعل داخل نفس المنطقة (ID: ${duplicateByName.id})`
-    );
   }
 
   return { normalizedName, normalizedPhone };
@@ -131,7 +132,8 @@ const createClient = asyncHandler(async (req, res) => {
   const { normalizedName } = await assertClientUniqueness({
     name: payload.name,
     phone: payload.phone,
-    regionId: payload.regionId
+    regionId: payload.regionId,
+    force: payload.force
   });
 
   const normalizedStatus = payload.status || ClientStatuses.ACTIVE;
@@ -215,7 +217,8 @@ const updateClient = asyncHandler(async (req, res) => {
     name: nextName,
     phone: nextPhone,
     regionId: nextRegionId,
-    excludeClientId: clientId
+    excludeClientId: clientId,
+    force: req.body.force
   });
 
   const hasCustomIntervalInPayload = Object.prototype.hasOwnProperty.call(req.body, "customVisitIntervalDays");
