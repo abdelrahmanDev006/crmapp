@@ -985,13 +985,26 @@ export default function ClientsPage() {
   }
 
   async function handleClientOutcome(client, outcome) {
+    let noteText = "";
+    if (outcome === "REJECTED") {
+      noteText = window.prompt("يرجى إدخال سبب إلغاء العميل (اختياري):");
+      if (noteText === null) return; // User canceled the prompt
+    } else if (outcome === "NO_ANSWER") {
+      noteText = window.prompt("يرجى إدخال أي ملاحظة حول عدم الرد (اختياري):");
+      if (noteText === null) return;
+    } else if (outcome === "ACTIVE") {
+      noteText = window.prompt("برجاء كتابة تفاصيل التعامل أو أي ملاحظات (اختياري):");
+      if (noteText === null) return;
+    }
+
     setActionState({ clientId: client.id, outcome });
     setError("");
     setInfoMessage("");
 
     try {
       await clientsApi.handle(client.id, {
-        outcome
+        outcome,
+        note: noteText || undefined
       });
       await loadClients();
 
