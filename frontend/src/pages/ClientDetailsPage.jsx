@@ -81,6 +81,7 @@ export default function ClientDetailsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [saveDetailsLoading, setSaveDetailsLoading] = useState(false);
   const [note, setNote] = useState("");
+  const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editLocationUrl, setEditLocationUrl] = useState("");
@@ -88,7 +89,11 @@ export default function ClientDetailsPage() {
   const [editProducts, setEditProducts] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editNextVisitDate, setEditNextVisitDate] = useState("");
+  const [editVisitType, setEditVisitType] = useState("WEEKLY");
   const [editCustomVisitIntervalDays, setEditCustomVisitIntervalDays] = useState("");
+  const [editStatus, setEditStatus] = useState("ACTIVE");
+  const [editNote, setEditNote] = useState("");
+  const [showEditForm, setShowEditForm] = useState(false);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
 
@@ -107,28 +112,35 @@ export default function ClientDetailsPage() {
 
     try {
       const response = await clientsApi.getById(id);
-      setClient(response.data.item);
-      const normalizedVisitType = ["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"].includes(response.data.item.visitType)
-        ? response.data.item.visitType
+      const item = response.data.item;
+      setClient(item);
+      const normalizedVisitType = ["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"].includes(item.visitType)
+        ? item.visitType
         : "MONTHLY";
       setNextVisitType(normalizedVisitType);
       setNextCustomVisitIntervalDays(
-        response.data.item.visitType === "CUSTOM"
-          ? String(response.data.item.customVisitIntervalDays || 3)
+        item.visitType === "CUSTOM"
+          ? String(item.customVisitIntervalDays || 3)
           : "3"
       );
-      setEditPhone(response.data.item.phone || "");
-      setEditAddress(response.data.item.address || "");
-      setEditLocationUrl(response.data.item.locationUrl || "");
-      setEditRegionId(String(response.data.item.region?.id || ""));
-      setEditProducts(response.data.item.products || "");
-      setEditPrice(response.data.item.price || "");
-      setEditNextVisitDate(toInputDate(response.data.item.nextVisitDate));
+      setEditName(item.name || "");
+      setEditPhone(item.phone || "");
+      setEditAddress(item.address || "");
+      setEditLocationUrl(item.locationUrl || "");
+      setEditRegionId(String(item.region?.id || ""));
+      setEditProducts(item.products || "");
+      setEditPrice(item.price || "");
+      setEditNextVisitDate(toInputDate(item.nextVisitDate));
+      setEditVisitType(normalizedVisitType);
       setEditCustomVisitIntervalDays(
-        response.data.item.visitType === "CUSTOM"
-          ? String(response.data.item.customVisitIntervalDays || "")
+        item.visitType === "CUSTOM"
+          ? String(item.customVisitIntervalDays || "")
           : ""
       );
+      setEditStatus(item.status || "ACTIVE");
+      const visits = Array.isArray(item.visits) ? item.visits : [];
+      const latestNote = visits.find((v) => String(v?.note || "").trim().length > 0);
+      setEditNote(latestNote ? String(latestNote.note || "").trim() : "");
     } catch (err) {
       setError(err.message || "تعذر تحميل بيانات العميل");
     } finally {
@@ -187,6 +199,7 @@ export default function ClientDetailsPage() {
     }
 
     return (
+      editName !== (client.name || "") ||
       editPhone !== (client.phone || "") ||
       editAddress !== (client.address || "") ||
       editLocationUrl !== (client.locationUrl || "") ||
@@ -194,9 +207,11 @@ export default function ClientDetailsPage() {
       editProducts !== (client.products || "") ||
       editPrice !== (client.price || "") ||
       editNextVisitDate !== currentNextVisitInputDate ||
-      (client.visitType === "CUSTOM" &&
+      editVisitType !== (client.visitType || "WEEKLY") ||
+      editStatus !== (client.status || "ACTIVE") ||
+      (editVisitType === "CUSTOM" &&
         editCustomVisitIntervalDays !== String(client.customVisitIntervalDays || "")) ||
-      note.trim().length > 0
+      editNote !== (latestVisitNote === "-" ? "" : latestVisitNote)
     );
   }, [
     client,
@@ -204,12 +219,16 @@ export default function ClientDetailsPage() {
     editAddress,
     editCustomVisitIntervalDays,
     editLocationUrl,
+    editName,
     editNextVisitDate,
+    editNote,
     editPhone,
     editPrice,
     editProducts,
     editRegionId,
-    note
+    editStatus,
+    editVisitType,
+    latestVisitNote
   ]);
 
   async function submitOutcome(outcome) {
@@ -247,24 +266,26 @@ export default function ClientDetailsPage() {
 
     try {
       const customVisitIntervalDays =
-        client.visitType === "CUSTOM" ? parseCustomVisitIntervalDays(editCustomVisitIntervalDays) : null;
+        editVisitType === "CUSTOM" ? parseCustomVisitIntervalDays(editCustomVisitIntervalDays) : null;
 
-      if (client.visitType === "CUSTOM" && !customVisitIntervalDays) {
+      if (editVisitType === "CUSTOM" && !customVisitIntervalDays) {
         throw new Error("حدد عدد الأيام لنوع الزيارة (ميعاد آخر)");
       }
 
       await clientsApi.update(id, {
+        name: editName,
         phone: editPhone,
         address: editAddress,
         locationUrl: editLocationUrl,
         regionId: editRegionId ? Number(editRegionId) : undefined,
         products: editProducts,
         price: editPrice,
-        customVisitIntervalDays: client.visitType === "CUSTOM" ? customVisitIntervalDays : undefined,
+        visitType: editVisitType,
+        status: editStatus,
+        customVisitIntervalDays: editVisitType === "CUSTOM" ? customVisitIntervalDays : undefined,
         nextVisitDate: editNextVisitDate ? `${editNextVisitDate}T00:00:00.000Z` : undefined,
-        note: note.trim() || undefined
+        note: editNote.trim() || undefined
       });
-      setNote("");
       setInfoMessage("تم تحديث بيانات العميل بنجاح");
       await loadClient();
     } catch (err) {
@@ -361,135 +382,191 @@ export default function ClientDetailsPage() {
         </div>
 
         {isAdmin && (
-          <div className="action-bar" style={{ marginBottom: "12px" }}>
-            <input
-              type="text"
-              value={editPhone}
-              onChange={(event) => setEditPhone(event.target.value)}
-              placeholder="رقم الهاتف"
-              disabled={saveDetailsLoading || actionLoading}
-            />
-            <input
-              type="text"
-              value={editAddress}
-              onChange={(event) => setEditAddress(event.target.value)}
-              placeholder="العنوان"
-              disabled={saveDetailsLoading || actionLoading}
-            />
-            <input
-              type="text"
-              value={editLocationUrl}
-              onChange={(event) => setEditLocationUrl(event.target.value)}
-              placeholder="رابط اللوكيشن (Google Maps)"
-              disabled={saveDetailsLoading || actionLoading}
-            />
-            <select
-              value={editRegionId}
-              onChange={(event) => setEditRegionId(event.target.value)}
-              disabled={saveDetailsLoading || actionLoading || regions.length === 0}
-            >
-              <option value="">اختر المنطقة</option>
-              {regions.map((regionOption) => (
-                <option key={regionOption.id} value={regionOption.id}>
-                  {regionOption.name}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              value={editProducts}
-              onChange={(event) => setEditProducts(event.target.value)}
-              placeholder="المنتجات"
-              disabled={saveDetailsLoading || actionLoading}
-            />
-            <input
-              type="text"
-              value={editPrice}
-              onChange={(event) => setEditPrice(event.target.value)}
-              placeholder="السعر"
-              disabled={saveDetailsLoading || actionLoading}
-            />
-            {client.visitType === "CUSTOM" && (
-              <input
-                type="number"
-                min="1"
-                max="365"
-                value={editCustomVisitIntervalDays}
-                onChange={(event) => setEditCustomVisitIntervalDays(event.target.value)}
-                placeholder="كل كام يوم؟"
-                disabled={saveDetailsLoading || actionLoading}
-              />
-            )}
-            {client.status !== "REJECTED" && (
-              <div className="clients-date-input inline-date-control">
-                <span className={editNextVisitDate ? "clients-date-value" : "clients-date-placeholder"}>
-                  {editNextVisitDateDisplay}
-                </span>
-                <span className="clients-date-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                    <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
-                  </svg>
-                </span>
+          <>
+            <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+              <button 
+                type="button" 
+                className="secondary-btn" 
+                onClick={() => setShowEditForm(!showEditForm)}
+              >
+                {showEditForm ? "إخفاء التعديلات ⬆️" : "عرض التعديلات ✏️"}
+              </button>
+            </div>
+            {showEditForm && (
+              <div className="client-edit-form" style={{ marginTop: "15px", borderTop: "2px solid var(--border)", paddingTop: "15px" }}>
+                <h4 className="client-edit-title">✏️ تعديل بيانات العميل</h4>
+            <div className="client-edit-grid">
+              <label className="client-edit-field">
+                <span className="client-edit-label">اسم العميل</span>
                 <input
-                  type="date"
-                  className="clients-date-native-input"
-                  value={editNextVisitDate}
-                  onChange={(event) => setEditNextVisitDate(event.target.value)}
-                  title="تاريخ الزيارة القادمة"
-                  lang="ar-EG"
+                  type="text"
+                  value={editName}
+                  onChange={(event) => setEditName(event.target.value)}
+                  placeholder="أدخل اسم العميل"
                   disabled={saveDetailsLoading || actionLoading}
                 />
-              </div>
-            )}
-            <button
-              type="button"
-              className="primary-btn"
-              disabled={saveDetailsLoading || actionLoading || !hasDetailsChanges}
-              onClick={submitClientDetailsUpdate}
-            >
-              {saveDetailsLoading ? "جاري الحفظ..." : "حفظ بيانات العميل"}
-            </button>
+              </label>
+              <label className="client-edit-field">
+                <span className="client-edit-label">رقم الهاتف</span>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(event) => setEditPhone(event.target.value)}
+                  placeholder="أدخل رقم الهاتف"
+                  disabled={saveDetailsLoading || actionLoading}
+                />
+              </label>
+              <label className="client-edit-field">
+                <span className="client-edit-label">العنوان</span>
+                <input
+                  type="text"
+                  value={editAddress}
+                  onChange={(event) => setEditAddress(event.target.value)}
+                  placeholder="أدخل العنوان"
+                  disabled={saveDetailsLoading || actionLoading}
+                />
+              </label>
+              <label className="client-edit-field">
+                <span className="client-edit-label">رابط اللوكيشن (Google Maps)</span>
+                <input
+                  type="text"
+                  value={editLocationUrl}
+                  onChange={(event) => setEditLocationUrl(event.target.value)}
+                  placeholder="أدخل رابط اللوكيشن"
+                  disabled={saveDetailsLoading || actionLoading}
+                />
+              </label>
+              <label className="client-edit-field">
+                <span className="client-edit-label">المنطقة</span>
+                <select
+                  value={editRegionId}
+                  onChange={(event) => setEditRegionId(event.target.value)}
+                  disabled={saveDetailsLoading || actionLoading || regions.length === 0}
+                >
+                  <option value="">اختر المنطقة</option>
+                  {regions.map((regionOption) => (
+                    <option key={regionOption.id} value={regionOption.id}>
+                      {regionOption.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="client-edit-field">
+                <span className="client-edit-label">المنتجات</span>
+                <input
+                  type="text"
+                  value={editProducts}
+                  onChange={(event) => setEditProducts(event.target.value)}
+                  placeholder="أدخل المنتجات"
+                  disabled={saveDetailsLoading || actionLoading}
+                />
+              </label>
+              <label className="client-edit-field">
+                <span className="client-edit-label">السعر</span>
+                <input
+                  type="text"
+                  value={editPrice}
+                  onChange={(event) => setEditPrice(event.target.value)}
+                  placeholder="أدخل السعر"
+                  disabled={saveDetailsLoading || actionLoading}
+                />
+              </label>
+              <label className="client-edit-field">
+                <span className="client-edit-label">الحالة</span>
+                <select
+                  value={editStatus}
+                  onChange={(event) => setEditStatus(event.target.value)}
+                  disabled={saveDetailsLoading || actionLoading}
+                >
+                  <option value="ACTIVE">نشط</option>
+                  <option value="NO_ANSWER">لم يرد</option>
+                  <option value="REJECTED">كانسل</option>
+                </select>
+              </label>
+              <label className="client-edit-field">
+                <span className="client-edit-label">نوع الزيارة</span>
+                <select
+                  value={editVisitType}
+                  onChange={(event) => {
+                    const nextType = event.target.value;
+                    setEditVisitType(nextType);
+                    if (nextType !== "CUSTOM") {
+                      setEditCustomVisitIntervalDays("");
+                    } else if (!editCustomVisitIntervalDays) {
+                      setEditCustomVisitIntervalDays(String(client.customVisitIntervalDays || 3));
+                    }
+                  }}
+                  disabled={saveDetailsLoading || actionLoading}
+                >
+                  <option value="WEEKLY">أسبوعي</option>
+                  <option value="BIWEEKLY">أسبوعين</option>
+                  <option value="MONTHLY">شهري</option>
+                  <option value="CUSTOM">ميعاد آخر</option>
+                </select>
+              </label>
+              {editVisitType === "CUSTOM" && (
+                <label className="client-edit-field">
+                  <span className="client-edit-label">كل كام يوم؟</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={editCustomVisitIntervalDays}
+                    onChange={(event) => setEditCustomVisitIntervalDays(event.target.value)}
+                    placeholder="عدد الأيام"
+                    disabled={saveDetailsLoading || actionLoading}
+                  />
+                </label>
+              )}
+              <label className="client-edit-field">
+                <span className="client-edit-label">تاريخ الزيارة القادمة</span>
+                <div className="clients-date-input inline-date-control">
+                  <span className={editNextVisitDate ? "clients-date-value" : "clients-date-placeholder"}>
+                    {editNextVisitDateDisplay}
+                  </span>
+                  <span className="clients-date-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                      <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="date"
+                    className="clients-date-native-input"
+                    value={editNextVisitDate}
+                    onChange={(event) => setEditNextVisitDate(event.target.value)}
+                    title="تاريخ الزيارة القادمة"
+                    lang="ar-EG"
+                    disabled={saveDetailsLoading || actionLoading}
+                  />
+                </div>
+              </label>
+              <label className="client-edit-field client-edit-field-full">
+                <span className="client-edit-label">الملاحظات</span>
+                <input
+                  type="text"
+                  value={editNote}
+                  onChange={(event) => setEditNote(event.target.value)}
+                  placeholder="أدخل أو عدّل الملاحظات"
+                  disabled={saveDetailsLoading || actionLoading}
+                />
+              </label>
+            </div>
+            <div className="client-edit-actions">
+              <button
+                type="button"
+                className="primary-btn"
+                disabled={saveDetailsLoading || actionLoading || !hasDetailsChanges}
+                onClick={submitClientDetailsUpdate}
+              >
+                {saveDetailsLoading ? "جاري الحفظ..." : "💾 حفظ بيانات العميل"}
+              </button>
+            </div>
           </div>
+            )}
+          </>
         )}
 
-        <div className="action-bar">
-          <select
-            value={nextVisitType}
-            onChange={(event) => {
-              const nextType = event.target.value;
-              setNextVisitType(nextType);
-
-              if (nextType !== "CUSTOM") {
-                setNextCustomVisitIntervalDays("3");
-              } else if (!parseCustomVisitIntervalDays(nextCustomVisitIntervalDays)) {
-                setNextCustomVisitIntervalDays(String(client.customVisitIntervalDays || 3));
-              }
-            }}
-            disabled={actionLoading}
-          >
-            <option value="WEEKLY">نوع الزيارة: أسبوعي</option>
-            <option value="BIWEEKLY">نوع الزيارة: أسبوعين</option>
-            <option value="MONTHLY">نوع الزيارة: شهري</option>
-            <option value="CUSTOM">نوع الزيارة: ميعاد آخر</option>
-          </select>
-          {nextVisitType === "CUSTOM" && (
-            <input
-              type="number"
-              min="1"
-              max="365"
-              value={nextCustomVisitIntervalDays}
-              onChange={(event) => setNextCustomVisitIntervalDays(event.target.value)}
-              placeholder="كل كام يوم؟"
-              disabled={actionLoading}
-            />
-          )}
-          <input
-            type="text"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="ملاحظة الزيارة (مثال: عرض منتج جديد)"
-            disabled={actionLoading}
-          />
+        <div className="action-bar" style={{ marginTop: "20px", borderTop: "2px solid var(--border)", paddingTop: "16px" }}>
           <button type="button" className="primary-btn" disabled={actionLoading} onClick={() => submitOutcome("ACTIVE")}>
             تم التعامل
           </button>
@@ -537,17 +614,17 @@ export default function ClientDetailsPage() {
               <tbody>
                 {client.visits.map((visit) => (
                   <tr key={visit.id}>
-                    <td data-label="\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0632\u064a\u0627\u0631\u0629">{formatDate(visit.visitDate)}</td>
-                    <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629 \u0627\u0644\u0633\u0627\u0628\u0642\u0629">
+                    <td data-label="تاريخ الزيارة">{formatDate(visit.visitDate)}</td>
+                    <td data-label="الحالة السابقة">
                       <StatusBadge status={visit.previousStatus} />
                     </td>
-                    <td data-label="\u0627\u0644\u062d\u0627\u0644\u0629 \u0627\u0644\u062c\u062f\u064a\u062f\u0629">
+                    <td data-label="الحالة الجديدة">
                       <StatusBadge status={visit.newStatus} />
                     </td>
-                    <td data-label="\u0627\u0644\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0633\u0627\u0628\u0642">{formatDate(visit.previousNextVisitDate)}</td>
-                    <td data-label="\u0627\u0644\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u062c\u062f\u064a\u062f">{formatDate(visit.newNextVisitDate)}</td>
-                    <td data-label="\u0628\u0648\u0627\u0633\u0637\u0629">{visit.visitedBy?.name || "-"}</td>
-                    <td data-label="\u0645\u0644\u0627\u062d\u0638\u0629">{visit.note || "-"}</td>
+                    <td data-label="التاريخ السابق">{formatDate(visit.previousNextVisitDate)}</td>
+                    <td data-label="التاريخ الجديد">{formatDate(visit.newNextVisitDate)}</td>
+                    <td data-label="بواسطة">{visit.visitedBy?.name || "-"}</td>
+                    <td data-label="ملاحظة">{visit.note || "-"}</td>
                   </tr>
                 ))}
               </tbody>

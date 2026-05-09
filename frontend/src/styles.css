@@ -2072,3 +2072,57 @@ tbody tr:hover {
     text-align: center;
   }
 }
+
+/* ── Client Edit Form ────────────────────────────── */
+.client-edit-form {
+  margin-top: 20px;
+  border-top: 2px solid var(--border);
+  padding-top: 20px;
+}
+
+.client-edit-title {
+  margin-bottom: 16px;
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+.client-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.client-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.client-edit-field-full {
+  grid-column: 1 / -1;
+}
+
+.client-edit-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.client-edit-field input,
+.client-edit-field select {
+  width: 100%;
+}
+
+.client-edit-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .client-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+}
