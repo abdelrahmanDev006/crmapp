@@ -278,28 +278,27 @@ export default function UsersPage() {
               <option value="ADMIN">أدمن</option>
             </select>
           </label>
-          <div className="users-create-region-field">
+          <label className="users-create-region-field">
             المناطق
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+            <select
+              multiple
+              size="4"
+              className="users-create-region-select"
+              style={{ padding: '8px' }}
+              value={form.regionIds || []}
+              disabled={form.role !== "REPRESENTATIVE"}
+              onChange={(e) => {
+                const values = Array.from(e.target.selectedOptions).map(opt => Number(opt.value));
+                setForm((prev) => ({ ...prev, regionIds: values }));
+              }}
+              required={form.role === "REPRESENTATIVE"}
+            >
               {regions.map((region) => (
-                <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <input
-                    type="checkbox"
-                    disabled={form.role !== "REPRESENTATIVE"}
-                    checked={form.regionIds?.includes(region.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setForm(prev => ({ ...prev, regionIds: [...(prev.regionIds || []), region.id] }));
-                      } else {
-                        setForm(prev => ({ ...prev, regionIds: (prev.regionIds || []).filter(id => id !== region.id) }));
-                      }
-                    }}
-                  />
-                  {region.name}
-                </label>
+                <option key={region.id} value={region.id}>{region.name}</option>
               ))}
-            </div>
-          </div>
+            </select>
+            <span style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>استخدم Ctrl للتحديد المتعدد</span>
+          </label>
           <button type="submit" className="primary-btn users-create-btn" disabled={createLoading}>
             {createLoading ? "جاري الحفظ..." : "إنشاء المستخدم"}
           </button>
@@ -351,29 +350,20 @@ export default function UsersPage() {
                     <td data-label="\u0627\u0644\u062f\u0648\u0631">{item.role === "ADMIN" ? "\u0623\u062f\u0645\u0646" : "\u0645\u0646\u062f\u0648\u0628"}</td>
                     <td className="user-region-cell" data-label="المنطقة">
                       {item.role === "REPRESENTATIVE" ? (
-                        <div className="user-region-control" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', maxHeight: '100px', overflowY: 'auto', padding: '5px', border: '1px solid #ccc', borderRadius: '4px' }}>
-                            {regions.map((region) => {
-                              const drafts = regionDraftByUserId[item.id] || [];
-                              const isChecked = drafts.includes(region.id);
-                              return (
-                                <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.85rem' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    disabled={saveRegionLoadingId === item.id}
-                                    onChange={(e) => {
-                                      const newDrafts = e.target.checked 
-                                        ? [...drafts, region.id] 
-                                        : drafts.filter(id => id !== region.id);
-                                      setRegionDraftByUserId(prev => ({ ...prev, [item.id]: newDrafts }));
-                                    }}
-                                  />
-                                  {region.name}
-                                </label>
-                              );
-                            })}
-                          </div>
+                        <div className="user-region-control" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <select
+                            multiple
+                            size="2"
+                            style={{ padding: '4px', minWidth: '120px', borderRadius: '4px', border: '1px solid #ccc' }}
+                            value={regionDraftByUserId[item.id] || []}
+                            disabled={saveRegionLoadingId === item.id}
+                            onChange={(e) => {
+                              const values = Array.from(e.target.selectedOptions).map(opt => Number(opt.value));
+                              setRegionDraftByUserId(prev => ({ ...prev, [item.id]: values }));
+                            }}
+                          >
+                            {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          </select>
                           <button
                             type="button"
                             className="secondary-btn user-region-save-btn"
@@ -383,7 +373,7 @@ export default function UsersPage() {
                             }
                             onClick={() => saveRepresentativeRegion(item)}
                           >
-                            {saveRegionLoadingId === item.id ? "جاري..." : "حفظ"}
+                            {saveRegionLoadingId === item.id ? "..." : "حفظ"}
                           </button>
                         </div>
                       ) : (
