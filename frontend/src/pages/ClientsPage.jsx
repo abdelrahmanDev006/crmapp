@@ -389,10 +389,9 @@ function ClientTableRows({
 
           {!isRepresentative && client.status === "PENDING_APPROVAL" && (
             <div className="admin-approval-actions" style={{ display: "flex", flexDirection: "column", gap: "8px", background: "#fff3cd", padding: "8px", borderRadius: "8px", border: "1px solid #ffeeba" }}>
-              <div style={{ fontSize: "0.85rem", color: "#856404", fontWeight: "bold" }}>
-                <div>
-                  <span>الطلب: </span>
-                  <span style={{ padding: "2px 6px", background: "#ffc107", color: "#000", borderRadius: "4px" }}>
+              <div style={{ fontSize: "0.85rem", color: "#856404", fontWeight: "bold", textAlign: "center" }}>
+                <div style={{ marginBottom: "6px" }}>
+                  <span style={{ display: "block", padding: "4px", background: "#ffc107", color: "#000", borderRadius: "4px", fontSize: "0.9rem" }}>
                     {client.pendingOutcome === "ACTIVE" ? "تم التعامل" :
                      client.pendingOutcome === "NO_ANSWER" ? "لم يرد" :
                      client.pendingOutcome === "REJECTED" ? "كانسل" :
@@ -401,9 +400,9 @@ function ClientTableRows({
                   </span>
                 </div>
                 {client.pendingVisitType && client.pendingVisitType !== client.visitType && (
-                  <div style={{ marginTop: "4px" }}>
-                    <span>تغيير الزيارة إلى: </span>
-                    <span style={{ color: "#d39e00" }}>
+                  <div style={{ marginTop: "4px", fontSize: "0.8rem", lineHeight: "1.2" }}>
+                    <span style={{ display: "block", color: "#856404" }}>تغيير الزيارة إلى:</span>
+                    <span style={{ color: "#d39e00", display: "block" }}>
                       {client.pendingVisitType === "WEEKLY" ? "أسبوعي" :
                        client.pendingVisitType === "BIWEEKLY" ? "أسبوعين" :
                        client.pendingVisitType === "MONTHLY" ? "شهري" :
@@ -413,29 +412,29 @@ function ClientTableRows({
                   </div>
                 )}
                 {client.pendingNote && (
-                  <div style={{ marginTop: "4px", fontSize: "0.8rem", color: "#664d03", fontStyle: "italic" }}>
+                  <div style={{ marginTop: "6px", fontSize: "0.8rem", color: "#664d03", fontStyle: "italic", wordBreak: "break-word", lineHeight: "1.2" }}>
                     "{client.pendingNote}"
                   </div>
                 )}
               </div>
-              <div style={{ display: "flex", gap: "5px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                 <button
                   type="button"
                   className="primary-btn"
                   disabled={isActionLoadingForClient}
                   onClick={() => onApproveVisit(client)}
-                  style={{ background: "#28a745", borderColor: "#28a745", flex: 1 }}
+                  style={{ background: "#28a745", borderColor: "#28a745", width: "100%", padding: "6px 0", fontSize: "0.85rem" }}
                 >
-                  {isApproveLoading ? "..." : "اعتماد"}
+                  {isApproveLoading ? "..." : "اعتماد الطلب"}
                 </button>
                 <button
                   type="button"
                   className="danger-btn"
                   disabled={isActionLoadingForClient}
                   onClick={() => onRejectVisit(client)}
-                  style={{ flex: 1 }}
+                  style={{ width: "100%", padding: "6px 0", fontSize: "0.85rem" }}
                 >
-                  {isRejectLoading ? "..." : "رفض"}
+                  {isRejectLoading ? "..." : "رفض الطلب"}
                 </button>
               </div>
             </div>
