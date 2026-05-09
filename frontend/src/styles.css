@@ -392,32 +392,32 @@ td {
 
 .table-wrapper table.clients-table th.col-name,
 .table-wrapper table.clients-table td.col-name {
-  width: 14%;
+  width: 13%;
 }
 
 .table-wrapper table.clients-table th.col-phone,
 .table-wrapper table.clients-table td.col-phone {
-  width: 10%;
+  width: 9%;
 }
 
 .table-wrapper table.clients-table th.col-address,
 .table-wrapper table.clients-table td.col-address {
-  width: 18%;
+  width: 15%;
 }
 
 .table-wrapper table.clients-table th.col-location,
 .table-wrapper table.clients-table td.col-location {
-  width: 8%;
+  width: 5%;
 }
 
 .table-wrapper table.clients-table th.col-products,
 .table-wrapper table.clients-table td.col-products {
-  width: 11%;
+  width: 10%;
 }
 
 .table-wrapper table.clients-table th.col-price,
 .table-wrapper table.clients-table td.col-price {
-  width: 6%;
+  width: 5%;
 }
 
 .table-wrapper table.clients-table th.col-visit-type,
@@ -437,7 +437,7 @@ td {
 
 .table-wrapper table.clients-table th.col-actions,
 .table-wrapper table.clients-table td.col-actions {
-  width: 10%;
+  width: 15%;
 }
 
 .table-wrapper table.clients-table th,

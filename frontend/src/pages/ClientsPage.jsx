@@ -388,7 +388,7 @@ function ClientTableRows({
           )}
 
           {!isRepresentative && client.status === "PENDING_APPROVAL" && (
-            <div className="admin-approval-actions" style={{ display: "flex", flexDirection: "column", gap: "6px", background: "#fff3cd", padding: "6px", borderRadius: "8px", border: "1px solid #ffeeba", maxWidth: "115px", margin: "0 auto" }}>
+            <div className="admin-approval-actions" style={{ display: "flex", flexDirection: "column", gap: "6px", background: "#fff3cd", padding: "6px", borderRadius: "8px", border: "1px solid #ffeeba", maxWidth: "140px", margin: "0 auto" }}>
               <div style={{ fontSize: "0.8rem", color: "#856404", fontWeight: "bold", textAlign: "center", lineHeight: "1.2" }}>
                 <div style={{ marginBottom: "4px" }}>
                   <span style={{ display: "block", padding: "3px", background: "#ffc107", color: "#000", borderRadius: "4px", fontSize: "0.85rem" }}>
