@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
+    "build": "prisma generate && prisma migrate deploy",
     "start": "node src/server.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
