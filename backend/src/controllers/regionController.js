@@ -55,7 +55,9 @@ const listRegions = asyncHandler(async (req, res) => {
   const items = await getRegionSummary();
 
   const filteredItems =
-    req.user.role === Roles.ADMIN ? items : items.filter((item) => Number(item.id) === Number(req.user.regionId));
+    req.user.role === Roles.ADMIN 
+      ? items 
+      : items.filter((item) => req.user.regions?.some((r) => Number(r.id) === Number(item.id)));
 
   res.json({ items: filteredItems });
 });

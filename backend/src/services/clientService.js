@@ -131,7 +131,7 @@ function enforceClientScope(user, client) {
     throw createHttpError(404, "العميل غير موجود");
   }
 
-  if (user.role === Roles.REPRESENTATIVE && Number(user.regionId) !== Number(client.regionId)) {
+  if (user.role === Roles.REPRESENTATIVE && (!user.regions || !user.regions.some(r => Number(r.id) === Number(client.regionId)))) {
     throw createHttpError(403, "لا يمكنك الوصول لهذا العميل");
   }
 }

@@ -105,8 +105,8 @@ async function assertClientUniqueness({
 }
 
 const listClientRecords = asyncHandler(async (req, res) => {
-  if (req.user.role === Roles.REPRESENTATIVE && req.query.regionId && Number(req.query.regionId) !== Number(req.user.regionId)) {
-    throw createHttpError(403, "لا يمكنك الوصول إلى مناطق أخرى");
+  if (req.user.role === Roles.REPRESENTATIVE && req.query.regionId && !req.user.regions?.some(r => Number(r.id) === Number(req.query.regionId))) {
+    throw createHttpError(403, "غير مصرح لك باستعراض هذه المنطقة");
   }
 
   const result = await listClients(req.query, req.user);

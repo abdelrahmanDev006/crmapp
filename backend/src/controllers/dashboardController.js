@@ -10,9 +10,9 @@ const summary = asyncHandler(async (req, res) => {
   const globalWhere =
     req.user.role === Roles.ADMIN
       ? {}
-      : {
-          regionId: req.user.regionId
-        };
+        : {
+            regionId: { in: req.user.regions?.map((r) => r.id) || [] }
+          };
 
   const [regions, totalClients, dueClients, rejectedClients, noAnswerClients, activeClients] = await Promise.all([
     getRegionSummary(),
@@ -45,7 +45,9 @@ const summary = asyncHandler(async (req, res) => {
   ]);
 
   const regionItems =
-    req.user.role === Roles.ADMIN ? regions : regions.filter((region) => Number(region.id) === Number(req.user.regionId));
+    req.user.role === Roles.ADMIN 
+      ? regions 
+      : regions.filter((region) => req.user.regions?.some(r => Number(r.id) === Number(region.id)));
 
   res.json({
     totals: {
@@ -65,7 +67,7 @@ const backup = asyncHandler(async (req, res) => {
   }
 
   const [users, regions, clients, visits] = await Promise.all([
-    prisma.user.findMany({ select: { id: true, name: true, email: true, role: true, regionId: true, isActive: true } }),
+    prisma.user.findMany({ select: { id: true, name: true, email: true, role: true, regions: true, isActive: true } }),
     prisma.region.findMany(),
     prisma.client.findMany(),
     prisma.visitHistory.findMany()
