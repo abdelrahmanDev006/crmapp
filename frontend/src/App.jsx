@@ -8,6 +8,7 @@ import ClientsPage from "./pages/ClientsPage";
 import RegionPage from "./pages/RegionPage";
 import ClientDetailsPage from "./pages/ClientDetailsPage";
 import UsersPage from "./pages/UsersPage";
+import LogsPage from "./pages/LogsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 function PublicRoute({ children }) {
@@ -54,6 +55,7 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
             <Route path="clients/:id" element={<ClientDetailsPage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="logs" element={<LogsPage />} />
           </Route>
         </Route>
       </Route>

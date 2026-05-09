@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dashboardApi, regionsApi } from "../api/crmApi";
 import { useAuth } from "../auth/AuthContext";
-import ActivityLogs from "../components/ActivityLogs";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -289,8 +288,6 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-        
-        {isAdmin && <ActivityLogs />}
       </section>
     </div>
   );

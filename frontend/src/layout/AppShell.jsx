@@ -29,9 +29,14 @@ export default function AppShell() {
             العملاء
           </NavLink>
           {isAdmin && (
-            <NavLink to="/users" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
-              المستخدمون
-            </NavLink>
+            <>
+              <NavLink to="/users" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+                المستخدمون
+              </NavLink>
+              <NavLink to="/logs" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+                سجل النشاطات
+              </NavLink>
+            </>
           )}
         </nav>
 
