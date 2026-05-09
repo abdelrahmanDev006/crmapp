@@ -383,17 +383,8 @@ export default function ClientDetailsPage() {
 
         {isAdmin && (
           <>
-            <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
-              <button 
-                type="button" 
-                className="secondary-btn" 
-                onClick={() => setShowEditForm(!showEditForm)}
-              >
-                {showEditForm ? "إخفاء التعديلات ⬆️" : "عرض التعديلات ✏️"}
-              </button>
-            </div>
             {showEditForm && (
-              <div className="client-edit-form" style={{ marginTop: "15px", borderTop: "2px solid var(--border)", paddingTop: "15px" }}>
+              <div className="client-edit-form" style={{ marginTop: "20px" }}>
                 <h4 className="client-edit-title">✏️ تعديل بيانات العميل</h4>
             <div className="client-edit-grid">
               <label className="client-edit-field">
@@ -586,6 +577,16 @@ export default function ClientDetailsPage() {
           >
             كانسل
           </button>
+          {isAdmin && (
+            <button 
+              type="button" 
+              className="secondary-btn" 
+              style={{ marginRight: "auto", background: "#f0f0f0", color: "#333", border: "1px solid #ccc" }}
+              onClick={() => setShowEditForm(!showEditForm)}
+            >
+              {showEditForm ? "إخفاء التعديلات ⬆️" : "عرض التعديلات ✏️"}
+            </button>
+          )}
         </div>
 
         {infoMessage && <div className="info-box">{infoMessage}</div>}
