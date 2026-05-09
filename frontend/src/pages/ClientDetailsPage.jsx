@@ -139,8 +139,8 @@ export default function ClientDetailsPage() {
       );
       setEditStatus(item.status || "ACTIVE");
       const visits = Array.isArray(item.visits) ? item.visits : [];
-      const latestNote = visits.find((v) => String(v?.note || "").trim().length > 0);
-      setEditNote(latestNote ? String(latestNote.note || "").trim() : "");
+      const latestNote = visits.find((v) => v?.note !== null && v?.note !== undefined);
+      setEditNote(latestNote && latestNote.note !== "" ? String(latestNote.note) : "");
     } catch (err) {
       setError(err.message || "تعذر تحميل بيانات العميل");
     } finally {
@@ -184,13 +184,13 @@ export default function ClientDetailsPage() {
   const currentNextVisitInputDate = useMemo(() => toInputDate(client?.nextVisitDate), [client?.nextVisitDate]);
   const latestVisitNote = useMemo(() => {
     const visits = Array.isArray(client?.visits) ? client.visits : [];
-    const latestVisitWithNote = visits.find((visit) => String(visit?.note || "").trim().length > 0);
+    const latestVisitWithNote = visits.find((visit) => visit?.note !== null && visit?.note !== undefined);
 
-    if (!latestVisitWithNote) {
+    if (!latestVisitWithNote || latestVisitWithNote.note === "") {
       return "-";
     }
 
-    return String(latestVisitWithNote.note || "").trim();
+    return String(latestVisitWithNote.note);
   }, [client?.visits]);
   const editNextVisitDateDisplay = editNextVisitDate ? formatDateWithWeekday(`${editNextVisitDate}T00:00:00.000Z`) : "يوم/شهر/سنة";
   const hasDetailsChanges = useMemo(() => {

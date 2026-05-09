@@ -361,8 +361,8 @@ function ClientTableRows({
         <td className="col-next-visit" data-label="الزيارة القادمة">
           {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
         </td>
-        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.[0]?.note || ""}>
-          {client.visits?.[0]?.note || "-"}
+        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || ""}>
+          {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "-"}
         </td>
 
         <td className="actions-cell col-actions" data-label="الإجراءات">

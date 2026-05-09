@@ -282,7 +282,7 @@ const updateClient = asyncHandler(async (req, res) => {
         if (newNote === "") {
           await tx.visitHistory.update({
             where: { id: latestVisitWithNote.id },
-            data: { note: null }
+            data: { note: "" }
           });
         } else if (newNote !== latestVisitWithNote.note) {
           await tx.visitHistory.update({
