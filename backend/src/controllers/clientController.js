@@ -267,20 +267,43 @@ const updateClient = asyncHandler(async (req, res) => {
       }
     });
 
-    if (req.body.note && String(req.body.note).trim() !== "") {
-      await tx.visitHistory.create({
-        data: {
-          client: { connect: { id: updatedClient.id } },
-          visitedBy: { connect: { id: req.user.id } },
-          previousStatus: existing.status || ClientStatuses.ACTIVE,
-          newStatus: updatedClient.status || ClientStatuses.ACTIVE,
-          note: String(req.body.note).trim(),
-          previousNextVisitDate: existing.nextVisitDate,
-          newNextVisitDate: updatedClient.nextVisitDate,
-          visitDate: new Date()
-        }
+    if (Object.prototype.hasOwnProperty.call(req.body, "note")) {
+      const newNote = String(req.body.note).trim();
+      
+      const latestVisitWithNote = await tx.visitHistory.findFirst({
+        where: { 
+          clientId: updatedClient.id,
+          note: { not: null }
+        },
+        orderBy: { visitDate: 'desc' }
       });
-      updatedClient.visits = [{ note: String(req.body.note).trim() }];
+
+      if (latestVisitWithNote && latestVisitWithNote.note.trim() !== "") {
+        if (newNote === "") {
+          await tx.visitHistory.update({
+            where: { id: latestVisitWithNote.id },
+            data: { note: null }
+          });
+        } else if (newNote !== latestVisitWithNote.note) {
+          await tx.visitHistory.update({
+            where: { id: latestVisitWithNote.id },
+            data: { note: newNote }
+          });
+        }
+      } else if (newNote !== "") {
+        await tx.visitHistory.create({
+          data: {
+            client: { connect: { id: updatedClient.id } },
+            visitedBy: { connect: { id: req.user.id } },
+            previousStatus: existing.status || ClientStatuses.ACTIVE,
+            newStatus: updatedClient.status || ClientStatuses.ACTIVE,
+            note: newNote,
+            previousNextVisitDate: existing.nextVisitDate,
+            newNextVisitDate: updatedClient.nextVisitDate,
+            visitDate: new Date()
+          }
+        });
+      }
     }
 
     return updatedClient;

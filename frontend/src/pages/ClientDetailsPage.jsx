@@ -284,7 +284,7 @@ export default function ClientDetailsPage() {
         status: editStatus,
         customVisitIntervalDays: editVisitType === "CUSTOM" ? customVisitIntervalDays : undefined,
         nextVisitDate: editNextVisitDate ? `${editNextVisitDate}T00:00:00.000Z` : undefined,
-        note: editNote.trim() || undefined
+        note: editNote.trim()
       });
       setInfoMessage("تم تحديث بيانات العميل بنجاح");
       await loadClient();
