@@ -321,7 +321,7 @@ function ClientTableRows({
     const isCancelActionLoading = isActionLoadingForClient && actionState.outcome === "REJECTED";
 
     return (
-      <tr key={client.id}>
+      <tr key={client.id} className={`client-row-${client.visitType}`}>
         <td className="col-name" data-label="العميل">
           <div className="client-name-cell">
             <span className="client-name-text">{client.name}</span>

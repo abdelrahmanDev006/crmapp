@@ -333,7 +333,7 @@ export default function ClientDetailsPage() {
           </div>
         )}
 
-        <div className="details-grid">
+        <div className={`details-grid client-row-${client.visitType}`}>
           <div>
             <span>الهاتف</span>
             <strong>{client.phone}</strong>

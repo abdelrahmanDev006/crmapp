@@ -2125,4 +2125,25 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Client Row Colors by Visit Type ────────────────────────────── */
+.client-row-WEEKLY td,
+.client-row-WEEKLY .client-name-text,
+.client-row-WEEKLY .details-note-text,
+.client-row-WEEKLY strong {
+  color: #1E90FF !important;
+}
+
+.client-row-BIWEEKLY td,
+.client-row-BIWEEKLY .client-name-text,
+.client-row-BIWEEKLY .details-note-text,
+.client-row-BIWEEKLY strong {
+  color: #e91e63 !important; /* Pink / Rose */
+}
+
+.client-row-MONTHLY td,
+.client-row-MONTHLY .client-name-text,
+.client-row-MONTHLY .details-note-text,
+.client-row-MONTHLY strong {
+  color: #000000 !important;
 }
