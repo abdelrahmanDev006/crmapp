@@ -350,72 +350,109 @@ export default function UsersPage() {
                     <td data-label="\u0627\u0644\u062f\u0648\u0631">{item.role === "ADMIN" ? "\u0623\u062f\u0645\u0646" : "\u0645\u0646\u062f\u0648\u0628"}</td>
                     <td className="user-region-cell" data-label="المنطقة">
                       {item.role === "REPRESENTATIVE" ? (
-                        <div className="user-region-control" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <select
-                            multiple
-                            size="2"
-                            style={{ padding: '4px', minWidth: '120px', borderRadius: '4px', border: '1px solid #ccc' }}
-                            value={regionDraftByUserId[item.id] || []}
-                            disabled={saveRegionLoadingId === item.id}
-                            onChange={(e) => {
-                              const values = Array.from(e.target.selectedOptions).map(opt => Number(opt.value));
-                              setRegionDraftByUserId(prev => ({ ...prev, [item.id]: values }));
-                            }}
-                          >
-                            {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                          </select>
-                          <button
-                            type="button"
-                            className="secondary-btn user-region-save-btn"
-                            disabled={
-                              saveRegionLoadingId === item.id ||
-                              !(regionDraftByUserId[item.id]?.length > 0)
-                            }
-                            onClick={() => saveRepresentativeRegion(item)}
-                          >
-                            {saveRegionLoadingId === item.id ? "..." : "حفظ"}
-                          </button>
-                        </div>
+                        <details className="user-region-control" style={{ position: 'relative' }}>
+                          <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: 'var(--primary-color, #0e7a78)', outline: 'none', listStyle: 'none' }}>
+                            المناطق ({regionDraftByUserId[item.id]?.length || 0}) ▾
+                          </summary>
+                          <div style={{ 
+                            display: 'flex', flexDirection: 'column', gap: '8px', 
+                            marginTop: '8px', padding: '10px', 
+                            background: '#f9fafb', border: '1px solid #e5e7eb', 
+                            borderRadius: '6px', minWidth: '150px' 
+                          }}>
+                            <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {regions.map((region) => {
+                                const drafts = regionDraftByUserId[item.id] || [];
+                                const isChecked = drafts.includes(region.id);
+                                return (
+                                  <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', cursor: 'pointer' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      disabled={saveRegionLoadingId === item.id}
+                                      onChange={(e) => {
+                                        const newDrafts = e.target.checked 
+                                          ? [...drafts, region.id] 
+                                          : drafts.filter(id => id !== region.id);
+                                        setRegionDraftByUserId(prev => ({ ...prev, [item.id]: newDrafts }));
+                                      }}
+                                    />
+                                    {region.name}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            <button
+                              type="button"
+                              className="secondary-btn"
+                              style={{ width: '100%', padding: '6px' }}
+                              disabled={
+                                saveRegionLoadingId === item.id ||
+                                !(regionDraftByUserId[item.id]?.length > 0)
+                              }
+                              onClick={(e) => {
+                                e.preventDefault();
+                                saveRepresentativeRegion(item);
+                              }}
+                            >
+                              {saveRegionLoadingId === item.id ? "جاري..." : "حفظ التعديل"}
+                            </button>
+                          </div>
+                        </details>
                       ) : (
                         <span className="user-region-empty">-</span>
                       )}
                     </td>
                     <td className="user-date-cell" data-label="عرض يوم">
                       {item.role === "REPRESENTATIVE" ? (
-                        <div className="user-date-control" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                          <input
-                            type="date"
-                            style={{ padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }}
-                            value={allowedDateDraftByUserId[item.id] ?? (item.allowedDate || "")}
-                            onChange={(e) =>
-                              setAllowedDateDraftByUserId((prev) => ({
-                                ...prev,
-                                [item.id]: e.target.value
-                              }))
-                            }
-                            disabled={saveDateLoadingId === item.id}
-                          />
-                          <button
-                            type="button"
-                            className="secondary-btn user-region-save-btn"
-                            disabled={
-                              saveDateLoadingId === item.id ||
-                              !allowedDateDraftByUserId[item.id] ||
-                              allowedDateDraftByUserId[item.id] === item.allowedDate
-                            }
-                            onClick={() => saveAllowedDate(item)}
-                          >
-                            {saveDateLoadingId === item.id ? "..." : "تعيين"}
-                          </button>
-                          <button
-                            type="button"
-                            className={item.allowedDate ? "danger-btn" : "ghost-btn"}
-                            disabled={saveDateLoadingId === item.id || !item.allowedDate}
-                            onClick={() => clearAllowedDate(item)}
-                          >
-                            إخفاء
-                          </button>
-                        </div>
+                        <details className="user-date-control" style={{ position: 'relative' }}>
+                          <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: item.allowedDate ? 'var(--primary-color, #0e7a78)' : '#666', outline: 'none', listStyle: 'none' }}>
+                            {item.allowedDate || "غير محدد"} ▾
+                          </summary>
+                          <div style={{ 
+                            display: 'flex', flexDirection: 'column', gap: '8px', 
+                            marginTop: '8px', padding: '10px', 
+                            background: '#f9fafb', border: '1px solid #e5e7eb', 
+                            borderRadius: '6px', minWidth: '150px' 
+                          }}>
+                            <input
+                              type="date"
+                              style={{ padding: '6px', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+                              value={allowedDateDraftByUserId[item.id] ?? (item.allowedDate || "")}
+                              onChange={(e) =>
+                                setAllowedDateDraftByUserId((prev) => ({
+                                  ...prev,
+                                  [item.id]: e.target.value
+                                }))
+                              }
+                              disabled={saveDateLoadingId === item.id}
+                            />
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button
+                                type="button"
+                                className="secondary-btn user-region-save-btn"
+                                style={{ flex: 1, padding: '4px' }}
+                                disabled={
+                                  saveDateLoadingId === item.id ||
+                                  !allowedDateDraftByUserId[item.id] ||
+                                  allowedDateDraftByUserId[item.id] === item.allowedDate
+                                }
+                                onClick={(e) => { e.preventDefault(); saveAllowedDate(item); }}
+                              >
+                                {saveDateLoadingId === item.id ? "..." : "تعيين"}
+                              </button>
+                              <button
+                                type="button"
+                                className={item.allowedDate ? "danger-btn" : "ghost-btn"}
+                                style={{ flex: 1, padding: '4px' }}
+                                disabled={saveDateLoadingId === item.id || !item.allowedDate}
+                                onClick={(e) => { e.preventDefault(); clearAllowedDate(item); }}
+                              >
+                                إخفاء
+                              </button>
+                            </div>
+                          </div>
+                        </details>
                       ) : (
                         <span className="user-date-empty">-</span>
                       )}
