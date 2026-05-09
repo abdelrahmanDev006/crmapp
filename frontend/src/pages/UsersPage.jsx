@@ -26,6 +26,8 @@ export default function UsersPage() {
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
   const [saveRegionLoadingId, setSaveRegionLoadingId] = useState(null);
   const [saveDateLoadingId, setSaveDateLoadingId] = useState(null);
+  const [editingRegionsUserId, setEditingRegionsUserId] = useState(null);
+  const [editingDateUserId, setEditingDateUserId] = useState(null);
   const [regionDraftByUserId, setRegionDraftByUserId] = useState({});
   const [allowedDateDraftByUserId, setAllowedDateDraftByUserId] = useState({});
   const debouncedSearch = useDebouncedValue(search, 350);
@@ -187,6 +189,7 @@ export default function UsersPage() {
     try {
       await usersApi.update(item.id, { regionIds: selectedRegionIds });
       await loadUsers();
+      setEditingRegionsUserId(null);
     } catch (err) {
       setError(err.message || "تعذر تحديث منطقة المندوب");
     } finally {
@@ -211,6 +214,7 @@ export default function UsersPage() {
     try {
       await usersApi.update(item.id, { allowedDate: selectedDate });
       await loadUsers();
+      setEditingDateUserId(null);
     } catch (err) {
       setError(err.message || "تعذر تحديث يوم عرض المندوب");
     } finally {
@@ -230,6 +234,7 @@ export default function UsersPage() {
       await usersApi.update(item.id, { allowedDate: null });
       setAllowedDateDraftByUserId((prev) => ({ ...prev, [item.id]: "" }));
       await loadUsers();
+      setEditingDateUserId(null);
     } catch (err) {
       setError(err.message || "تعذر إخفاء العملاء عن المندوب");
     } finally {
@@ -278,27 +283,37 @@ export default function UsersPage() {
               <option value="ADMIN">أدمن</option>
             </select>
           </label>
-          <label className="users-create-region-field">
-            المناطق
-            <select
-              multiple
-              size="4"
-              className="users-create-region-select"
-              style={{ padding: '8px' }}
-              value={form.regionIds || []}
-              disabled={form.role !== "REPRESENTATIVE"}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions).map(opt => Number(opt.value));
-                setForm((prev) => ({ ...prev, regionIds: values }));
-              }}
-              required={form.role === "REPRESENTATIVE"}
-            >
-              {regions.map((region) => (
-                <option key={region.id} value={region.id}>{region.name}</option>
-              ))}
-            </select>
-            <span style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>استخدم Ctrl للتحديد المتعدد</span>
-          </label>
+          <div style={{ gridColumn: '1 / -1', marginBottom: '10px' }}>
+            <span style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>المناطق المخصصة للمندوب</span>
+            {form.role !== "REPRESENTATIVE" ? (
+              <div style={{ padding: '10px', background: '#f3f4f6', borderRadius: '8px', color: '#6b7280', fontSize: '0.9rem' }}>
+                تحديد المناطق متاح فقط لصلاحية "مندوب"
+              </div>
+            ) : (
+              <div style={{ 
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', 
+                padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' 
+              }}>
+                {regions.map((region) => (
+                  <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary-color, #0e7a78)' }}
+                      checked={form.regionIds?.includes(region.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setForm(prev => ({ ...prev, regionIds: [...(prev.regionIds || []), region.id] }));
+                        } else {
+                          setForm(prev => ({ ...prev, regionIds: (prev.regionIds || []).filter(id => id !== region.id) }));
+                        }
+                      }}
+                    />
+                    <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>{region.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           <button type="submit" className="primary-btn users-create-btn" disabled={createLoading}>
             {createLoading ? "جاري الحفظ..." : "إنشاء المستخدم"}
           </button>
@@ -350,109 +365,27 @@ export default function UsersPage() {
                     <td data-label="\u0627\u0644\u062f\u0648\u0631">{item.role === "ADMIN" ? "\u0623\u062f\u0645\u0646" : "\u0645\u0646\u062f\u0648\u0628"}</td>
                     <td className="user-region-cell" data-label="المنطقة">
                       {item.role === "REPRESENTATIVE" ? (
-                        <details className="user-region-control" style={{ position: 'relative' }}>
-                          <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: 'var(--primary-color, #0e7a78)', outline: 'none', listStyle: 'none' }}>
-                            المناطق ({regionDraftByUserId[item.id]?.length || 0}) ▾
-                          </summary>
-                          <div style={{ 
-                            display: 'flex', flexDirection: 'column', gap: '8px', 
-                            marginTop: '8px', padding: '10px', 
-                            background: '#f9fafb', border: '1px solid #e5e7eb', 
-                            borderRadius: '6px', minWidth: '150px' 
-                          }}>
-                            <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {regions.map((region) => {
-                                const drafts = regionDraftByUserId[item.id] || [];
-                                const isChecked = drafts.includes(region.id);
-                                return (
-                                  <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', cursor: 'pointer' }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      disabled={saveRegionLoadingId === item.id}
-                                      onChange={(e) => {
-                                        const newDrafts = e.target.checked 
-                                          ? [...drafts, region.id] 
-                                          : drafts.filter(id => id !== region.id);
-                                        setRegionDraftByUserId(prev => ({ ...prev, [item.id]: newDrafts }));
-                                      }}
-                                    />
-                                    {region.name}
-                                  </label>
-                                );
-                              })}
-                            </div>
-                            <button
-                              type="button"
-                              className="secondary-btn"
-                              style={{ width: '100%', padding: '6px' }}
-                              disabled={
-                                saveRegionLoadingId === item.id ||
-                                !(regionDraftByUserId[item.id]?.length > 0)
-                              }
-                              onClick={(e) => {
-                                e.preventDefault();
-                                saveRepresentativeRegion(item);
-                              }}
-                            >
-                              {saveRegionLoadingId === item.id ? "جاري..." : "حفظ التعديل"}
-                            </button>
-                          </div>
-                        </details>
+                        <button 
+                          type="button" 
+                          className="ghost-btn" 
+                          onClick={() => setEditingRegionsUserId(item.id)}
+                        >
+                          المناطق ({regionDraftByUserId[item.id]?.length || 0}) ✎
+                        </button>
                       ) : (
                         <span className="user-region-empty">-</span>
                       )}
                     </td>
                     <td className="user-date-cell" data-label="عرض يوم">
                       {item.role === "REPRESENTATIVE" ? (
-                        <details className="user-date-control" style={{ position: 'relative' }}>
-                          <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: item.allowedDate ? 'var(--primary-color, #0e7a78)' : '#666', outline: 'none', listStyle: 'none' }}>
-                            {item.allowedDate || "غير محدد"} ▾
-                          </summary>
-                          <div style={{ 
-                            display: 'flex', flexDirection: 'column', gap: '8px', 
-                            marginTop: '8px', padding: '10px', 
-                            background: '#f9fafb', border: '1px solid #e5e7eb', 
-                            borderRadius: '6px', minWidth: '150px' 
-                          }}>
-                            <input
-                              type="date"
-                              style={{ padding: '6px', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
-                              value={allowedDateDraftByUserId[item.id] ?? (item.allowedDate || "")}
-                              onChange={(e) =>
-                                setAllowedDateDraftByUserId((prev) => ({
-                                  ...prev,
-                                  [item.id]: e.target.value
-                                }))
-                              }
-                              disabled={saveDateLoadingId === item.id}
-                            />
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                              <button
-                                type="button"
-                                className="secondary-btn user-region-save-btn"
-                                style={{ flex: 1, padding: '4px' }}
-                                disabled={
-                                  saveDateLoadingId === item.id ||
-                                  !allowedDateDraftByUserId[item.id] ||
-                                  allowedDateDraftByUserId[item.id] === item.allowedDate
-                                }
-                                onClick={(e) => { e.preventDefault(); saveAllowedDate(item); }}
-                              >
-                                {saveDateLoadingId === item.id ? "..." : "تعيين"}
-                              </button>
-                              <button
-                                type="button"
-                                className={item.allowedDate ? "danger-btn" : "ghost-btn"}
-                                style={{ flex: 1, padding: '4px' }}
-                                disabled={saveDateLoadingId === item.id || !item.allowedDate}
-                                onClick={(e) => { e.preventDefault(); clearAllowedDate(item); }}
-                              >
-                                إخفاء
-                              </button>
-                            </div>
-                          </div>
-                        </details>
+                        <button 
+                          type="button" 
+                          className="ghost-btn" 
+                          onClick={() => setEditingDateUserId(item.id)}
+                          style={{ color: item.allowedDate ? 'var(--primary-color, #0e7a78)' : undefined }}
+                        >
+                          {item.allowedDate || "غير محدد"} ✎
+                        </button>
                       ) : (
                         <span className="user-date-empty">-</span>
                       )}
@@ -502,6 +435,101 @@ export default function UsersPage() {
           </button>
         </div>
       </section>
+
+      {/* Regions Modal */}
+      {editingRegionsUserId && (() => {
+        const item = usersData.items.find(u => u.id === editingRegionsUserId);
+        if (!item) return null;
+        return (
+          <div className="modal-overlay" onClick={() => setEditingRegionsUserId(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.2rem' }}>تعديل مناطق: {item.name}</h3>
+              
+              <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px', padding: '10px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                {regions.map((region) => {
+                  const drafts = regionDraftByUserId[item.id] || [];
+                  const isChecked = drafts.includes(region.id);
+                  return (
+                    <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '4px' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--primary-color, #0e7a78)' }}
+                        checked={isChecked}
+                        disabled={saveRegionLoadingId === item.id}
+                        onChange={(e) => {
+                          const newDrafts = e.target.checked 
+                            ? [...drafts, region.id] 
+                            : drafts.filter(id => id !== region.id);
+                          setRegionDraftByUserId(prev => ({ ...prev, [item.id]: newDrafts }));
+                        }}
+                      />
+                      <span style={{ fontSize: '1rem' }}>{region.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button type="button" className="ghost-btn" onClick={() => setEditingRegionsUserId(null)}>إلغاء</button>
+                <button 
+                  type="button" 
+                  className="primary-btn" 
+                  disabled={saveRegionLoadingId === item.id || !(regionDraftByUserId[item.id]?.length > 0)}
+                  onClick={() => saveRepresentativeRegion(item)}
+                >
+                  {saveRegionLoadingId === item.id ? "جاري الحفظ..." : "حفظ التعديلات"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Date Modal */}
+      {editingDateUserId && (() => {
+        const item = usersData.items.find(u => u.id === editingDateUserId);
+        if (!item) return null;
+        return (
+          <div className="modal-overlay" onClick={() => setEditingDateUserId(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '350px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.2rem' }}>تعديل يوم العرض: {item.name}</h3>
+              
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>التاريخ المسموح به</label>
+                <input
+                  type="date"
+                  style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '1rem' }}
+                  value={allowedDateDraftByUserId[item.id] ?? (item.allowedDate || "")}
+                  onChange={(e) => setAllowedDateDraftByUserId(prev => ({ ...prev, [item.id]: e.target.value }))}
+                  disabled={saveDateLoadingId === item.id}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+                <button 
+                  type="button" 
+                  className="primary-btn" 
+                  disabled={saveDateLoadingId === item.id || !allowedDateDraftByUserId[item.id] || allowedDateDraftByUserId[item.id] === item.allowedDate}
+                  onClick={() => saveAllowedDate(item)}
+                >
+                  {saveDateLoadingId === item.id ? "جاري الحفظ..." : "تعيين التاريخ"}
+                </button>
+                {item.allowedDate && (
+                  <button 
+                    type="button" 
+                    className="danger-btn" 
+                    disabled={saveDateLoadingId === item.id}
+                    onClick={() => clearAllowedDate(item)}
+                  >
+                    إخفاء وإلغاء التاريخ
+                  </button>
+                )}
+                <button type="button" className="ghost-btn" style={{ marginTop: '8px' }} onClick={() => setEditingDateUserId(null)}>إغلاق</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
