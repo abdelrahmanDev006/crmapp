@@ -1619,13 +1619,15 @@ export default function ClientsPage() {
                   <div className="clients-region-group-header">
                     <div className="clients-region-group-meta">
                       <h4>{group.regionName}</h4>
-                      <p>
-                        {isLoadingRepresentatives
-                          ? "جاري تحميل بيانات المندوب..."
-                          : representativeNames.length > 0
-                          ? `المندوب: ${representativeNames.join(" - ")}`
-                          : "لا يوجد مندوب محدد لهذه المنطقة"}
-                      </p>
+                      {isAdmin && (
+                        <p>
+                          {isLoadingRepresentatives
+                            ? "جاري تحميل بيانات المندوب..."
+                            : representativeNames.length > 0
+                            ? `المندوب: ${representativeNames.join(" - ")}`
+                            : "لا يوجد مندوب محدد لهذه المنطقة"}
+                        </p>
+                      )}
                     </div>
                     <div className="clients-region-group-actions">
                       {isAdmin && (
