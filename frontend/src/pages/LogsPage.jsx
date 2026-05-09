@@ -10,9 +10,8 @@ export default function LogsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  if (user?.role !== "ADMIN") return null;
-
   useEffect(() => {
+    if (user?.role !== "ADMIN") return;
     async function loadLogs() {
       try {
         setLoading(true);
@@ -29,7 +28,9 @@ export default function LogsPage() {
       }
     }
     loadLogs();
-  }, [page]);
+  }, [page, user?.role]);
+
+  if (user?.role !== "ADMIN") return null;
 
   return (
     <div className="page-container fade-in">

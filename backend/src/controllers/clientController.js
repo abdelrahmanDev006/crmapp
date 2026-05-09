@@ -8,6 +8,7 @@ const {
   listClients,
   getClientById,
   handleClientVisit,
+  approveClientVisit,
   rejectClientVisit
 } = require("../services/clientService");
 const { logActivity } = require("../services/logService");

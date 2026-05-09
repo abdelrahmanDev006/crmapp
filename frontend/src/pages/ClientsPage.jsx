@@ -814,7 +814,7 @@ export default function ClientsPage() {
             window.onload = () => {
               window.print();
             };
-          <\/script>
+          </script>
         </body>
       </html>
     `;
