@@ -28,6 +28,7 @@ export default function UsersPage() {
   const [saveDateLoadingId, setSaveDateLoadingId] = useState(null);
   const [editingRegionsUserId, setEditingRegionsUserId] = useState(null);
   const [editingDateUserId, setEditingDateUserId] = useState(null);
+  const [isCreateRegionsModalOpen, setIsCreateRegionsModalOpen] = useState(false);
   const [regionDraftByUserId, setRegionDraftByUserId] = useState({});
   const [allowedDateDraftByUserId, setAllowedDateDraftByUserId] = useState({});
   const debouncedSearch = useDebouncedValue(search, 350);
@@ -290,28 +291,14 @@ export default function UsersPage() {
                 تحديد المناطق متاح فقط لصلاحية "مندوب"
               </div>
             ) : (
-              <div style={{ 
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', 
-                padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' 
-              }}>
-                {regions.map((region) => (
-                  <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary-color, #0e7a78)' }}
-                      checked={form.regionIds?.includes(region.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setForm(prev => ({ ...prev, regionIds: [...(prev.regionIds || []), region.id] }));
-                        } else {
-                          setForm(prev => ({ ...prev, regionIds: (prev.regionIds || []).filter(id => id !== region.id) }));
-                        }
-                      }}
-                    />
-                    <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>{region.name}</span>
-                  </label>
-                ))}
-              </div>
+              <button
+                type="button"
+                className="secondary-btn"
+                style={{ width: 'fit-content' }}
+                onClick={() => setIsCreateRegionsModalOpen(true)}
+              >
+                تحديد المناطق ({form.regionIds?.length || 0}) ✎
+              </button>
             )}
           </div>
           <button type="submit" className="primary-btn users-create-btn" disabled={createLoading}>
@@ -435,6 +422,48 @@ export default function UsersPage() {
           </button>
         </div>
       </section>
+
+      {/* Create Regions Modal */}
+      {isCreateRegionsModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCreateRegionsModalOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.2rem' }}>تحديد المناطق للمندوب الجديد</h3>
+            
+            <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px', padding: '10px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              {regions.map((region) => {
+                const isChecked = form.regionIds?.includes(region.id);
+                return (
+                  <label key={region.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '4px' }}>
+                    <input
+                      type="checkbox"
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--primary-color, #0e7a78)' }}
+                      checked={isChecked}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setForm(prev => ({ ...prev, regionIds: [...(prev.regionIds || []), region.id] }));
+                        } else {
+                          setForm(prev => ({ ...prev, regionIds: (prev.regionIds || []).filter(id => id !== region.id) }));
+                        }
+                      }}
+                    />
+                    <span style={{ fontSize: '1rem' }}>{region.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button 
+                type="button" 
+                className="primary-btn" 
+                onClick={() => setIsCreateRegionsModalOpen(false)}
+              >
+                تأكيد
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Regions Modal */}
       {editingRegionsUserId && (() => {
