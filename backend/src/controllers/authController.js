@@ -42,7 +42,7 @@ const login = asyncHandler(async (req, res) => {
         mode: "insensitive"
       }
     },
-    include: { region: true }
+    include: { regions: true }
   });
 
   if (!user || !user.isActive) {
