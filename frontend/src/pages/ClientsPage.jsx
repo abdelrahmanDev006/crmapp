@@ -458,7 +458,9 @@ export default function ClientsPage() {
   const [activeTab, setActiveTab] = useState("ALL");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [selectedDueDate, setSelectedDueDate] = useState("");
+  const [selectedDueDate, setSelectedDueDate] = useState(
+    user?.role === "REPRESENTATIVE" ? getTodayInputDate() : ""
+  );
   const [data, setData] = useState({ items: [], totalPages: 1, total: 0, page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1495,37 +1497,8 @@ export default function ClientsPage() {
           </div>
         )}
 
-        {isRepresentative && (
-          <div className="rep-mobile-shortcuts" role="group" aria-label="اختصارات سريعة للمندوب">
-            <button
-              type="button"
-              className={
-                hasDueDateFilter && selectedDueDate === todayDateText
-                  ? "primary-btn rep-shortcut-btn"
-                  : "ghost-btn rep-shortcut-btn"
-              }
-              onClick={() => applyRepresentativeQuickFilter("TODAY_DUE")}
-            >
-              مستحق اليوم
-            </button>
-            <button
-              type="button"
-              className={!hasDueDateFilter && activeTab === "NO_ANSWER" ? "primary-btn rep-shortcut-btn" : "ghost-btn rep-shortcut-btn"}
-              onClick={() => applyRepresentativeQuickFilter("NO_ANSWER")}
-            >
-              لم يرد
-            </button>
-            <button
-              type="button"
-              className={!hasDueDateFilter && activeTab === "ALL" ? "primary-btn rep-shortcut-btn" : "ghost-btn rep-shortcut-btn"}
-              onClick={() => applyRepresentativeQuickFilter("ALL")}
-            >
-              كل العملاء
-            </button>
-          </div>
-        )}
 
-        {hasDueDateFilter && (
+        {hasDueDateFilter && isAdmin && (
           <div className="info-box">
             عرض العملاء المستحقين في تاريخ: {formatDate(`${selectedDueDate}T00:00:00.000Z`)}. تم تعطيل التبويبات
             مؤقتًا حتى يتم مسح فلتر التاريخ.
@@ -1565,41 +1538,42 @@ export default function ClientsPage() {
               </button>
             </>
           )}
-
-          <div className="clients-date-filter">
-            <span className="clients-date-label">تاريخ الاستحقاق</span>
-            <div className="clients-date-input">
-              <span className={selectedDueDate ? "clients-date-value" : "clients-date-placeholder"}>{selectedDueDateDisplay}</span>
-              <span className="clients-date-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                  <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
-                </svg>
-              </span>
-              <input
-                type="date"
-                className="clients-date-native-input"
-                value={selectedDueDate}
-                onChange={(event) => onDueDateChange(event.target.value)}
-                title="تاريخ الاستحقاق"
-                lang="ar-EG"
-              />
+          {isAdmin && (
+            <div className="clients-date-filter">
+              <span className="clients-date-label">تاريخ الاستحقاق</span>
+              <div className="clients-date-input">
+                <span className={selectedDueDate ? "clients-date-value" : "clients-date-placeholder"}>{selectedDueDateDisplay}</span>
+                <span className="clients-date-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
+                  </svg>
+                </span>
+                <input
+                  type="date"
+                  className="clients-date-native-input"
+                  value={selectedDueDate}
+                  onChange={(event) => onDueDateChange(event.target.value)}
+                  title="تاريخ الاستحقاق"
+                  lang="ar-EG"
+                />
+              </div>
+              <button
+                type="button"
+                className="ghost-btn calendar-mini-btn"
+                onClick={() => onDueDateChange(getTodayInputDate())}
+              >
+                اليوم
+              </button>
+              <button
+                type="button"
+                className="ghost-btn calendar-mini-btn"
+                disabled={!hasDueDateFilter}
+                onClick={() => onDueDateChange("")}
+              >
+                مسح
+              </button>
             </div>
-            <button
-              type="button"
-              className="ghost-btn calendar-mini-btn"
-              onClick={() => onDueDateChange(getTodayInputDate())}
-            >
-              اليوم
-            </button>
-            <button
-              type="button"
-              className="ghost-btn calendar-mini-btn"
-              disabled={!hasDueDateFilter}
-              onClick={() => onDueDateChange("")}
-            >
-              مسح
-            </button>
-          </div>
+          )}
 
           <button type="button" className="secondary-btn" onClick={loadClients}>
             تحديث
@@ -1654,6 +1628,7 @@ export default function ClientsPage() {
                       </p>
                     </div>
                     <div className="clients-region-group-actions">
+                      {isAdmin && (
                         <button
                           type="button"
                           className="secondary-btn"
@@ -1662,6 +1637,7 @@ export default function ClientsPage() {
                         >
                           🖨️ طباعة
                         </button>
+                      )}
                       <strong>{group.clients.length} عميل</strong>
                       <button
                         type="button"
