@@ -94,7 +94,7 @@ const createUser = asyncHandler(async (req, res) => {
     entityType: "USER",
     entityId: user.id,
     entityName: user.name,
-    details: `تم إضافة ${role === Roles.ADMIN ? 'مدير' : 'مندوب'} جديد: ${user.name}`
+    details: `${role === Roles.ADMIN ? 'مدير' : 'مندوب'}: ${user.name}`
   });
 
   res.status(201).json({

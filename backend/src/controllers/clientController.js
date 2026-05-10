@@ -189,7 +189,7 @@ const createClient = asyncHandler(async (req, res) => {
     entityType: "CLIENT",
     entityId: client.id,
     entityName: client.name,
-    details: `تم إضافة عميل جديد: ${client.name}`
+    details: client.name
   });
 
   res.status(201).json({
