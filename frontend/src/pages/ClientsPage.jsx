@@ -489,6 +489,7 @@ export default function ClientsPage() {
   const [activeTab, setActiveTab] = useState("ALL");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [overdueSummary, setOverdueSummary] = useState({ count: 0, dates: [] });
   const [selectedDueDate, setSelectedDueDate] = useState(
     user?.role === "REPRESENTATIVE" ? getTodayInputDate() : ""
   );
@@ -837,7 +838,7 @@ export default function ClientsPage() {
     }
 
     return params;
-  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, page]);
+  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -860,6 +861,24 @@ export default function ClientsPage() {
   useEffect(() => {
     loadClients();
   }, [loadClients]);
+
+  const loadOverdueCount = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const res = await clientsApi.getOverdueSummary();
+      setOverdueSummary({
+        count: res.data.total || 0,
+        dates: res.data.dates || []
+      });
+    } catch (err) {
+      console.error("Failed to load overdue count", err);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    loadOverdueCount();
+  }, [loadOverdueCount, actionState.clientId]); // Reload count when an action finishes
+
 
   useEffect(() => {
     let mounted = true;
@@ -1383,6 +1402,35 @@ export default function ClientsPage() {
             </button>
           )}
         </div>
+
+        {isAdmin && overdueSummary.count > 0 && (
+          <div className="overdue-banner" style={{
+            background: "#ffebee",
+            color: "#c62828",
+            padding: "16px",
+            borderRadius: "8px",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "flex-start",
+            border: "1px solid #ffcdd2",
+            flexDirection: "column",
+            gap: "8px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "1.2rem" }}>⚠️</span>
+              <strong style={{ fontSize: "1rem" }}>
+                تنبيه هام: هناك عملاء لم يتم تحديد موقفهم في الأيام السابقة!
+              </strong>
+            </div>
+            
+            <div style={{ fontSize: "0.95rem", paddingRight: "30px", opacity: 0.9 }}>
+              الأيام التي لم يتم تقفيلها بعد: <strong>{Array.from(new Set(overdueSummary.dates.map(d => {
+                const dt = new Date(d);
+                return `${dt.getDate()}/${dt.getMonth() + 1}/${dt.getFullYear()}`;
+              }))).join(" ، ")}</strong>
+            </div>
+          </div>
+        )}
 
         {isAdmin && showCreate && (
           <form className="form-grid create-form clients-create-form" onSubmit={handleCreateClient}>

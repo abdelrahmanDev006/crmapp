@@ -116,10 +116,24 @@ function buildClientWhere(filters, user) {
         not: ClientStatuses.REJECTED
       };
     }
-  } else if (filters.dueOnly === true) {
+  } else if (filters.dueOnly === true || filters.dueOnly === "true") {
     where.nextVisitDate = {
       lte: normalizeToWorkDate(new Date())
     };
+    if (!filters.status) {
+      where.status = {
+        in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER]
+      };
+    }
+  } else if (filters.overdueOnly === true || filters.overdueOnly === "true") {
+    where.nextVisitDate = {
+      lt: normalizeToWorkDate(new Date())
+    };
+    if (!filters.status) {
+      where.status = {
+        in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER]
+      };
+    }
   }
 
   return where;

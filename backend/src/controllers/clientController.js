@@ -114,6 +114,28 @@ const listClientRecords = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+const getOverdueSummary = asyncHandler(async (req, res) => {
+  const overdueWhere = {
+    nextVisitDate: { lt: normalizeToWorkDate(new Date()) },
+    status: { in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER] }
+  };
+
+  const [total, distinctDates] = await Promise.all([
+    prisma.client.count({ where: overdueWhere }),
+    prisma.client.findMany({
+      where: overdueWhere,
+      select: { nextVisitDate: true },
+      distinct: ['nextVisitDate'],
+      orderBy: { nextVisitDate: 'asc' }
+    })
+  ]);
+
+  res.json({
+    total,
+    dates: distinctDates.map(d => d.nextVisitDate)
+  });
+});
+
 const getClientDetails = asyncHandler(async (req, res) => {
   const client = await getClientById(req.params.id, req.user, true);
   res.json({ item: client });
@@ -436,5 +458,6 @@ module.exports = {
   handleClient,
   deleteClient,
   approveVisit,
-  rejectVisit
+  rejectVisit,
+  getOverdueSummary
 };
