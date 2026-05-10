@@ -9,23 +9,46 @@ export default function LogsPage() {
   const { user } = useAuth();
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
 
   useEffect(() => {
     if (user?.role !== "ADMIN") return;
+    let active = true;
+
     async function loadLogs() {
       try {
         setLoading(true);
-        const res = await logsApi.list({ page, pageSize: 10 });
-        setLogs(res.data.items || []);
-        setTotalPages(res.data.totalPages || 1);
+        const res = await logsApi.list({ 
+          page, 
+          pageSize: 10,
+          search: searchTerm,
+          date: dateFilter
+        });
+        if (active) {
+          setLogs(res.data.items || []);
+          setTotalPages(res.data.totalPages || 1);
+        }
       } catch (err) {
-        setError("تعذر تحميل السجل");
+        if (active) {
+          setError("تعذر تحميل السجل");
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
-    loadLogs();
-  }, [page, user?.role]);
+
+    const timer = setTimeout(() => {
+      loadLogs();
+    }, 300); // 300ms debounce
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [page, searchTerm, dateFilter, user?.role]);
 
   if (user?.role !== "ADMIN") return null;
 
@@ -37,6 +60,56 @@ export default function LogsPage() {
       </header>
 
       <section className="activity-logs-section">
+        <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap", alignItems: "center" }}>
+          <input 
+            type="text" 
+            placeholder="بحث بالتفاصيل، المندوب، الإجراء..." 
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
+            style={{
+              flex: "1",
+              minWidth: "240px",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #d1d9d9",
+              fontSize: "0.9rem",
+              outline: "none"
+            }}
+          />
+          <input 
+            type="date" 
+            value={dateFilter}
+            onChange={(e) => {
+              setDateFilter(e.target.value);
+              setPage(1);
+            }}
+            style={{
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #d1d9d9",
+              fontSize: "0.9rem",
+              outline: "none",
+              width: "180px"
+            }}
+          />
+          {(searchTerm || dateFilter) && (
+            <button 
+              onClick={() => {
+                setSearchTerm("");
+                setDateFilter("");
+                setPage(1);
+              }}
+              className="secondary-btn"
+              style={{ padding: "10px 18px", height: "auto" }}
+            >
+              إعادة تعيين
+            </button>
+          )}
+        </div>
+
         {error && <div className="error-box">{error}</div>}
         
         {loading ? (
