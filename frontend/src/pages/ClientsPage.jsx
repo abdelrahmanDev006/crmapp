@@ -825,8 +825,8 @@ export default function ClientsPage() {
 
   const buildClientListParams = useCallback((pageOverride, pageSizeOverride) => {
     const params = {
-      page: pageOverride ?? page,
-      pageSize: pageSizeOverride ?? 50,
+      page: pageOverride ?? 1,
+      pageSize: pageSizeOverride ?? 10000,
       search: debouncedSearch || undefined
     };
 
@@ -1367,7 +1367,9 @@ export default function ClientsPage() {
     }
   }
 
-  const paginatedGroups = groupedClientsByRegion;
+  const regionPageSize = 5;
+  const totalRegionPages = Math.ceil(groupedClientsByRegion.length / regionPageSize) || 1;
+  const paginatedGroups = groupedClientsByRegion.slice((page - 1) * regionPageSize, page * regionPageSize);
 
   return (
     <div className={`stack clients-page${isRepresentative ? " clients-page-representative" : ""}`}>
@@ -1734,7 +1736,7 @@ export default function ClientsPage() {
           </div>
         )}
 
-        <Pagination page={page} totalPages={data.totalPages} onChange={setPage} />
+        <Pagination page={page} totalPages={totalRegionPages} onChange={setPage} />
       </section>
     </div>
   );
