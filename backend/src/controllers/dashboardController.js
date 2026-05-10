@@ -14,9 +14,8 @@ const summary = asyncHandler(async (req, res) => {
             regionId: { in: req.user.regions?.map((r) => r.id) || [] }
           };
 
-  const [regions, totalClients, dueClients, rejectedClients, noAnswerClients, activeClients] = await Promise.all([
+  const [regions, dueClients, statusGroups] = await Promise.all([
     getRegionSummary(),
-    prisma.client.count({ where: globalWhere }),
     prisma.client.count({
       where: {
         ...globalWhere,
@@ -24,25 +23,22 @@ const summary = asyncHandler(async (req, res) => {
         status: { in: ["ACTIVE", "NO_ANSWER"] }
       }
     }),
-    prisma.client.count({
-      where: {
-        ...globalWhere,
-        status: "REJECTED"
-      }
-    }),
-    prisma.client.count({
-      where: {
-        ...globalWhere,
-        status: "NO_ANSWER"
-      }
-    }),
-    prisma.client.count({
-      where: {
-        ...globalWhere,
-        status: "ACTIVE"
-      }
+    prisma.client.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+      where: globalWhere
     })
   ]);
+
+  const statusCounts = statusGroups.reduce((acc, group) => {
+    acc[group.status] = group._count._all;
+    return acc;
+  }, { ACTIVE: 0, NO_ANSWER: 0, REJECTED: 0, PENDING_APPROVAL: 0 });
+
+  const totalClients = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+  const activeClients = statusCounts.ACTIVE;
+  const noAnswerClients = statusCounts.NO_ANSWER;
+  const rejectedClients = statusCounts.REJECTED;
 
   const regionItems =
     req.user.role === Roles.ADMIN 
