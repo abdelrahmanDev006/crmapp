@@ -825,8 +825,8 @@ export default function ClientsPage() {
 
   const buildClientListParams = useCallback((pageOverride, pageSizeOverride) => {
     const params = {
-      page: pageOverride ?? 1,
-      pageSize: pageSizeOverride ?? 1000,
+      page: pageOverride ?? page,
+      pageSize: pageSizeOverride ?? 50,
       search: debouncedSearch || undefined
     };
 
@@ -837,7 +837,7 @@ export default function ClientsPage() {
     }
 
     return params;
-  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
+  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, page]);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -846,14 +846,16 @@ export default function ClientsPage() {
     try {
       const response = await clientsApi.list(buildClientListParams());
       setData(response.data);
-      // Reset to first page when data changes (e.g. search/filter)
-      setPage(1);
     } catch (err) {
       setError(err.message || "تعذر تحميل العملاء");
     } finally {
       setLoading(false);
     }
   }, [buildClientListParams]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
 
   useEffect(() => {
     loadClients();
@@ -1365,9 +1367,7 @@ export default function ClientsPage() {
     }
   }
 
-  const regionPageSize = 10;
-  const totalRegionPages = Math.ceil(groupedClientsByRegion.length / regionPageSize);
-  const paginatedGroups = groupedClientsByRegion.slice((page - 1) * regionPageSize, page * regionPageSize);
+  const paginatedGroups = groupedClientsByRegion;
 
   return (
     <div className={`stack clients-page${isRepresentative ? " clients-page-representative" : ""}`}>
@@ -1734,7 +1734,7 @@ export default function ClientsPage() {
           </div>
         )}
 
-        <Pagination page={page} totalPages={totalRegionPages} onChange={setPage} />
+        <Pagination page={page} totalPages={data.totalPages} onChange={setPage} />
       </section>
     </div>
   );
