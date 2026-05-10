@@ -948,11 +948,14 @@ export default function ClientsPage() {
     loadVisibleRegionRepresentatives();
   }, [groupedClientsByRegion, loadingRegionRepresentativeIds, regionRepresentatives]);
 
+  const regionPageSize = 5;
+  const totalRegionPages = Math.ceil(groupedClientsByRegion.length / regionPageSize) || 1;
+
   useEffect(() => {
-    if (!loading && data.totalPages > 0 && page > data.totalPages) {
-      setPage(data.totalPages);
+    if (!loading && totalRegionPages > 0 && page > totalRegionPages) {
+      setPage(totalRegionPages);
     }
-  }, [data.totalPages, loading, page]);
+  }, [totalRegionPages, loading, page]);
 
   async function handleApproveVisit(client) {
     if (actionState.clientId) return;
@@ -1367,8 +1370,6 @@ export default function ClientsPage() {
     }
   }
 
-  const regionPageSize = 5;
-  const totalRegionPages = Math.ceil(groupedClientsByRegion.length / regionPageSize) || 1;
   const paginatedGroups = groupedClientsByRegion.slice((page - 1) * regionPageSize, page * regionPageSize);
 
   return (
