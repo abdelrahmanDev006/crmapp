@@ -377,11 +377,8 @@ td {
   border-bottom: 1px solid #e8efef;
   text-align: center;
   vertical-align: middle;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow-wrap: normal;
+  white-space: normal;
+  word-break: break-word;
   font-size: clamp(0.74rem, 0.14vw + 0.68rem, 0.92rem);
   line-height: 1.3;
 }
