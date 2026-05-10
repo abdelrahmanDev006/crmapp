@@ -322,6 +322,15 @@ const updateClient = asyncHandler(async (req, res) => {
     return updatedClient;
   });
 
+  await logActivity({
+    userId: req.user.id,
+    action: "UPDATE_CLIENT",
+    entityType: "CLIENT",
+    entityId: updated.id,
+    entityName: updated.name,
+    details: `تم تعديل بيانات العميل: ${updated.name}`
+  });
+
   res.json({
     message: "تم تحديث العميل",
     item: updated
@@ -338,6 +347,17 @@ const handleClient = asyncHandler(async (req, res) => {
     customVisitIntervalDays: req.body.customVisitIntervalDays,
     advanceDays: req.body.advanceDays,
     referenceDate: req.body.referenceDate
+  });
+
+  await logActivity({
+    userId: req.user.id,
+    action: "HANDLE_CLIENT",
+    entityType: "CLIENT",
+    entityId: updatedClient.id,
+    entityName: updatedClient.name,
+    details: req.user.role === Roles.ADMIN 
+      ? `تم اتخاذ إجراء مع العميل: ${updatedClient.name}`
+      : `تم طلب إجراء للعميل: ${updatedClient.name}`
   });
 
   res.json({
@@ -360,6 +380,15 @@ const deleteClient = asyncHandler(async (req, res) => {
     where: { id: clientId }
   });
 
+  await logActivity({
+    userId: req.user.id,
+    action: "DELETE_CLIENT",
+    entityType: "CLIENT",
+    entityId: existing.id,
+    entityName: existing.name,
+    details: `تم حذف العميل: ${existing.name}`
+  });
+
   res.json({
     message: "تم حذف العميل بنجاح"
   });
@@ -367,6 +396,15 @@ const deleteClient = asyncHandler(async (req, res) => {
 
 const approveVisit = asyncHandler(async (req, res) => {
   const updatedClient = await approveClientVisit(req.params.id, req.user);
+  await logActivity({
+    userId: req.user.id,
+    action: "APPROVE_VISIT",
+    entityType: "CLIENT",
+    entityId: updatedClient.id,
+    entityName: updatedClient.name,
+    details: `تم اعتماد الإجراء للعميل: ${updatedClient.name}`
+  });
+
   res.json({
     message: "تم اعتماد الزيارة بنجاح",
     item: updatedClient
@@ -375,6 +413,15 @@ const approveVisit = asyncHandler(async (req, res) => {
 
 const rejectVisit = asyncHandler(async (req, res) => {
   const updatedClient = await rejectClientVisit(req.params.id, req.user);
+  await logActivity({
+    userId: req.user.id,
+    action: "REJECT_VISIT",
+    entityType: "CLIENT",
+    entityId: updatedClient.id,
+    entityName: updatedClient.name,
+    details: `تم رفض الإجراء للعميل: ${updatedClient.name}`
+  });
+
   res.json({
     message: "تم رفض الزيارة وإعادة العميل للحالة النشطة",
     item: updatedClient

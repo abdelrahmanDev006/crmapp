@@ -67,9 +67,21 @@ export default function LogsPage() {
                         </span>
                       </td>
                       <td>
-                        {log.action === "CREATE_CLIENT" && "إضافة عميل"}
-                        {log.action === "CREATE_USER" && "إنشاء حساب"}
-                        {log.action !== "CREATE_CLIENT" && log.action !== "CREATE_USER" && log.action}
+                        {{
+                          "CREATE_CLIENT": "إضافة عميل",
+                          "UPDATE_CLIENT": "تعديل عميل",
+                          "HANDLE_CLIENT": "إجراء عميل",
+                          "DELETE_CLIENT": "حذف عميل",
+                          "APPROVE_VISIT": "اعتماد زيارة",
+                          "REJECT_VISIT": "رفض زيارة",
+                          "CREATE_USER": "إنشاء حساب",
+                          "UPDATE_USER": "تعديل حساب",
+                          "DELETE_USER": "حذف حساب",
+                          "CREATE_REGION": "إضافة منطقة",
+                          "UPDATE_REGION": "تعديل منطقة",
+                          "DELETE_REGION": "حذف منطقة",
+                          "HANDLE_REGION": "إجراء منطقة"
+                        }[log.action] || log.action}
                       </td>
                       <td style={{ color: "#555" }}>{log.details || log.entityName}</td>
                     </tr>

@@ -4,6 +4,7 @@ const { Roles } = require("../constants/enums");
 const { normalizeToWorkDate } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
 const { handleRegionClients } = require("../services/clientService");
+const { logActivity } = require("../services/logService");
 
 async function getRegionSummary() {
   const regions = await prisma.region.findMany({
@@ -88,6 +89,15 @@ const createRegion = asyncHandler(async (req, res) => {
       name,
       code: nextCode
     }
+  });
+
+  await logActivity({
+    userId: req.user.id,
+    action: "CREATE_REGION",
+    entityType: "REGION",
+    entityId: created.id,
+    entityName: created.name,
+    details: `تم إنشاء منطقة جديدة: ${created.name}`
   });
 
   res.status(201).json({
@@ -175,6 +185,15 @@ const updateRegion = asyncHandler(async (req, res) => {
     }
   });
 
+  await logActivity({
+    userId: req.user.id,
+    action: "UPDATE_REGION",
+    entityType: "REGION",
+    entityId: updated.id,
+    entityName: updated.name,
+    details: `تم تعديل المنطقة: ${updated.name}`
+  });
+
   res.json({
     message: "تم تحديث بيانات المنطقة",
     item: updated
@@ -208,6 +227,15 @@ const deleteRegion = asyncHandler(async (req, res) => {
     where: { id: regionId }
   });
 
+  await logActivity({
+    userId: req.user.id,
+    action: "DELETE_REGION",
+    entityType: "REGION",
+    entityId: existing.id,
+    entityName: existing.name,
+    details: `تم حذف المنطقة: ${existing.name}`
+  });
+
   res.json({
     message: "تم حذف المنطقة بنجاح"
   });
@@ -220,6 +248,15 @@ const handleWholeRegion = asyncHandler(async (req, res) => {
     regionId,
     user: req.user,
     note: req.body.note
+  });
+
+  await logActivity({
+    userId: req.user.id,
+    action: "HANDLE_REGION",
+    entityType: "REGION",
+    entityId: result.region.id,
+    entityName: result.region.name,
+    details: `تم التعامل مع كامل عملاء منطقة: ${result.region.name} (${result.updatedCount} عميل)`
   });
 
   res.json({

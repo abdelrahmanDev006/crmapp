@@ -199,6 +199,15 @@ const updateUser = asyncHandler(async (req, res) => {
     include: { regions: true }
   });
 
+  await logActivity({
+    userId: req.user.id,
+    action: "UPDATE_USER",
+    entityType: "USER",
+    entityId: updated.id,
+    entityName: updated.name,
+    details: `تم تعديل بيانات المستخدم: ${updated.name}`
+  });
+
   res.json({
     message: "تم تحديث بيانات المستخدم",
     item: sanitizeUser(updated)
@@ -257,6 +266,15 @@ const deleteUser = asyncHandler(async (req, res) => {
 
   await prisma.user.delete({
     where: { id: userId }
+  });
+
+  await logActivity({
+    userId: req.user.id,
+    action: "DELETE_USER",
+    entityType: "USER",
+    entityId: existing.id,
+    entityName: existing.name,
+    details: `تم حذف المستخدم: ${existing.name}`
   });
 
   res.json({
