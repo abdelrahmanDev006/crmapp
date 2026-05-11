@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { clientsApi, regionsApi } from "../api/crmApi";
 import { useAuth } from "../auth/AuthContext";
 import StatusBadge from "../components/StatusBadge";
@@ -70,6 +70,8 @@ function parseCustomVisitIntervalDays(value) {
 export default function ClientDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialShowEdit = searchParams.get("edit") === "true";
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
 
@@ -93,7 +95,7 @@ export default function ClientDetailsPage() {
   const [editCustomVisitIntervalDays, setEditCustomVisitIntervalDays] = useState("");
   const [editStatus, setEditStatus] = useState("ACTIVE");
   const [editNote, setEditNote] = useState("");
-  const [showEditForm, setShowEditForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(initialShowEdit);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
 

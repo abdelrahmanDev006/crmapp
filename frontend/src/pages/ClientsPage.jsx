@@ -307,7 +307,8 @@ function ClientTableRows({
   onHandleClient,
   onApproveVisit,
   onRejectVisit,
-  isRepresentative
+  isRepresentative,
+  isAdmin
 }) {
   return clients.map((client) => {
     const clientIsNew = isNewClient(client.createdAt, todayDateText);
@@ -366,110 +367,109 @@ function ClientTableRows({
         </td>
 
         <td className="actions-cell col-actions" data-label="الإجراءات">
-          {isRepresentative && (dialHref || locationHref) && (
-            <div className="rep-quick-actions" aria-label={`اختصارات العميل ${client.name}`}>
-              {dialHref && (
-                <a className="ghost-btn quick-action-btn" href={dialHref}>
-                  اتصال
-                </a>
-              )}
-              {locationHref && (
-                <a className="ghost-btn quick-action-btn" href={locationHref} target="_blank" rel="noopener noreferrer">
-                  خريطة
-                </a>
-              )}
-            </div>
-          )}
-
-          {!isRepresentative && (
-            <Link className="ghost-btn" to={`/clients/${client.id}`}>
-              التفاصيل
-            </Link>
-          )}
-
-          {!isRepresentative && client.status === "PENDING_APPROVAL" && (
-            <div className="admin-approval-actions" style={{ display: "flex", flexDirection: "column", gap: "6px", background: "#fff3cd", padding: "6px", borderRadius: "8px", border: "1px solid #ffeeba", maxWidth: "140px", margin: "0 auto" }}>
-              <div style={{ fontSize: "0.8rem", color: "#856404", fontWeight: "bold", textAlign: "center", lineHeight: "1.2" }}>
-                <div style={{ marginBottom: "4px" }}>
-                  <span style={{ display: "block", padding: "3px", background: "#ffc107", color: "#000", borderRadius: "4px", fontSize: "0.85rem" }}>
-                    {client.pendingOutcome === "ACTIVE" ? "تم التعامل" :
-                     client.pendingOutcome === "NO_ANSWER" ? "لم يرد" :
-                     client.pendingOutcome === "REJECTED" ? "كانسل" :
-                     client.pendingOutcome === "POSTPONED" ? "مؤجل" :
-                     client.pendingOutcome || "غير معروف"}
-                  </span>
-                </div>
-                {client.pendingVisitType && client.pendingVisitType !== client.visitType && (
-                  <div style={{ marginTop: "4px", fontSize: "0.75rem" }}>
-                    <span style={{ display: "block", color: "#856404" }}>زيارة:</span>
-                    <span style={{ color: "#d39e00", display: "block" }}>
-                      {client.pendingVisitType === "WEEKLY" ? "أسبوعي" :
-                       client.pendingVisitType === "BIWEEKLY" ? "أسبوعين" :
-                       client.pendingVisitType === "MONTHLY" ? "شهري" :
-                       client.pendingVisitType === "CUSTOM" ? `ميعاد آخر` :
-                       client.pendingVisitType}
-                    </span>
-                  </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", width: "100%", maxWidth: "180px", margin: "0 auto" }}>
+            {isRepresentative && (dialHref || locationHref) && (
+              <div style={{ gridColumn: "span 2", display: "flex", gap: "4px" }}>
+                {dialHref && (
+                  <a className="ghost-btn quick-action-btn" href={dialHref} style={{ flex: 1, padding: "4px" }}>
+                    اتصال
+                  </a>
                 )}
-                {client.pendingNote && (
-                  <div style={{ marginTop: "4px", fontSize: "0.75rem", color: "#664d03", fontStyle: "italic", wordBreak: "break-word" }}>
-                    "{client.pendingNote}"
-                  </div>
+                {locationHref && (
+                  <a className="ghost-btn quick-action-btn" href={locationHref} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "4px" }}>
+                    خريطة
+                  </a>
                 )}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            )}
+
+            {!isRepresentative && (
+              <>
+                <Link className="ghost-btn" to={`/clients/${client.id}`} style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}>
+                  التفاصيل
+                </Link>
+                {isAdmin && (
+                  <Link 
+                    className="secondary-btn" 
+                    to={`/clients/${client.id}?edit=true`}
+                    style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0", background: "#f0f0f0", color: "#333", border: "1px solid #ccc" }}
+                  >
+                    تعديل
+                  </Link>
+                )}
+              </>
+            )}
+
+            {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && (
+              <>
                 <button
                   type="button"
                   className="primary-btn"
+                  style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
                   disabled={isActionLoadingForClient}
-                  onClick={() => onApproveVisit(client)}
-                  style={{ background: "#28a745", borderColor: "#28a745", width: "100%", padding: "4px 0", fontSize: "0.85rem" }}
+                  onClick={() => onHandleClient(client, "ACTIVE")}
                 >
-                  {isApproveLoading ? "..." : "اعتماد"}
+                  {isHandleActionLoading ? "..." : "تم التعامل"}
                 </button>
                 <button
                   type="button"
-                  className="danger-btn"
+                  className="secondary-btn"
+                  style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
                   disabled={isActionLoadingForClient}
-                  onClick={() => onRejectVisit(client)}
-                  style={{ width: "100%", padding: "4px 0", fontSize: "0.85rem" }}
+                  onClick={() => onHandleClient(client, "NO_ANSWER")}
                 >
-                  {isRejectLoading ? "..." : "رفض"}
+                  {isNoAnswerActionLoading ? "..." : "لم يرد"}
                 </button>
-              </div>
-            </div>
-          )}
+                {isRepresentative && (
+                  <button
+                    type="button"
+                    className="danger-btn"
+                    style={{ gridColumn: "span 2", padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
+                    disabled={isActionLoadingForClient}
+                    onClick={() => onHandleClient(client, "REJECTED")}
+                  >
+                    {isCancelActionLoading ? "..." : "كانسل"}
+                  </button>
+                )}
+              </>
+            )}
 
-          {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && (
-            <>
-              <button
-                type="button"
-                className="primary-btn"
-                disabled={isActionLoadingForClient}
-                onClick={() => onHandleClient(client, "ACTIVE")}
-              >
-                {isHandleActionLoading ? "جاري..." : "تم التعامل"}
-              </button>
-              <button
-                type="button"
-                className="secondary-btn"
-                disabled={isActionLoadingForClient}
-                onClick={() => onHandleClient(client, "NO_ANSWER")}
-              >
-                {isNoAnswerActionLoading ? "جاري..." : "لم يرد"}
-              </button>
-              {isRepresentative && (
-                <button
-                  type="button"
-                  className="danger-btn"
-                  disabled={isActionLoadingForClient}
-                  onClick={() => onHandleClient(client, "REJECTED")}
-                >
-                  {isCancelActionLoading ? "جاري..." : "كانسل"}
-                </button>
-              )}
-            </>
-          )}
+            {!isRepresentative && client.status === "PENDING_APPROVAL" && (
+              <div className="admin-approval-actions" style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: "6px", background: "#fff3cd", padding: "6px", borderRadius: "8px", border: "1px solid #ffeeba" }}>
+                <div style={{ fontSize: "0.8rem", color: "#856404", fontWeight: "bold", textAlign: "center", lineHeight: "1.2" }}>
+                  <div style={{ marginBottom: "4px" }}>
+                    <span style={{ display: "block", padding: "3px", background: "#ffc107", color: "#000", borderRadius: "4px", fontSize: "0.85rem" }}>
+                      {client.pendingOutcome === "ACTIVE" ? "تم التعامل" :
+                       client.pendingOutcome === "NO_ANSWER" ? "لم يرد" :
+                       client.pendingOutcome === "REJECTED" ? "كانسل" :
+                       client.pendingOutcome === "POSTPONED" ? "مؤجل" :
+                       client.pendingOutcome || "غير معروف"}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    disabled={isActionLoadingForClient}
+                    onClick={() => onApproveVisit(client)}
+                    style={{ flex: 1, background: "#28a745", borderColor: "#28a745", padding: "4px 0", fontSize: "0.85rem" }}
+                  >
+                    {isApproveLoading ? "..." : "اعتماد"}
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-btn"
+                    disabled={isActionLoadingForClient}
+                    onClick={() => onRejectVisit(client)}
+                    style={{ flex: 1, padding: "4px 0", fontSize: "0.85rem" }}
+                  >
+                    {isRejectLoading ? "..." : "رفض"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </td>
       </tr>
     );
@@ -486,13 +486,15 @@ export default function ClientsPage() {
   const [regionRepresentatives, setRegionRepresentatives] = useState({});
   const [loadingRegionRepresentativeIds, setLoadingRegionRepresentativeIds] = useState({});
   const [expandedRegionIds, setExpandedRegionIds] = useState({});
-  const [activeTab, setActiveTab] = useState("ALL");
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem("crm_activeTab") || "ALL");
+  const [page, setPage] = useState(() => Number(localStorage.getItem("crm_page")) || 1);
+  const [search, setSearch] = useState(() => localStorage.getItem("crm_search") || "");
   const [overdueSummary, setOverdueSummary] = useState({ count: 0, dates: [] });
-  const [selectedDueDate, setSelectedDueDate] = useState(
-    user?.role === "REPRESENTATIVE" ? getTodayInputDate() : ""
-  );
+  const [selectedDueDate, setSelectedDueDate] = useState(() => {
+    const saved = localStorage.getItem("crm_selectedDueDate");
+    if (saved !== null) return saved;
+    return user?.role === "REPRESENTATIVE" ? getTodayInputDate() : "";
+  });
   const [data, setData] = useState({ items: [], totalPages: 1, total: 0, page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -506,6 +508,13 @@ export default function ClientsPage() {
   const [infoMessage, setInfoMessage] = useState("");
   const todayDateText = getTodayInputDate();
   const debouncedSearch = useDebouncedValue(search, 350);
+
+  useEffect(() => {
+    localStorage.setItem("crm_activeTab", activeTab);
+    localStorage.setItem("crm_page", page.toString());
+    localStorage.setItem("crm_search", search);
+    localStorage.setItem("crm_selectedDueDate", selectedDueDate);
+  }, [activeTab, page, search, selectedDueDate]);
 
   const queryFilters = useMemo(() => mapTabToFilters(activeTab), [activeTab]);
   const hasDueDateFilter = Boolean(selectedDueDate);
@@ -854,7 +863,12 @@ export default function ClientsPage() {
     }
   }, [buildClientListParams]);
 
+  const isInitialMount = useRef(true);
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     setPage(1);
   }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
 
@@ -1774,6 +1788,7 @@ export default function ClientsPage() {
                             onApproveVisit={handleApproveVisit}
                             onRejectVisit={handleRejectVisit}
                             isRepresentative={isRepresentative}
+                            isAdmin={isAdmin}
                           />
                         </tbody>
                       </table>
