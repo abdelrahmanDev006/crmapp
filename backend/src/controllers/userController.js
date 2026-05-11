@@ -3,6 +3,7 @@ const prisma = require("../config/prisma");
 const asyncHandler = require("../middlewares/asyncHandler");
 const { Roles } = require("../constants/enums");
 const { createHttpError } = require("../utils/httpError");
+const { invalidateUserCache } = require("../middlewares/auth");
 const { sanitizeUser } = require("./authController");
 const { logActivity } = require("../services/logService");
 
@@ -207,6 +208,9 @@ const updateUser = asyncHandler(async (req, res) => {
     entityName: updated.name,
     details: `تم تعديل بيانات المستخدم: ${updated.name}`
   });
+
+  // امسح الـ cache عشان التعديل يطبق فوراً
+  invalidateUserCache(updated.id);
 
   res.json({
     message: "تم تحديث بيانات المستخدم",

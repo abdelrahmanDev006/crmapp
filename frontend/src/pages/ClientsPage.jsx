@@ -486,13 +486,24 @@ export default function ClientsPage() {
   const [regionRepresentatives, setRegionRepresentatives] = useState({});
   const [loadingRegionRepresentativeIds, setLoadingRegionRepresentativeIds] = useState({});
   const [expandedRegionIds, setExpandedRegionIds] = useState({});
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem("crm_activeTab") || "ALL");
-  const [page, setPage] = useState(() => Number(localStorage.getItem("crm_page")) || 1);
-  const [search, setSearch] = useState(() => localStorage.getItem("crm_search") || "");
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = localStorage.getItem("crm_activeTab");
+    const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL"];
+    return validTabs.includes(saved) ? saved : "ALL";
+  });
+  const [page, setPage] = useState(() => {
+    const saved = Number(localStorage.getItem("crm_page"));
+    return Number.isInteger(saved) && saved > 0 ? saved : 1;
+  });
+  const [search, setSearch] = useState(() => {
+    const saved = localStorage.getItem("crm_search");
+    return typeof saved === "string" ? saved : "";
+  });
   const [overdueSummary, setOverdueSummary] = useState({ count: 0, dates: [] });
   const [selectedDueDate, setSelectedDueDate] = useState(() => {
     const saved = localStorage.getItem("crm_selectedDueDate");
-    if (saved !== null) return saved;
+    if (saved !== null && /^\d{4}-\d{2}-\d{2}$/.test(saved)) return saved;
+    if (saved === "") return "";
     return user?.role === "REPRESENTATIVE" ? getTodayInputDate() : "";
   });
   const [data, setData] = useState({ items: [], totalPages: 1, total: 0, page: 1 });
@@ -836,7 +847,7 @@ export default function ClientsPage() {
   const buildClientListParams = useCallback((pageOverride, pageSizeOverride) => {
     const params = {
       page: pageOverride ?? 1,
-      pageSize: pageSizeOverride ?? 10000,
+      pageSize: pageSizeOverride ?? 1000,
       search: debouncedSearch || undefined
     };
 

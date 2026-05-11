@@ -4,6 +4,30 @@ const { Roles } = require("../constants/enums");
 const { verifyToken } = require("../utils/jwt");
 const { createHttpError } = require("../utils/httpError");
 
+// --- In-Memory User Cache ---
+// يخزن بيانات المستخدم في الذاكرة لمدة دقيقتين لتجنب query لقاعدة البيانات في كل طلب
+const userCache = new Map();
+const USER_CACHE_TTL_MS = 2 * 60 * 1000; // دقيقتان
+
+function getCachedUser(userId) {
+  const entry = userCache.get(userId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    userCache.delete(userId);
+    return null;
+  }
+  return entry.user;
+}
+
+function setCachedUser(userId, user) {
+  userCache.set(userId, { user, expiresAt: Date.now() + USER_CACHE_TTL_MS });
+}
+
+function invalidateUserCache(userId) {
+  userCache.delete(Number(userId));
+}
+// --- End Cache ---
+
 async function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   const cookieToken = req.cookies?.[env.authCookieName];
@@ -18,10 +42,21 @@ async function authenticate(req, res, next) {
 
   try {
     const payload = verifyToken(token);
-    const user = await prisma.user.findUnique({
-      where: { id: Number(payload.sub) },
-      include: { regions: true }
-    });
+    const userId = Number(payload.sub);
+
+    // جرّب الـ Cache أولاً
+    let user = getCachedUser(userId);
+
+    if (!user) {
+      // اذهب لقاعدة البيانات فقط إذا لم يكن موجوداً في الـ Cache
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { regions: true }
+      });
+      if (user?.isActive) {
+        setCachedUser(userId, user);
+      }
+    }
 
     if (!user || !user.isActive) {
       return next(createHttpError(401, "المستخدم غير صالح أو غير نشط"));
@@ -71,5 +106,6 @@ module.exports = {
   authenticate,
   authorizeRoles,
   canAccessRegion,
-  enforceRegionAccess
+  enforceRegionAccess,
+  invalidateUserCache
 };

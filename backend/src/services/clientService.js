@@ -150,8 +150,9 @@ function enforceClientScope(user, client) {
 }
 
 async function listClients(filters, user) {
-  const page = filters.page || 1;
-  const pageSize = filters.pageSize || 20;
+  const MAX_PAGE_SIZE = 1000; // حد أقصى للحماية من طلبات الـ 10,000
+  const page = Math.max(1, Number(filters.page) || 1);
+  const pageSize = Math.min(Math.max(1, Number(filters.pageSize) || 20), MAX_PAGE_SIZE);
   const where = buildClientWhere(filters, user);
 
   const [items, total] = await Promise.all([
@@ -355,6 +356,21 @@ async function handleClientVisit({
   }
 
   return prisma.$transaction(async (tx) => {
+    // Optimistic Locking: تحقق أن أحداً لم يعدّل العميل منذ القراءة الأولى
+    const freshClient = await tx.client.findUnique({
+      where: { id: existingClient.id },
+      select: { updatedAt: true, status: true }
+    });
+
+    if (!freshClient) {
+      throw createHttpError(404, "العميل غير موجود");
+    }
+
+    const wasModified = freshClient.updatedAt.getTime() !== new Date(existingClient.updatedAt).getTime();
+    if (wasModified) {
+      throw createHttpError(409, "تم تعديل بيانات العميل بواسطة مستخدم آخر، يرجى تحديث الصفحة والمحاولة مرة أخرى");
+    }
+
     const updatedClient = await tx.client.update({
       where: { id: existingClient.id },
       data: {
@@ -363,7 +379,6 @@ async function handleClientVisit({
         nextVisitDate: newNextVisitDate,
         visitType: nextVisitType,
         customVisitIntervalDays: nextCustomVisitIntervalDays,
-        // Clear pending fields if they were set
         pendingOutcome: null,
         pendingNote: null,
         pendingVisitType: null,
