@@ -389,7 +389,7 @@ td {
 
 .table-wrapper table.clients-table th.col-name,
 .table-wrapper table.clients-table td.col-name {
-  width: 13%;
+  width: 16%;
 }
 
 .table-wrapper table.clients-table th.col-phone,
@@ -399,7 +399,7 @@ td {
 
 .table-wrapper table.clients-table th.col-address,
 .table-wrapper table.clients-table td.col-address {
-  width: 15%;
+  width: 18%;
 }
 
 .table-wrapper table.clients-table th.col-location,
@@ -409,7 +409,7 @@ td {
 
 .table-wrapper table.clients-table th.col-products,
 .table-wrapper table.clients-table td.col-products {
-  width: 10%;
+  width: 12%;
 }
 
 .table-wrapper table.clients-table th.col-price,
@@ -422,14 +422,9 @@ td {
   width: 8%;
 }
 
-.table-wrapper table.clients-table th.col-next-visit,
-.table-wrapper table.clients-table td.col-next-visit {
-  width: 10%;
-}
-
 .table-wrapper table.clients-table th.col-notes,
 .table-wrapper table.clients-table td.col-notes {
-  width: 10%;
+  width: 12%;
 }
 
 .table-wrapper table.clients-table th.col-actions,
@@ -582,15 +577,6 @@ td {
   overflow-wrap: break-word;
 }
 
-.table-wrapper table.clients-table th.col-next-visit,
-.table-wrapper table.clients-table td.col-next-visit {
-  white-space: normal;
-  text-overflow: clip;
-  word-break: keep-all;
-  overflow-wrap: normal;
-  line-height: 1.3;
-}
-
 .table-wrapper table.clients-table th.col-location {
   white-space: normal;
   text-overflow: clip;
@@ -611,7 +597,6 @@ td {
 
 
 
-.table-wrapper table.clients-table th.col-next-visit,
 .table-wrapper table.clients-table th.col-notes,
 .table-wrapper table.clients-table th.col-actions {
   white-space: normal;

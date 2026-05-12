@@ -359,9 +359,6 @@ function ClientTableRows({
         <td className="col-visit-type" data-label="الزيارة">
           <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
         </td>
-        <td className="col-next-visit" data-label="الزيارة القادمة">
-          {client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}
-        </td>
         <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || ""}>
           {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "-"}
         </td>
@@ -1851,7 +1848,6 @@ export default function ClientsPage() {
                             <th className="col-products">المنتجات</th>
                             <th className="col-price">السعر</th>
                             <th className="col-visit-type">الزيارة</th>
-                            <th className="col-next-visit">الزيارة القادمة</th>
                             <th className="col-notes">الملاحظات</th>
                             <th className="col-actions">الإجراءات</th>
                           </tr>
