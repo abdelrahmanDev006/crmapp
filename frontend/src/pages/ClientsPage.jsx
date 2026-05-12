@@ -943,7 +943,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     if (groupedClientsByRegion.length === 0) {
-      setExpandedRegionIds({});
+      // لا تمسح المناطق المفتوحة أثناء التحميل
       return;
     }
 
