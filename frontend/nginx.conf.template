@@ -21,8 +21,17 @@ server {
     send_timeout 600;
   }
 
+  # Assets (JS/CSS) — لها hash في اسمها فممكن نعمل cache طويل
+  location /assets/ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+  }
+
+  # index.html — لا يتم عمل cache له أبداً عشان دايماً يحمّل الملفات الجديدة
   location / {
     try_files $uri $uri/ /index.html;
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
   }
 
   location = /health {
