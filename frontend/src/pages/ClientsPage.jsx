@@ -481,6 +481,7 @@ export default function ClientsPage() {
   const isAdmin = user?.role === "ADMIN";
   const isRepresentative = user?.role === "REPRESENTATIVE";
   const importFileInputRef = useRef(null);
+  const restoredScrollRef = useRef(false);
 
   const [regions, setRegions] = useState([]);
   const [regionRepresentatives, setRegionRepresentatives] = useState({});
@@ -540,7 +541,57 @@ export default function ClientsPage() {
     localStorage.setItem("crm_page", page.toString());
     localStorage.setItem("crm_search", search);
     localStorage.setItem("crm_selectedDueDate", selectedDueDate);
+    
+    // تصفير السكرول فقط إذا تم استعادة السكرول السابق بالفعل (لمنع مسحه عند تحميل الصفحة أول مرة)
+    if (restoredScrollRef.current) {
+      sessionStorage.setItem("crm_scrollY", "0");
+    }
   }, [activeTab, page, search, selectedDueDate]);
+
+  // 1. حفظ موضع السكرول في الوقت الفعلي أثناء التصفح (لتجنب انهيار الارتفاع عند Unmount)
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!loading && data.items.length > 0) {
+        sessionStorage.setItem("crm_scrollY", window.scrollY.toString());
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [loading, data.items]);
+
+  // 2. استعادة موضع السكرول على مراحل (Staggered Scroll) لضمان النجاح مهما كان رندر العناصر بطيئاً
+  useEffect(() => {
+    if (!loading && data.items.length > 0 && !restoredScrollRef.current) {
+      const savedScrollY = sessionStorage.getItem("crm_scrollY");
+      if (savedScrollY && savedScrollY !== "0") {
+        const scrollPosition = parseInt(savedScrollY, 10);
+        
+        const tryScroll = () => {
+          window.scrollTo(0, scrollPosition);
+        };
+
+        // تشغيل فوري + تشغيل بعد 50 مللي ثانية + تشغيل بعد 200 مللي ثانية
+        tryScroll();
+        const t1 = setTimeout(tryScroll, 50);
+        const t2 = setTimeout(tryScroll, 200);
+        const t3 = setTimeout(() => {
+          tryScroll();
+          restoredScrollRef.current = true;
+        }, 400);
+
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+      } else {
+        restoredScrollRef.current = true;
+      }
+    }
+  }, [loading, data.items]);
 
   const queryFilters = useMemo(() => mapTabToFilters(activeTab), [activeTab]);
   const hasDueDateFilter = Boolean(selectedDueDate);

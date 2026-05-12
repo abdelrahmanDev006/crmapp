@@ -5,6 +5,10 @@ export default function AppShell() {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === "ADMIN";
 
+  const handleFreshNav = () => {
+    sessionStorage.setItem("crm_scrollY", "0");
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -21,19 +25,19 @@ export default function AppShell() {
 
         <nav className="sidebar-nav">
           {isAdmin && (
-            <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")} onClick={handleFreshNav}>
               لوحة التحكم
             </NavLink>
           )}
-          <NavLink to="/clients" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+          <NavLink to="/clients" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")} onClick={handleFreshNav}>
             العملاء
           </NavLink>
           {isAdmin && (
             <>
-              <NavLink to="/users" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+              <NavLink to="/users" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")} onClick={handleFreshNav}>
                 المستخدمون
               </NavLink>
-              <NavLink to="/logs" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+              <NavLink to="/logs" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")} onClick={handleFreshNav}>
                 سجل النشاطات
               </NavLink>
             </>
