@@ -485,7 +485,14 @@ export default function ClientsPage() {
   const [regions, setRegions] = useState([]);
   const [regionRepresentatives, setRegionRepresentatives] = useState({});
   const [loadingRegionRepresentativeIds, setLoadingRegionRepresentativeIds] = useState({});
-  const [expandedRegionIds, setExpandedRegionIds] = useState({});
+  const [expandedRegionIds, setExpandedRegionIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem("crm_expandedRegionIds");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [activeTab, setActiveTab] = useState(() => {
     const saved = localStorage.getItem("crm_activeTab");
     const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL"];
@@ -519,6 +526,14 @@ export default function ClientsPage() {
   const [infoMessage, setInfoMessage] = useState("");
   const todayDateText = getTodayInputDate();
   const debouncedSearch = useDebouncedValue(search, 350);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("crm_expandedRegionIds", JSON.stringify(expandedRegionIds));
+    } catch {
+      // تجاهل أخطاء localStorage
+    }
+  }, [expandedRegionIds]);
 
   useEffect(() => {
     localStorage.setItem("crm_activeTab", activeTab);
