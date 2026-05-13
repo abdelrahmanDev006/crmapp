@@ -41,7 +41,7 @@ function chunkArray(items, chunkSize) {
 }
 
 function buildClientWhere(filters, user) {
-  const where = {};
+  const where = { isDeleted: false }; // استبعاد العملاء المحذوفين
 
   if (user.role === Roles.REPRESENTATIVE) {
     const userRegionIds = user.regions?.map(r => r.id) || [];

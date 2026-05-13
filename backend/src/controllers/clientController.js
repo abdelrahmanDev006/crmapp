@@ -37,7 +37,7 @@ async function findDuplicatePhoneClient({ normalizedPhone, excludeClientId }) {
   const duplicatedRows = await prisma.$queryRaw`
     SELECT c.id, c.name, c.phone, c."regionId"
     FROM "Client" c
-    WHERE regexp_replace(
+    WHERE c."isDeleted" = false AND regexp_replace(
       translate(c.phone, '٠١٢٣٤٥٦٧٨٩', '0123456789'),
       '[^0-9]',
       '',
@@ -80,6 +80,7 @@ async function assertClientUniqueness({
     if (normalizedName && Number.isInteger(numericRegionId) && numericRegionId > 0) {
       const duplicateByName = await prisma.client.findFirst({
         where: {
+          isDeleted: false,
           regionId: numericRegionId,
           name: {
             equals: normalizedName,
@@ -116,6 +117,7 @@ const listClientRecords = asyncHandler(async (req, res) => {
 
 const getOverdueSummary = asyncHandler(async (req, res) => {
   const overdueWhere = {
+    isDeleted: false,
     nextVisitDate: { lt: normalizeToWorkDate(new Date()) },
     status: { in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER] }
   };
@@ -398,8 +400,12 @@ const deleteClient = asyncHandler(async (req, res) => {
     throw createHttpError(404, "العميل غير موجود");
   }
 
-  await prisma.client.delete({
-    where: { id: clientId }
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { 
+      isDeleted: true,
+      deletedAt: new Date()
+    }
   });
 
   await logActivity({

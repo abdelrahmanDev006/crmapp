@@ -267,6 +267,10 @@ export default function ClientDetailsPage() {
     setInfoMessage("");
 
     try {
+      if (!editNextVisitDate) {
+        throw new Error("تاريخ الزيارة القادمة مطلوب. يرجى اختيار تاريخ مناسب للعميل.");
+      }
+
       const customVisitIntervalDays =
         editVisitType === "CUSTOM" ? parseCustomVisitIntervalDays(editCustomVisitIntervalDays) : null;
 
@@ -344,6 +348,9 @@ export default function ClientDetailsPage() {
             </button>
           </div>
         </div>
+
+        {infoMessage && <div className="info-box">{infoMessage}</div>}
+        {error && <div className="error-box">{error}</div>}
 
         {client.status === "REJECTED" && (
           <div className="info-box">
@@ -606,9 +613,6 @@ export default function ClientDetailsPage() {
             </button>
           )}
         </div>
-
-        {infoMessage && <div className="info-box">{infoMessage}</div>}
-        {error && <div className="error-box">{error}</div>}
       </section>
 
       <section className="panel">

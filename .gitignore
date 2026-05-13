@@ -38,3 +38,6 @@ logs/
 .railway/
 **/.cache/
 **/.eslintcache
+
+# Database backups
+backups/

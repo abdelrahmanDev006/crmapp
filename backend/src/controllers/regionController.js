@@ -8,6 +8,7 @@ const { logActivity } = require("../services/logService");
 
 async function getRegionSummary() {
   const regions = await prisma.region.findMany({
+    where: { isDeleted: false },
     orderBy: { code: "asc" },
     include: {
       _count: {
@@ -68,6 +69,7 @@ const createRegion = asyncHandler(async (req, res) => {
 
   const existingByName = await prisma.region.findFirst({
     where: {
+      isDeleted: false,
       name: {
         equals: name,
         mode: "insensitive"
@@ -113,8 +115,11 @@ const getRegionDetails = asyncHandler(async (req, res) => {
     throw createHttpError(403, "لا يمكنك الوصول إلى هذه المنطقة");
   }
 
-  const region = await prisma.region.findUnique({
-    where: { id: regionId },
+  const region = await prisma.region.findFirst({
+    where: { 
+      id: regionId,
+      isDeleted: false
+    },
     include: {
       users: {
         select: {
@@ -154,8 +159,11 @@ const updateRegion = asyncHandler(async (req, res) => {
   const regionId = Number(req.params.id);
   const name = req.body.name?.trim();
 
-  const existing = await prisma.region.findUnique({
-    where: { id: regionId }
+  const existing = await prisma.region.findFirst({
+    where: { 
+      id: regionId,
+      isDeleted: false
+    }
   });
 
   if (!existing) {
@@ -165,6 +173,7 @@ const updateRegion = asyncHandler(async (req, res) => {
   if (name) {
     const duplicateByName = await prisma.region.findFirst({
       where: {
+        isDeleted: false,
         id: { not: regionId },
         name: {
           equals: name,
@@ -203,8 +212,11 @@ const updateRegion = asyncHandler(async (req, res) => {
 const deleteRegion = asyncHandler(async (req, res) => {
   const regionId = Number(req.params.id);
 
-  const existing = await prisma.region.findUnique({
-    where: { id: regionId },
+  const existing = await prisma.region.findFirst({
+    where: { 
+      id: regionId,
+      isDeleted: false
+    },
     include: {
       _count: {
         select: {
@@ -219,12 +231,16 @@ const deleteRegion = asyncHandler(async (req, res) => {
     throw createHttpError(404, "المنطقة غير موجودة");
   }
 
-  if (existing._count.clients > 0 || existing._count.users > 0) {
-    throw createHttpError(400, "لا يمكن حذف منطقة مرتبطة بعملاء أو مستخدمين");
-  }
+  // if (existing._count.clients > 0 || existing._count.users > 0) {
+  //   throw createHttpError(400, "لا يمكن حذف منطقة مرتبطة بعملاء أو مستخدمين");
+  // }
 
-  await prisma.region.delete({
-    where: { id: regionId }
+  await prisma.region.update({
+    where: { id: regionId },
+    data: {
+      isDeleted: true,
+      deletedAt: new Date()
+    }
   });
 
   await logActivity({

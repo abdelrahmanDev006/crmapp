@@ -32,8 +32,12 @@ model Region {
   name      String
   users     User[]
   clients   Client[]
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([isDeleted])
 }
 
 model User {
@@ -78,6 +82,8 @@ model Client {
 
   createdById Int?
   createdBy   User?    @relation("ClientCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -86,6 +92,7 @@ model Client {
   @@index([regionId, visitType, status, nextVisitDate])
   @@index([status, nextVisitDate])
   @@index([name])
+  @@index([isDeleted])
 }
 
 model VisitHistory {

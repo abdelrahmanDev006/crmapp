@@ -9,8 +9,9 @@ const summary = asyncHandler(async (req, res) => {
 
   const globalWhere =
     req.user.role === Roles.ADMIN
-      ? {}
+      ? { isDeleted: false }
         : {
+            isDeleted: false,
             regionId: { in: req.user.regions?.map((r) => r.id) || [] }
           };
 

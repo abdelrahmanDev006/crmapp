@@ -63,7 +63,10 @@ const createUser = asyncHandler(async (req, res) => {
     }
 
     const regions = await prisma.region.findMany({
-      where: { id: { in: regionIds } }
+      where: { 
+        id: { in: regionIds },
+        isDeleted: false
+      }
     });
 
     if (regions.length !== regionIds.length) {
@@ -155,7 +158,10 @@ const updateUser = asyncHandler(async (req, res) => {
       nextRegionIds = [];
     } else {
       const regions = await prisma.region.findMany({
-        where: { id: { in: regionIds } }
+        where: { 
+          id: { in: regionIds },
+          isDeleted: false
+        }
       });
 
       if (regions.length !== regionIds.length) {

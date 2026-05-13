@@ -1141,6 +1141,10 @@ export default function ClientsPage() {
     setInfoMessage("");
 
     try {
+      if (!createForm.nextVisitDate) {
+        throw new Error("تاريخ الزيارة القادمة مطلوب. يرجى اختيار تاريخ مناسب للعميل.");
+      }
+
       const customVisitIntervalDays =
         createForm.visitType === "CUSTOM" ? parseCustomVisitIntervalDays(createForm.customVisitIntervalDays) : null;
 
@@ -1491,6 +1495,9 @@ export default function ClientsPage() {
           )}
         </div>
 
+        {error && <div className="error-box">{error}</div>}
+        {infoMessage && <div className="info-box">{infoMessage}</div>}
+
         {isAdmin && overdueSummary.count > 0 && (
           <div className="overdue-banner" style={{
             background: "#ffebee",
@@ -1784,9 +1791,6 @@ export default function ClientsPage() {
             </>
           )}
         </div>
-
-        {error && <div className="error-box">{error}</div>}
-        {infoMessage && <div className="info-box">{infoMessage}</div>}
 
         {loading ? (
           <div className="table-empty">جاري تحميل العملاء...</div>

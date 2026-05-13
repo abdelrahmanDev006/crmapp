@@ -9,6 +9,16 @@ const { createHttpError } = require("../utils/httpError");
 const userCache = new Map();
 const USER_CACHE_TTL_MS = 2 * 60 * 1000; // دقيقتان
 
+// تنظيف الذاكرة المؤقتة كل 5 دقائق لمنع تسريب الذاكرة (Memory Leak)
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, entry] of userCache.entries()) {
+    if (now > entry.expiresAt) {
+      userCache.delete(userId);
+    }
+  }
+}, 5 * 60 * 1000).unref();
+
 function getCachedUser(userId) {
   const entry = userCache.get(userId);
   if (!entry) return null;

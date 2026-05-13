@@ -9,7 +9,7 @@ function toSafeDate(input = new Date()) {
   const date = input instanceof Date ? new Date(input.getTime()) : new Date(input);
 
   if (Number.isNaN(date.getTime())) {
-    return new Date();
+    throw new Error("Invalid date provided");
   }
 
   return date;
