@@ -31,7 +31,7 @@ export default function LogsPage() {
         }
       } catch (err) {
         if (active) {
-          setError("تعذر تحميل السجل");
+          setError(err?.message || "تعذر تحميل السجل");
         }
       } finally {
         if (active) {

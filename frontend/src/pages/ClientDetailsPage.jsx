@@ -268,7 +268,7 @@ export default function ClientDetailsPage() {
 
     try {
       if (!editNextVisitDate) {
-        throw new Error("تاريخ الزيارة القادمة مطلوب. يرجى اختيار تاريخ مناسب للعميل.");
+        throw new Error(editVisitType === "ONE_TIME" ? "تاريخ البيع مطلوب." : "تاريخ الزيارة القادمة مطلوب. يرجى اختيار تاريخ مناسب للعميل.");
       }
 
       const customVisitIntervalDays =
@@ -401,7 +401,7 @@ export default function ClientDetailsPage() {
             <strong className="details-note-text">{latestVisitNote}</strong>
           </div>
           <div>
-            <span>الزيارة القادمة</span>
+            <span>{client.visitType === "ONE_TIME" ? "تاريخ البيع" : "الزيارة القادمة"}</span>
             <strong>{client.status === "REJECTED" ? "-" : formatDateWithWeekday(client.nextVisitDate)}</strong>
           </div>
         </div>
@@ -518,6 +518,7 @@ export default function ClientDetailsPage() {
                   <option value="BIWEEKLY">أسبوعين</option>
                   <option value="MONTHLY">شهري</option>
                   <option value="CUSTOM">ميعاد آخر</option>
+                  <option value="ONE_TIME">بيع</option>
                 </select>
               </label>
               {editVisitType === "CUSTOM" && (
@@ -535,7 +536,7 @@ export default function ClientDetailsPage() {
                 </label>
               )}
               <label className="client-edit-field">
-                <span className="client-edit-label">تاريخ الزيارة القادمة</span>
+                <span className="client-edit-label">{editVisitType === "ONE_TIME" ? "تاريخ البيع" : "تاريخ الزيارة القادمة"}</span>
                 <div className="clients-date-input inline-date-control">
                   <span className={editNextVisitDate ? "clients-date-value" : "clients-date-placeholder"}>
                     {editNextVisitDateDisplay}
@@ -550,7 +551,7 @@ export default function ClientDetailsPage() {
                     className="clients-date-native-input"
                     value={editNextVisitDate}
                     onChange={(event) => setEditNextVisitDate(event.target.value)}
-                    title="تاريخ الزيارة القادمة"
+                    title={editVisitType === "ONE_TIME" ? "تاريخ البيع" : "تاريخ الزيارة القادمة"}
                     lang="ar-EG"
                     disabled={saveDetailsLoading || actionLoading}
                   />
@@ -583,25 +584,29 @@ export default function ClientDetailsPage() {
         )}
 
         <div className="action-bar" style={{ marginTop: "20px", borderTop: "2px solid var(--border)", paddingTop: "16px" }}>
-          <button type="button" className="primary-btn" disabled={actionLoading} onClick={() => submitOutcome("ACTIVE")}>
-            تم التعامل
-          </button>
-          <button
-            type="button"
-            className="secondary-btn"
-            disabled={actionLoading}
-            onClick={() => submitOutcome("NO_ANSWER")}
-          >
-            لم يرد
-          </button>
-          <button
-            type="button"
-            className="danger-btn"
-            disabled={actionLoading}
-            onClick={() => submitOutcome("REJECTED")}
-          >
-            كانسل
-          </button>
+          {client.visitType !== "ONE_TIME" && (
+            <>
+              <button type="button" className="primary-btn" disabled={actionLoading} onClick={() => submitOutcome("ACTIVE")}>
+                تم التعامل
+              </button>
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={actionLoading}
+                onClick={() => submitOutcome("NO_ANSWER")}
+              >
+                لم يرد
+              </button>
+              <button
+                type="button"
+                className="danger-btn"
+                disabled={actionLoading}
+                onClick={() => submitOutcome("REJECTED")}
+              >
+                كانسل
+              </button>
+            </>
+          )}
           {isAdmin && (
             <button 
               type="button" 

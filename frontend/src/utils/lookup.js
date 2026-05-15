@@ -2,7 +2,8 @@ export const VisitType = {
   WEEKLY: "أسبوعي",
   BIWEEKLY: "أسبوعين",
   MONTHLY: "شهري",
-  CUSTOM: "ميعاد آخر"
+  CUSTOM: "ميعاد آخر",
+  ONE_TIME: "بيع"
 };
 
 export const ClientStatus = {

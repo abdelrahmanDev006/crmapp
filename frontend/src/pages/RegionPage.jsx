@@ -63,9 +63,7 @@ export default function RegionPage() {
     setInfoMessage("");
 
     try {
-      const response = await regionsApi.handleAll(id, {
-        note: "تم التعامل مع المنطقة بالكامل"
-      });
+      const response = await regionsApi.handleAll(id, {});
       const updatedCount = Number(response.data?.item?.updatedCount || 0);
       const skippedRejectedCount = Number(response.data?.item?.skippedRejectedCount || 0);
 

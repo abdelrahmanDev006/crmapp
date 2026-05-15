@@ -238,6 +238,11 @@ function resolveNextVisitDate({
     return normalizeToWorkDate(noAnswerRetryDate);
   }
 
+  // ONE_TIME: no next visit after successful handling
+  if (visitType === VisitTypes.ONE_TIME) {
+    return null;
+  }
+
   if (Number.isFinite(Number(advanceDays)) && Number(advanceDays) > 0) {
     const baseDate = referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
     const advancedDate = addWorkDaysWith28DayMonth(baseDate, Number(advanceDays));
@@ -265,7 +270,8 @@ function getVisitTypeLabel(type, customVisitIntervalDays = null) {
     WEEKLY: "أسبوعي",
     BIWEEKLY: "أسبوعين",
     MONTHLY: "شهري",
-    CUSTOM: "ميعاد آخر"
+    CUSTOM: "ميعاد آخر",
+    ONE_TIME: "بيع"
   };
 
   if (type === VisitTypes.CUSTOM) {
@@ -399,6 +405,17 @@ async function handleClientVisit({
         visitDate: new Date()
       }
     });
+
+    // ONE_TIME: soft-delete client after successful sale
+    if (nextVisitType === VisitTypes.ONE_TIME && newStatus === ClientStatuses.ACTIVE) {
+      await tx.client.update({
+        where: { id: existingClient.id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date()
+        }
+      });
+    }
 
     return updatedClient;
   });

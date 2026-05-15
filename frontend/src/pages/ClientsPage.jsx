@@ -14,6 +14,7 @@ const tabs = [
   { key: "BIWEEKLY", label: "أسبوعين" },
   { key: "MONTHLY", label: "شهري" },
   { key: "CUSTOM", label: "ميعاد آخر" },
+  { key: "ONE_TIME", label: "عملاء البيع" },
   { key: "NO_ANSWER", label: "لم يرد" },
   { key: "REJECTED", label: "كانسل" },
   { key: "PENDING", label: "في انتظار الاعتماد" }
@@ -397,7 +398,7 @@ function ClientTableRows({
               </>
             )}
 
-            {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && (
+            {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && client.visitType !== "ONE_TIME" && (
               <>
                 <button
                   type="button"
@@ -516,6 +517,7 @@ export default function ClientsPage() {
   const [error, setError] = useState("");
   const [actionState, setActionState] = useState({ clientId: null, outcome: null });
   const [showCreate, setShowCreate] = useState(false);
+  const [isSaleCreate, setIsSaleCreate] = useState(false);
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createLoading, setCreateLoading] = useState(false);
   const [copyPhonesLoading, setCopyPhonesLoading] = useState(false);
@@ -1142,7 +1144,7 @@ export default function ClientsPage() {
 
     try {
       if (!createForm.nextVisitDate) {
-        throw new Error("تاريخ الزيارة القادمة مطلوب. يرجى اختيار تاريخ مناسب للعميل.");
+        throw new Error(isSaleCreate ? "تاريخ البيع مطلوب." : "تاريخ الزيارة القادمة مطلوب. يرجى اختيار تاريخ مناسب للعميل.");
       }
 
       const customVisitIntervalDays =
@@ -1184,6 +1186,7 @@ export default function ClientsPage() {
 
       setCreateForm(initialCreateForm);
       setShowCreate(false);
+      setIsSaleCreate(false);
       await loadClients();
     } catch (err) {
       setError(err.message || "تعذر إضافة العميل");
@@ -1202,25 +1205,25 @@ export default function ClientsPage() {
     setPage(1);
   }
 
-  function applyRepresentativeQuickFilter(type) {
-    setSearch("");
-    setPage(1);
+  // function applyRepresentativeQuickFilter(type) {
+  //   setSearch("");
+  //   setPage(1);
 
-    if (type === "TODAY_DUE") {
-      setSelectedDueDate(todayDateText);
-      setActiveTab("ALL");
-      return;
-    }
+  //   if (type === "TODAY_DUE") {
+  //     setSelectedDueDate(todayDateText);
+  //     setActiveTab("ALL");
+  //     return;
+  //   }
 
-    if (type === "NO_ANSWER") {
-      setSelectedDueDate("");
-      setActiveTab("NO_ANSWER");
-      return;
-    }
+  //   if (type === "NO_ANSWER") {
+  //     setSelectedDueDate("");
+  //     setActiveTab("NO_ANSWER");
+  //     return;
+  //   }
 
-    setSelectedDueDate("");
-    setActiveTab("ALL");
-  }
+  //   setSelectedDueDate("");
+  //   setActiveTab("ALL");
+  // }
 
   async function handleCopyAllPhones() {
     setCopyPhonesLoading(true);
@@ -1489,9 +1492,20 @@ export default function ClientsPage() {
         <div className="panel-header split">
           <h3>العملاء</h3>
           {isAdmin && (
-            <button type="button" className="primary-btn" onClick={() => setShowCreate((prev) => !prev)}>
-              {showCreate ? "إغلاق نموذج الإضافة" : "إضافة عميل"}
-            </button>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button type="button" className="primary-btn" onClick={() => {
+                if (showCreate && !isSaleCreate) { setShowCreate(false); }
+                else { setShowCreate(true); setIsSaleCreate(false); setCreateForm({ ...initialCreateForm, visitType: "WEEKLY" }); }
+              }}>
+                {showCreate && !isSaleCreate ? "إغلاق نموذج الإضافة" : "إضافة عميل"}
+              </button>
+              <button type="button" className="primary-btn" style={{ background: "#b8860b" }} onClick={() => {
+                if (showCreate && isSaleCreate) { setShowCreate(false); setIsSaleCreate(false); }
+                else { setShowCreate(true); setIsSaleCreate(true); setCreateForm({ ...initialCreateForm, visitType: "ONE_TIME" }); }
+              }}>
+                {showCreate && isSaleCreate ? "إغلاق نموذج البيع" : "إضافة عميل بيع"}
+              </button>
+            </div>
           )}
         </div>
 
@@ -1528,7 +1542,12 @@ export default function ClientsPage() {
         )}
 
         {isAdmin && showCreate && (
-          <form className="form-grid create-form clients-create-form" onSubmit={handleCreateClient}>
+          <form className="form-grid create-form clients-create-form" onSubmit={handleCreateClient} style={isSaleCreate ? { borderColor: "#d4af37", background: "linear-gradient(165deg, #fffef5 0%, #fdf8e8 100%)" } : undefined}>
+            {isSaleCreate && (
+              <div className="full-width" style={{ background: "rgba(212,175,55,0.12)", color: "#7a5c00", padding: "10px 14px", borderRadius: "10px", fontWeight: 700, textAlign: "center", border: "1px solid rgba(212,175,55,0.3)" }}>
+                💰 نموذج إضافة عميل بيع (مرة واحدة فقط) — بعد تسجيل "تم التعامل" سيتم أرشفة العميل تلقائياً
+              </div>
+            )}
             <label>
               اسم العميل
               <input
@@ -1591,26 +1610,28 @@ export default function ClientsPage() {
                 placeholder="مثال: 150"
               />
             </label>
-            <label>
-              نوع الزيارة
-              <select
-                value={createForm.visitType}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    visitType: event.target.value,
-                    customVisitIntervalDays:
-                      event.target.value === "CUSTOM" ? prev.customVisitIntervalDays || "3" : ""
-                  }))
-                }
-              >
-                <option value="WEEKLY">أسبوعي</option>
-                <option value="BIWEEKLY">أسبوعين</option>
-                <option value="MONTHLY">شهري</option>
-                <option value="CUSTOM">ميعاد آخر</option>
-              </select>
-            </label>
-            {createForm.visitType === "CUSTOM" && (
+            {!isSaleCreate && (
+              <label>
+                نوع الزيارة
+                <select
+                  value={createForm.visitType}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      visitType: event.target.value,
+                      customVisitIntervalDays:
+                        event.target.value === "CUSTOM" ? prev.customVisitIntervalDays || "3" : ""
+                    }))
+                  }
+                >
+                  <option value="WEEKLY">أسبوعي</option>
+                  <option value="BIWEEKLY">أسبوعين</option>
+                  <option value="MONTHLY">شهري</option>
+                  <option value="CUSTOM">ميعاد آخر</option>
+                </select>
+              </label>
+            )}
+            {!isSaleCreate && createForm.visitType === "CUSTOM" && (
               <label>
                 كل كام يوم؟
                 <input
@@ -1625,6 +1646,7 @@ export default function ClientsPage() {
                 />
               </label>
             )}
+            {!isSaleCreate && (
             <label>
               الحالة
               <select
@@ -1636,8 +1658,9 @@ export default function ClientsPage() {
                 <option value="REJECTED">كانسل</option>
               </select>
             </label>
+            )}
             <label>
-              تاريخ الزيارة القادمة
+              {isSaleCreate ? "تاريخ البيع" : "تاريخ الزيارة القادمة"}
               <div className="clients-date-input form-date-input">
                 <span className={createForm.nextVisitDate ? "clients-date-value" : "clients-date-placeholder"}>
                   {createNextVisitDateDisplay}
@@ -1652,7 +1675,7 @@ export default function ClientsPage() {
                   className="clients-date-native-input"
                   value={createForm.nextVisitDate}
                   onChange={(event) => setCreateForm((prev) => ({ ...prev, nextVisitDate: event.target.value }))}
-                  title="تاريخ الزيارة القادمة"
+                  title={isSaleCreate ? "تاريخ البيع" : "تاريخ الزيارة القادمة"}
                   lang="ar-EG"
                 />
               </div>
@@ -1666,8 +1689,8 @@ export default function ClientsPage() {
                 rows="2"
               />
             </label>
-            <button type="submit" className="primary-btn" disabled={createLoading}>
-              {createLoading ? "جارٍ الحفظ..." : "حفظ العميل"}
+            <button type="submit" className="primary-btn" disabled={createLoading} style={isSaleCreate ? { background: "#b8860b" } : undefined}>
+              {createLoading ? "جارٍ الحفظ..." : isSaleCreate ? "حفظ عميل البيع" : "حفظ العميل"}
             </button>
           </form>
         )}

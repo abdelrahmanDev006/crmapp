@@ -1,7 +1,7 @@
 const { z } = require("zod");
 const { VisitTypes, ClientStatuses } = require("../constants/enums");
 
-const visitTypeValues = [VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY, VisitTypes.CUSTOM];
+const visitTypeValues = [VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY, VisitTypes.CUSTOM, VisitTypes.ONE_TIME];
 
 const dateInputSchema = z
   .string()

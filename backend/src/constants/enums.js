@@ -7,7 +7,8 @@ const VisitTypes = {
   WEEKLY: "WEEKLY",
   BIWEEKLY: "BIWEEKLY",
   MONTHLY: "MONTHLY",
-  CUSTOM: "CUSTOM"
+  CUSTOM: "CUSTOM",
+  ONE_TIME: "ONE_TIME"
 };
 
 const ClientStatuses = {
@@ -20,7 +21,8 @@ const ClientStatuses = {
 const VisitIntervalDays = {
   [VisitTypes.WEEKLY]: 7,
   [VisitTypes.BIWEEKLY]: 14,
-  [VisitTypes.MONTHLY]: 28
+  [VisitTypes.MONTHLY]: 28,
+  [VisitTypes.ONE_TIME]: 0
 };
 
 module.exports = {

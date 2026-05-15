@@ -1350,6 +1350,13 @@ tbody tr:hover {
   font-size: clamp(0.74rem, 0.12vw + 0.7rem, 0.84rem);
 }
 
+.visit-pill-one-time {
+  background: rgba(212, 175, 55, 0.15);
+  color: #7a5c00;
+  border-color: rgba(212, 175, 55, 0.4);
+  font-weight: 700;
+}
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

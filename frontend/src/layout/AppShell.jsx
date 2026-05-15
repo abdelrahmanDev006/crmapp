@@ -20,7 +20,7 @@ export default function AppShell() {
         <div className="user-block">
           <strong>{user?.name}</strong>
           <span>{isAdmin ? "أدمن" : "مندوب"}</span>
-          <span>{user?.region?.name || "جميع المناطق"}</span>
+          <span>{user?.regions && user.regions.length > 0 ? user.regions.map(r => r.name).join('، ') : "جميع المناطق"}</span>
         </div>
 
         <nav className="sidebar-nav">
