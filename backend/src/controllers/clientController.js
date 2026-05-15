@@ -268,14 +268,16 @@ const updateClient = asyncHandler(async (req, res) => {
     throw createHttpError(400, "حدد عدد الأيام لنوع الزيارة (ميعاد آخر)");
   }
 
+  const { regionId: _regionId, force: _force, note: _note, ...restBody } = req.body;
+
   const updatePayload = {
-    ...req.body,
+    ...restBody,
     ...(hasNameInPayload ? { name: normalizedName } : {}),
     ...(hasPhoneInPayload ? { phone: String(nextPhone || "").trim() } : {}),
     customVisitIntervalDays: finalCustomVisitIntervalDays,
-    ...(req.body.nextVisitDate ? { nextVisitDate: normalizeToWorkDate(req.body.nextVisitDate) } : {})
+    ...(req.body.nextVisitDate ? { nextVisitDate: normalizeToWorkDate(req.body.nextVisitDate) } : {}),
+    region: { connect: { id: nextRegionId } }
   };
-  delete updatePayload.note;
 
   if (Object.prototype.hasOwnProperty.call(req.body, "status")) {
     if (req.body.status === ClientStatuses.NO_ANSWER) {
