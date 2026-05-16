@@ -623,13 +623,24 @@ export default function ClientDetailsPage() {
               >
                 كانسل
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="danger-btn"
+                  style={{ background: "#7f1d1d", color: "#fff" }}
+                  disabled={actionLoading || deleteLoading}
+                  onClick={handlePermanentDelete}
+                >
+                  {deleteLoading ? "جاري الحذف..." : "🗑️ كانسل نهائي"}
+                </button>
+              )}
             </>
           )}
-          {isAdmin && (
+          {client.visitType === "ONE_TIME" && isAdmin && (
             <button
               type="button"
               className="danger-btn"
-              style={{ background: "#7f1d1d", color: "#fff", marginRight: "auto" }}
+              style={{ background: "#7f1d1d", color: "#fff" }}
               disabled={actionLoading || deleteLoading}
               onClick={handlePermanentDelete}
             >
