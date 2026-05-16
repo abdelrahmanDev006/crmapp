@@ -98,6 +98,7 @@ export default function ClientDetailsPage() {
   const [showEditForm, setShowEditForm] = useState(initialShowEdit);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   function goBack() {
     if (window.history.length > 1) {
@@ -232,6 +233,23 @@ export default function ClientDetailsPage() {
     editVisitType,
     latestVisitNote
   ]);
+
+  async function handlePermanentDelete() {
+    const confirmed = window.confirm(
+      `تحذير: سيتم حذف العميل "${client.name}" نهائياً ولن يمكن استعادته.\n\nهل أنت متأكد تماماً؟`
+    );
+    if (!confirmed) return;
+
+    setDeleteLoading(true);
+    setError("");
+    try {
+      await clientsApi.remove(id);
+      navigate("/clients", { replace: true });
+    } catch (err) {
+      setError(err.message || "تعذر حذف العميل");
+      setDeleteLoading(false);
+    }
+  }
 
   async function submitOutcome(outcome) {
     setActionLoading(true);
@@ -586,13 +604,13 @@ export default function ClientDetailsPage() {
         <div className="action-bar" style={{ marginTop: "20px", borderTop: "2px solid var(--border)", paddingTop: "16px" }}>
           {client.visitType !== "ONE_TIME" && (
             <>
-              <button type="button" className="primary-btn" disabled={actionLoading} onClick={() => submitOutcome("ACTIVE")}>
+              <button type="button" className="primary-btn" disabled={actionLoading || deleteLoading} onClick={() => submitOutcome("ACTIVE")}>
                 تم التعامل
               </button>
               <button
                 type="button"
                 className="secondary-btn"
-                disabled={actionLoading}
+                disabled={actionLoading || deleteLoading}
                 onClick={() => submitOutcome("NO_ANSWER")}
               >
                 لم يرد
@@ -600,12 +618,23 @@ export default function ClientDetailsPage() {
               <button
                 type="button"
                 className="danger-btn"
-                disabled={actionLoading}
+                disabled={actionLoading || deleteLoading}
                 onClick={() => submitOutcome("REJECTED")}
               >
                 كانسل
               </button>
             </>
+          )}
+          {isAdmin && (
+            <button
+              type="button"
+              className="danger-btn"
+              style={{ background: "#7f1d1d", color: "#fff", marginRight: "auto" }}
+              disabled={actionLoading || deleteLoading}
+              onClick={handlePermanentDelete}
+            >
+              {deleteLoading ? "جاري الحذف..." : "🗑️ كانسل نهائي"}
+            </button>
           )}
           {isAdmin && (
             <button 
