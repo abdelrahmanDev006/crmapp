@@ -41,3 +41,14 @@ logs/
 
 # Database backups
 backups/
+*.dump
+**/crm-backup-*.json
+
+# Sensitive/debug scripts
+**/test_users.js
+**/dump-prod.js
+**/seed-local*.js
+
+# Generated docs (don't ship to repo)
+*.pdf
+CRM_User_Manual.*
