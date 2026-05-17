@@ -1,230 +1,128 @@
-﻿# CRM APP - نظام إدارة العملاء والزيارات الدورية (عربي RTL)
+<div align="center">
+  <h1>🌟 CRM Web Application</h1>
+  <p>نظام متكامل لإدارة العملاء والزيارات الدورية والعمليات الميدانية</p>
+  
+  ![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+  ![Express.js](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge)
+  ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+  ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+  ![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)
+</div>
 
-تطبيق Web كامل (Backend + Frontend) لإدارة العملاء والزيارات الدورية، موجه للسوق العربي.
+<br />
 
-## المميزات الرئيسية
-- واجهة عربية بالكامل `RTL` ومتجاوبة (Desktop / Tablet / Mobile).
-- تسجيل دخول آمن عبر `JWT` داخل `httpOnly cookie`.
-- صلاحيات متعددة:
-  - `Admin`: إدارة المستخدمين، المناطق، العملاء، رؤية كل البيانات.
-  - `Representative`: رؤية بيانات منطقته فقط، بدون تصدير.
-- تقسيم العملاء حسب Tabs:
-  - أسبوعي
-  - أسبوعين
-  - شهري
-  - لم يرد
-  - مرفوض
-- منطق ترحيل تلقائي للزيارة عند "تم التعامل":
-  - أسبوعي: +7
-  - أسبوعين: +14
-  - شهري: +28
-- الالتزام بأن الدورة الشهرية = 28 يوم عمل.
-- عدم ترحيل العملاء بحالة "رفض التعامل".
-- سجل كامل لكل زيارة سابقة.
-- Pagination + Filtering لعدد كبير من العملاء (5000+).
+## 📋 نظرة عامة
+تطبيق Web متكامل (Backend + Frontend) مصمم خصيصاً للسوق العربي لإدارة العملاء والزيارات الدورية بفعالية. يوفر النظام واجهة مستخدم باللغة العربية (RTL) بالكامل، مع تجربة مستخدم سلسة على جميع الأجهزة (Desktop, Tablet, Mobile).
 
-## التقنيات
-### Backend
-- Node.js
-- Express.js
-- Prisma ORM
-- PostgreSQL
-- JWT + bcrypt + RBAC
+---
 
-### Frontend
-- React (Hooks)
-- React Router
-- Axios
-- واجهة عربية RTL
+## ✨ المميزات الرئيسية
 
-## تصميم قاعدة البيانات
-الملفات:
-- `backend/prisma/schema.prisma`
-- `backend/prisma/seed.js`
+- **🌐 واجهة عربية (RTL)**: تصميم متجاوب يدعم جميع الشاشات.
+- **🔐 حماية متقدمة**: مصادقة آمنة عبر `JWT` مخزن في `httpOnly cookie`.
+- **👥 نظام صلاحيات (RBAC)**:
+  - `مدير (Admin)`: تحكم كامل في المستخدمين، المناطق، والعملاء.
+  - `مندوب (Representative)`: صلاحيات محدودة مخصصة لمنطقته فقط.
+- **📁 تنظيم ذكي للعملاء**: تقسيم مبتكر للعملاء عبر تبويبات (أسبوعي، شهري، استثنائي، عملاء بيع، إلخ).
+- **🔄 أتمتة مواعيد الزيارات**:
+  - ترحيل تلقائي لموعد الزيارة عند "تم التعامل" بناءً على نوع الزيارة (أسبوعي، شهري...).
+  - نظام معالجة لـ "رفض التعامل (كانسل)" و "لم يرد".
+- **📊 سجلات دقيقة**: تتبع كامل لتاريخ زيارات كل عميل، وسجل نشاطات لمديري النظام (Activity Logs).
+- **⚡ أداء عالي**: دعم Pagination و Filtering متقدم للتعامل مع آلاف السجلات بكل سهولة ومرونة.
 
-الجداول الأساسية:
-- `Region` (مناطق ديناميكية يمكن إضافتها/تعديلها)
-- `User` (Admin / Representative)
-- `Client` (بيانات العميل + نوع الزيارة + الحالة + موعد الزيارة القادمة)
-- `VisitHistory` (سجل الزيارات والتحويلات السابقة)
+---
 
-Enums:
-- `Role`: `ADMIN`, `REPRESENTATIVE`
-- `VisitType`: `WEEKLY`, `BIWEEKLY`, `MONTHLY`
-- `ClientStatus`: `ACTIVE`, `NO_ANSWER`, `REJECTED`
+## 🛠️ التقنيات المستخدمة
 
-## منطق الزيارات
-الملف: `backend/src/utils/dateUtils.js`
-- يتم تطبيع التواريخ إلى يوم عمل داخل شهر 28 يوم.
-- عند "تم التعامل":
-  - `WEEKLY` -> +7
-  - `BIWEEKLY` -> +14
-  - `MONTHLY` -> +28
-- `REJECTED`: يتم تحديد تاريخ إعادة محاولة مستقبلي (افتراضيًا بعد 28 يوم عمل).
-- لا يمكن تحويل العميل المرفوض إلى `ACTIVE` قبل تاريخ إعادة المحاولة.
-- يمكن ضبط مدة إعادة المحاولة من `REJECTED_RETRY_DAYS` في `backend/.env`.
-- `NO_ANSWER`: تظهر في تبويب منفصل.
+### 🔙 الباك إند (Backend)
+- **بيئة التشغيل:** Node.js
+- **إطار العمل:** Express.js
+- **قاعدة البيانات:** PostgreSQL
+- **ORM:** Prisma
+- **الأمان:** JWT + bcrypt + Helmet + CORS
 
-## REST API Endpoints
-Base URL: `http://localhost:5000/api`
+### 🎨 الفرونت إند (Frontend)
+- **المكتبة الأساسية:** React.js (Hooks)
+- **التوجيه:** React Router DOM
+- **الطلبات:** Axios + Vite
+- **التصميم:** Custom Vanilla CSS (Modern, Responsive, Glassmorphism elements)
 
-### Auth
-- `POST /auth/login` تسجيل الدخول
-- `POST /auth/logout` تسجيل الخروج
-- `GET /auth/me` بيانات المستخدم الحالي
+---
 
-### Dashboard
-- `GET /dashboard/summary` ملخص عام (مع أعداد المناطق)
+## 🗄️ هيكل قاعدة البيانات (Database Schema)
 
-### Users (Admin فقط)
-- `GET /users` قائمة المستخدمين (pagination + search)
-- `POST /users` إنشاء مستخدم
-- `PATCH /users/:id` تحديث مستخدم (مثل تفعيل/إيقاف)
-- `DELETE /users/:id` حذف مستخدم
+- `Region`: إدارة المناطق الجغرافية.
+- `User`: إدارة حسابات المديرين والمناديب وتوزيع الصلاحيات.
+- `Client`: بيانات العملاء، الحالات، المنتجات، والأسعار.
+- `VisitHistory`: سجل تفصيلي لكل تفاعلات النظام مع العميل (History).
+- `ActivityLog`: سجل حركات المستخدمين لمراقبة النظام من قبل الإدارة.
 
-### Regions
-- `GET /regions` قائمة المناطق
-- `POST /regions` إنشاء منطقة (Admin)
-- `GET /regions/:id` تفاصيل منطقة
-- `PATCH /regions/:id` تحديث منطقة (Admin)
-- `DELETE /regions/:id` حذف منطقة (Admin - إذا غير مرتبطة بعملاء/مستخدمين)
-- `POST /regions/:id/handle-all` تم التعامل مع المنطقة بالكامل
+---
 
-### Clients
-- `GET /clients` قائمة العملاء (filters + pagination + `dueDate` لعرض مستحقي يوم محدد)
-- `POST /clients` إنشاء عميل (Admin)
-- `GET /clients/:id` تفاصيل عميل + سجل زيارات
-- `PATCH /clients/:id` تحديث عميل (Admin)
-- `DELETE /clients/:id` حذف عميل (Admin)
-- `POST /clients/:id/handle` تحديث حالة/نتيجة الزيارة (يدعم `advanceDays` + `referenceDate` للترحيل بعد عدد أيام محدد)
+## 🚀 التشغيل المحلي (Local Development)
 
-## تشغيل المشروع محليًا
-
-## 1) تشغيل PostgreSQL
-من جذر المشروع:
+### 1️⃣ إعداد قاعدة البيانات (PostgreSQL)
+باستخدام Docker (مستحسن):
 ```bash
 docker compose -f docker-compose.yml up -d postgres
 ```
 
-ملاحظة: تم عزل Compose المحلي والـ Production باسمَي مشروع مختلفين (`crmapp-local` و`crmapp-prod`) لتجنب أي تضارب في الشبكات أو قاعدة البيانات عند تشغيلهما معًا.
-
-## 2) إعداد Backend
+### 2️⃣ تشغيل الباك إند
 ```bash
 cd backend
-copy .env.example .env
+cp .env.example .env  # ثم قم بتعديل الإعدادات إن لزم الأمر
 npm install
 npx prisma migrate dev --name init
-npm run prisma:seed
+npm run prisma:seed   # لإنشاء بيانات تجريبية وحسابات افتراضية
 npm run dev
 ```
+> 📌 الباك إند سيعمل على: `http://localhost:5000`
 
-أوامر جودة الكود والاختبار السريع (Backend):
-```bash
-cd backend
-npm run lint
-npm run test:smoke
-```
-
-يمكن تشغيل الـ smoke مع تسجيل دخول أدمن اختياريًا:
-```bash
-SMOKE_API_BASE_URL=http://localhost/api \
-SMOKE_ADMIN_EMAIL=admin@company.com \
-SMOKE_ADMIN_PASSWORD=StrongPass!2026 \
-npm run test:smoke
-```
-
-إعدادات أمان موصى بها في `backend/.env`:
-- `ALLOWED_ORIGINS` قائمة الدومينات المسموح بها للواجهة (مفصولة بفواصل).
-- `CORS_CREDENTIALS=true` لتفعيل إرسال الـ cookies.
-- `AUTH_COOKIE_NAME`, `AUTH_COOKIE_SAME_SITE`, `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_MAX_AGE_HOURS`.
-- `WORK_TIMEZONE` لضبط بداية اليوم/الأسبوع حسب توقيت الشركة (افتراضيًا `Africa/Cairo`).
-- `SEED_ADMIN_PASSWORD` و `SEED_REP_DEFAULT_PASSWORD` لتثبيت كلمات مرور seed بشكل واضح.
-
-Backend يعمل على:
-- `http://localhost:5000`
-
-## 3) إعداد Frontend
-في Terminal آخر:
+### 3️⃣ تشغيل الفرونت إند
 ```bash
 cd frontend
-copy .env.example .env
+cp .env.example .env
 npm install
 npm run dev
 ```
+> 📌 الفرونت إند سيعمل على: `http://localhost:5173`
 
-أوامر جودة الكود (Frontend):
-```bash
-cd frontend
-npm run lint
-```
+---
 
-Frontend يعمل على:
-- `http://localhost:5173`
+## 🌍 النشر على السيرفر (Production Deployment)
 
-## نسخة Production جاهزة للرفع
-- تم إضافة ملفات تشغيل إنتاج مباشرة:
-  - `docker-compose.prod.yml`
-  - `backend/Dockerfile`
-  - `frontend/Dockerfile`
-- تم إضافة أمثلة إعدادات الإنتاج:
-  - `.env.production.example`
-  - `backend/.env.production.example`
-  - `frontend/.env.production.example`
-  - `backend/.env.railway.example`
-  - `frontend/.env.railway.example`
-- تم إضافة سكربتات أمان وإدارة إنتاج:
-  - `npm run security:validate-env`
-  - `npm run admin:bootstrap -- --name ... --email ... --password ...`
+المشروع مهيأ بالكامل للنشر في بيئة الإنتاج من خلال ملفات الـ Docker المرفقة أو خدمات الـ PaaS:
+- **Docker Compose**: `docker-compose.prod.yml`
+- أدلة النشر المرفقة في المستودع:
+  - 📄 `RAILWAY_DEPLOYMENT.md`: دليل النشر على منصة Railway.
+  - 📄 `RENDER_DEPLOYMENT.md`: دليل النشر على منصة Render.
+  - 📄 `PRODUCTION_DEPLOYMENT.md`: دليل عام للنشر المتقدم.
 
-خطوات النشر التفصيلية موجودة في:
-- `PRODUCTION_DEPLOYMENT.md`
-- `RENDER_DEPLOYMENT.md` (نشر مباشر على Render عبر Blueprint)
-- `RAILWAY_DEPLOYMENT.md` (نشر مباشر على Railway - Production)
+---
 
-## حسابات Seed
-- عند إنشاء مستخدمين جدد عبر `seed`:
-  - إذا كانت `SEED_ADMIN_PASSWORD` أو `SEED_REP_DEFAULT_PASSWORD` فارغة، يتم توليد كلمات مرور قوية عشوائيًا.
-  - إذا حددت القيمتين، سيستخدمها الـ seed كما هي.
-- يتم طباعة بيانات الدخول للحسابات الجديدة في مخرجات أمر `prisma:seed`.
-- لتدوير أي كلمات مرور افتراضية قديمة في قاعدة البيانات الحالية:
-```bash
-cd backend
-npm run security:rotate-default-passwords
-```
+## 🛡️ الأمان والحماية
+- **تشفير كلمات المرور** باستخدام `bcrypt`.
+- **JWT Cookies** للحد من هجمات اختطاف الجلسات.
+- **Helmet.js** لإضافة ترويسات حماية HTTP.
+- **Rate Limiting** للحد من الهجمات التكرارية.
+- **فصل الصلاحيات (RBAC)** لحماية الـ Endpoints في الـ API ومنع المناديب من الوصول لبيانات غير مصرح بها.
 
-## هيكل المشروع
+---
+
+## 📂 هيكل المشروع (Folder Structure)
 ```text
-backend/
-  prisma/
-  src/
-    config/
-    constants/
-    controllers/
-    middlewares/
-    routes/
-    schemas/
-    services/
-    utils/
-frontend/
-  src/
-    api/
-    auth/
-    components/
-    layout/
-    pages/
-    utils/
+├── backend/
+│   ├── prisma/            # ملفات قاعدة البيانات و Migration
+│   └── src/
+│       ├── controllers/   # معالجة الطلبات
+│       ├── routes/        # مسارات الـ API
+│       ├── services/      # منطق الأعمال (Business Logic)
+│       └── ...
+├── frontend/
+│   ├── src/
+│   │   ├── components/    # مكونات UI قابلة لإعادة الاستخدام
+│   │   ├── pages/         # صفحات التطبيق
+│   │   ├── api/           # إعدادات Axios وربط الـ API
+│   │   └── ...
+└── README.md
 ```
-
-## نقاط الأمان المطبقة
-- تشفير كلمات المرور باستخدام `bcrypt`.
-- JWT Authentication لكل المسارات الحساسة عبر `httpOnly cookie` (مع دعم `Authorization` header للتوافق الخلفي).
-- التحقق من الصلاحيات `RBAC` قبل إرجاع البيانات.
-- منع المندوب من الوصول لمناطق أخرى.
-- حماية أساسية عبر `helmet`, `cors`, `rate-limit`.
-
-## ملاحظات للتوسع
-الهيكل الحالي جاهز لإضافة:
-- Notifications
-- Reports
-- Mobile App integration
-- Export rules للأدمن فقط
