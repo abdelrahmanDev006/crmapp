@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { clientsApi, regionsApi } from "../api/crmApi";
 import { useAuth } from "../auth/AuthContext";
@@ -96,9 +96,18 @@ export default function ClientDetailsPage() {
   const [editStatus, setEditStatus] = useState("ACTIVE");
   const [editNote, setEditNote] = useState("");
   const [showEditForm, setShowEditForm] = useState(initialShowEdit);
+  const editFormRef = useRef(null);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialShowEdit && editFormRef.current) {
+      setTimeout(() => {
+        editFormRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 300);
+    }
+  }, [initialShowEdit, client]);
 
   function goBack() {
     if (window.history.length > 1) {
@@ -427,7 +436,7 @@ export default function ClientDetailsPage() {
         {isAdmin && (
           <>
             {showEditForm && (
-              <div className="client-edit-form" style={{ marginTop: "20px" }}>
+              <div className="client-edit-form" ref={editFormRef} style={{ marginTop: "20px" }}>
                 <h4 className="client-edit-title">✏️ تعديل بيانات العميل</h4>
             <div className="client-edit-grid">
               <label className="client-edit-field">

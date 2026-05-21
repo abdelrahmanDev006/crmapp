@@ -383,9 +383,17 @@ function ClientTableRows({
 
             {!isRepresentative && (
               <>
-                <Link className="ghost-btn" to={`/clients/${client.id}`} style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}>
-                  التفاصيل
-                </Link>
+                {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && client.visitType !== "ONE_TIME" && (
+                  <button
+                    type="button"
+                    className="danger-btn"
+                    style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
+                    disabled={isActionLoadingForClient}
+                    onClick={() => onHandleClient(client, "REJECTED")}
+                  >
+                    {isCancelActionLoading ? "..." : "كانسل"}
+                  </button>
+                )}
                 {isAdmin && (
                   <Link 
                     className="secondary-btn" 
