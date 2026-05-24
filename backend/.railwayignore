@@ -1,6 +1,4 @@
-.embedded-pg/
-node_modules/
-.env
-.env.*
-npm-debug.log*
-logs/
+node_modules
+node_modules.*
+.DS_Store
+backups

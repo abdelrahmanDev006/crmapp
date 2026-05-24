@@ -7,6 +7,105 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Region {
+  id        Int       @id @default(autoincrement())
+  code      Int       @unique
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  isDeleted Boolean   @default(false)
+  clients   Client[]
+  users     User[]    @relation("RegionToUser")
+
+  @@index([isDeleted])
+}
+
+model User {
+  id             Int            @id @default(autoincrement())
+  name           String
+  email          String         @unique
+  passwordHash   String
+  role           Role           @default(REPRESENTATIVE)
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  allowedDate    String?
+  activityLogs   ActivityLog[]  @relation("UserLogs")
+  createdClients Client[]       @relation("ClientCreator")
+  visits         VisitHistory[] @relation("VisitUser")
+  regions        Region[]       @relation("RegionToUser")
+
+  @@index([role])
+}
+
+model Client {
+  id                             Int            @id @default(autoincrement())
+  name                           String
+  phone                          String
+  address                        String
+  products                       String
+  regionId                       Int
+  visitType                      VisitType
+  status                         ClientStatus   @default(ACTIVE)
+  nextVisitDate                  DateTime
+  createdById                    Int?
+  createdAt                      DateTime       @default(now())
+  updatedAt                      DateTime       @updatedAt
+  locationUrl                    String?
+  price                          String?
+  customVisitIntervalDays        Int?
+  noAnswerCount                  Int            @default(0)
+  pendingCustomVisitIntervalDays Int?
+  pendingNote                    String?
+  pendingOutcome                 ClientStatus?
+  pendingVisitType               VisitType?
+  deletedAt                      DateTime?
+  isDeleted                      Boolean        @default(false)
+  createdBy                      User?          @relation("ClientCreator", fields: [createdById], references: [id])
+  region                         Region         @relation(fields: [regionId], references: [id])
+  visits                         VisitHistory[]
+
+  @@index([regionId, visitType, status, nextVisitDate])
+  @@index([status, nextVisitDate])
+  @@index([name])
+  @@index([isDeleted])
+}
+
+model VisitHistory {
+  id                    Int          @id @default(autoincrement())
+  clientId              Int
+  visitedById           Int
+  visitDate             DateTime     @default(now())
+  previousStatus        ClientStatus
+  newStatus             ClientStatus
+  note                  String?
+  previousNextVisitDate DateTime?
+  newNextVisitDate      DateTime?
+  createdAt             DateTime     @default(now())
+  client                Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  visitedBy             User         @relation("VisitUser", fields: [visitedById], references: [id])
+
+  @@index([clientId, visitDate])
+  @@index([visitedById, visitDate])
+}
+
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  action     String
+  entityType String
+  entityId   Int?
+  entityName String?
+  details    String?
+  createdAt  DateTime @default(now())
+  user       User     @relation("UserLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
 enum Role {
   ADMIN
   REPRESENTATIVE
@@ -25,107 +124,4 @@ enum ClientStatus {
   NO_ANSWER
   REJECTED
   PENDING_APPROVAL
-}
-
-model Region {
-  id        Int      @id @default(autoincrement())
-  code      Int      @unique
-  name      String
-  users     User[]
-  clients   Client[]
-  isDeleted Boolean  @default(false)
-  deletedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([isDeleted])
-}
-
-model User {
-  id           Int      @id @default(autoincrement())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(REPRESENTATIVE)
-  regions      Region[]
-  isActive     Boolean  @default(true)
-  allowedDate  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  createdClients Client[]       @relation("ClientCreator")
-  visits         VisitHistory[] @relation("VisitUser")
-  activityLogs   ActivityLog[]  @relation("UserLogs")
-
-  @@index([role])
-}
-
-model Client {
-  id                      Int          @id @default(autoincrement())
-  name                    String
-  phone                   String
-  address                 String
-  locationUrl             String?
-  products                String
-  price                   String?
-  regionId                Int
-  region                  Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
-  visitType               VisitType
-  customVisitIntervalDays Int?
-  status                  ClientStatus @default(ACTIVE)
-  noAnswerCount           Int          @default(0)
-  nextVisitDate           DateTime
-
-  pendingOutcome                 ClientStatus?
-  pendingNote                    String?
-  pendingVisitType               VisitType?
-  pendingCustomVisitIntervalDays Int?
-
-  createdById Int?
-  createdBy   User?    @relation("ClientCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  isDeleted   Boolean  @default(false)
-  deletedAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  visits VisitHistory[]
-
-  @@index([regionId, visitType, status, nextVisitDate])
-  @@index([status, nextVisitDate])
-  @@index([name])
-  @@index([isDeleted])
-}
-
-model VisitHistory {
-  id                    Int          @id @default(autoincrement())
-  clientId              Int
-  client                Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  visitedById           Int
-  visitedBy             User         @relation("VisitUser", fields: [visitedById], references: [id], onDelete: Restrict)
-  visitDate             DateTime     @default(now())
-  previousStatus        ClientStatus
-  newStatus             ClientStatus
-  note                  String?
-  previousNextVisitDate DateTime?
-  newNextVisitDate      DateTime?
-  createdAt             DateTime     @default(now())
-
-  @@index([clientId, visitDate])
-  @@index([visitedById, visitDate])
-}
-
-model ActivityLog {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  user       User     @relation("UserLogs", fields: [userId], references: [id], onDelete: Cascade)
-  action     String
-  entityType String
-  entityId   Int?
-  entityName String?
-  details    String?
-  createdAt  DateTime @default(now())
-
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
 }
