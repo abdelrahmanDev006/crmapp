@@ -943,9 +943,15 @@ export default function ClientsPage() {
       const allItems = [...(firstData.items || [])];
       const totalPages = Math.max(1, Number(firstData.totalPages || 1));
 
-      for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
-        const response = await clientsApi.list(buildClientListParams(currentPage));
-        allItems.push(...(response.data?.items || []));
+      if (totalPages > 1) {
+        const promises = [];
+        for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
+          promises.push(clientsApi.list(buildClientListParams(currentPage)));
+        }
+        const responses = await Promise.all(promises);
+        for (const res of responses) {
+          allItems.push(...(res.data?.items || []));
+        }
       }
 
       setData({
