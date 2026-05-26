@@ -13,8 +13,8 @@ async function getRegionSummary() {
     include: {
       _count: {
         select: {
-          clients: true,
-          users: true
+          clients: { where: { isDeleted: false } },
+          users: { where: { isActive: true } }
         }
       }
     }
@@ -132,8 +132,8 @@ const getRegionDetails = asyncHandler(async (req, res) => {
       },
       _count: {
         select: {
-          clients: true,
-          users: true
+          clients: { where: { isDeleted: false } },
+          users: { where: { isActive: true } }
         }
       }
     }
@@ -220,8 +220,8 @@ const deleteRegion = asyncHandler(async (req, res) => {
     include: {
       _count: {
         select: {
-          clients: true,
-          users: true
+          clients: { where: { isDeleted: false } },
+          users: { where: { isActive: true } }
         }
       }
     }
