@@ -81,7 +81,7 @@ async function main() {
   console.log("👥 جاري استعادة المستخدمين...");
   for (const u of users) {
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "User" (id, name, email, "passwordHash", role, "isActive", "allowedDate", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5::\"Role\", $6, $7, $8, $9)`,
+      `INSERT INTO "User" (id, name, email, "passwordHash", role, "isActive", "allowedDate", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5::"Role", $6, $7, $8, $9)`,
       u.id, u.name, u.email, u.passwordHash, u.role, u.isActive, u.allowedDate || null, new Date(u.createdAt), new Date(u.updatedAt)
     );
   }
@@ -105,7 +105,7 @@ async function main() {
   console.log("🏢 جاري استعادة العملاء...");
   for (const c of clients) {
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "Client" (id, name, phone, address, "locationUrl", products, price, "regionId", "visitType", "customVisitIntervalDays", status, "noAnswerCount", "nextVisitDate", "pendingOutcome", "pendingNote", "pendingVisitType", "pendingCustomVisitIntervalDays", "createdById", "isDeleted", "deletedAt", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::\"VisitType\", $10, $11::\"ClientStatus\", $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+      `INSERT INTO "Client" (id, name, phone, address, "locationUrl", products, price, "regionId", "visitType", "customVisitIntervalDays", status, "noAnswerCount", "nextVisitDate", "pendingOutcome", "pendingNote", "pendingVisitType", "pendingCustomVisitIntervalDays", "createdById", "isDeleted", "deletedAt", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::"VisitType", $10, $11::"ClientStatus", $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
       c.id, c.name, c.phone, c.address, c.locationUrl || null, c.products, c.price || null,
       c.regionId, c.visitType, c.customVisitIntervalDays || null, c.status, c.noAnswerCount || 0,
       new Date(c.nextVisitDate),
@@ -121,7 +121,7 @@ async function main() {
   console.log("📋 جاري استعادة سجل الزيارات...");
   for (const v of visitHistories) {
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "VisitHistory" (id, "clientId", "visitedById", "visitDate", "previousStatus", "newStatus", note, "previousNextVisitDate", "newNextVisitDate", "createdAt") VALUES ($1, $2, $3, $4, $5::\"ClientStatus\", $6::\"ClientStatus\", $7, $8, $9, $10)`,
+      `INSERT INTO "VisitHistory" (id, "clientId", "visitedById", "visitDate", "previousStatus", "newStatus", note, "previousNextVisitDate", "newNextVisitDate", "createdAt") VALUES ($1, $2, $3, $4, $5::"ClientStatus", $6::"ClientStatus", $7, $8, $9, $10)`,
       v.id, v.clientId, v.visitedById, new Date(v.visitDate),
       v.previousStatus, v.newStatus, v.note || null,
       v.previousNextVisitDate ? new Date(v.previousNextVisitDate) : null,

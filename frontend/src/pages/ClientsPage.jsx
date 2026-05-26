@@ -938,8 +938,23 @@ export default function ClientsPage() {
     setError("");
 
     try {
-      const response = await clientsApi.list(buildClientListParams());
-      setData(response.data);
+      const firstResponse = await clientsApi.list(buildClientListParams(1));
+      const firstData = firstResponse.data || {};
+      const allItems = [...(firstData.items || [])];
+      const totalPages = Math.max(1, Number(firstData.totalPages || 1));
+
+      for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
+        const response = await clientsApi.list(buildClientListParams(currentPage));
+        allItems.push(...(response.data?.items || []));
+      }
+
+      setData({
+        items: allItems,
+        total: firstData.total || allItems.length,
+        page: 1,
+        pageSize: allItems.length,
+        totalPages: 1
+      });
     } catch (err) {
       setError(err.message || "تعذر تحميل العملاء");
     } finally {

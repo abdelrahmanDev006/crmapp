@@ -5,7 +5,7 @@ const path = require("path");
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: "postgresql://postgres:egzEUhSYOWHnPNhQzkcmHwgHTUhSXsxZ@shortline.proxy.rlwy.net:16890/railway"
+      url: process.env.DATABASE_URL
     }
   }
 });

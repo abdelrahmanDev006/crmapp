@@ -13,7 +13,6 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "security:rotate-default-passwords": "node scripts/rotate-default-passwords.js",
     "security:validate-env": "node scripts/validate-production-env.js",
     "admin:bootstrap": "node scripts/bootstrap-admin.js",
     "maintenance:normalize-next-visit-dates": "node scripts/normalize-client-next-visit-dates.js",

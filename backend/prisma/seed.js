@@ -175,7 +175,7 @@ async function seedUsers(regions) {
       await prisma.user.update({
         where: { id: existingUser.id },
         data: {
-          regionId: region.id,
+          regions: { connect: { id: region.id } },
           role: Role.REPRESENTATIVE,
           isActive: true
         }
@@ -193,7 +193,7 @@ async function seedUsers(regions) {
         email,
         passwordHash,
         role: Role.REPRESENTATIVE,
-        regionId: region.id
+        regions: { connect: { id: region.id } }
       }
     });
 
