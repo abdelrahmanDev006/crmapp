@@ -28,7 +28,7 @@ const initialCreateForm = {
   regionId: "",
   products: "",
   price: "",
-  visitType: "WEEKLY",
+  visitType: "MONTHLY",
   customVisitIntervalDays: "",
   status: "ACTIVE",
   nextVisitDate: "",
@@ -395,8 +395,8 @@ function ClientTableRows({
                   </button>
                 )}
                 {isAdmin && (
-                  <Link 
-                    className="secondary-btn" 
+                  <Link
+                    className="secondary-btn"
                     to={`/clients/${client.id}?edit=true`}
                     style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0", background: "#f0f0f0", color: "#333", border: "1px solid #ccc" }}
                   >
@@ -446,10 +446,10 @@ function ClientTableRows({
                   <div style={{ marginBottom: "4px" }}>
                     <span style={{ display: "block", padding: "3px", background: "#ffc107", color: "#000", borderRadius: "4px", fontSize: "0.85rem" }}>
                       {client.pendingOutcome === "ACTIVE" ? "تم التعامل" :
-                       client.pendingOutcome === "NO_ANSWER" ? "لم يرد" :
-                       client.pendingOutcome === "REJECTED" ? "كانسل" :
-                       client.pendingOutcome === "POSTPONED" ? "مؤجل" :
-                       client.pendingOutcome || "غير معروف"}
+                        client.pendingOutcome === "NO_ANSWER" ? "لم يرد" :
+                          client.pendingOutcome === "REJECTED" ? "كانسل" :
+                            client.pendingOutcome === "POSTPONED" ? "مؤجل" :
+                              client.pendingOutcome || "غير معروف"}
                     </span>
                   </div>
                 </div>
@@ -548,7 +548,7 @@ export default function ClientsPage() {
     localStorage.setItem("crm_page", page.toString());
     localStorage.setItem("crm_search", search);
     localStorage.setItem("crm_selectedDueDate", selectedDueDate);
-    
+
     // تصفير السكرول فقط إذا تم استعادة السكرول السابق بالفعل (لمنع مسحه عند تحميل الصفحة أول مرة)
     if (restoredScrollRef.current) {
       sessionStorage.setItem("crm_scrollY", "0");
@@ -575,7 +575,7 @@ export default function ClientsPage() {
       const savedScrollY = sessionStorage.getItem("crm_scrollY");
       if (savedScrollY && savedScrollY !== "0") {
         const scrollPosition = parseInt(savedScrollY, 10);
-        
+
         const tryScroll = () => {
           window.scrollTo(0, scrollPosition);
         };
@@ -1524,7 +1524,7 @@ export default function ClientsPage() {
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               <button type="button" className="primary-btn" onClick={() => {
                 if (showCreate && !isSaleCreate) { setShowCreate(false); }
-                else { setShowCreate(true); setIsSaleCreate(false); setCreateForm({ ...initialCreateForm, visitType: "WEEKLY" }); }
+                else { setShowCreate(true); setIsSaleCreate(false); setCreateForm({ ...initialCreateForm, visitType: "MONTHLY" }); }
               }}>
                 {showCreate && !isSaleCreate ? "إغلاق نموذج الإضافة" : "إضافة عميل"}
               </button>
@@ -1560,7 +1560,7 @@ export default function ClientsPage() {
                 تنبيه هام: هناك عملاء لم يتم تحديد موقفهم في الأيام السابقة!
               </strong>
             </div>
-            
+
             <div style={{ fontSize: "0.95rem", paddingRight: "30px", opacity: 0.9 }}>
               الأيام التي لم يتم تقفيلها بعد: <strong>{Array.from(new Set(overdueSummary.dates.map(d => {
                 const dt = new Date(d);
@@ -1676,17 +1676,17 @@ export default function ClientsPage() {
               </label>
             )}
             {!isSaleCreate && (
-            <label>
-              الحالة
-              <select
-                value={createForm.status}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, status: event.target.value }))}
-              >
-                <option value="ACTIVE">نشط</option>
-                <option value="NO_ANSWER">لم يرد</option>
-                <option value="REJECTED">كانسل</option>
-              </select>
-            </label>
+              <label>
+                الحالة
+                <select
+                  value={createForm.status}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, status: event.target.value }))}
+                >
+                  <option value="ACTIVE">نشط</option>
+                  <option value="NO_ANSWER">لم يرد</option>
+                  <option value="REJECTED">كانسل</option>
+                </select>
+              </label>
             )}
             <label>
               {isSaleCreate ? "تاريخ البيع" : "تاريخ الزيارة القادمة"}
@@ -1865,8 +1865,8 @@ export default function ClientsPage() {
                           {isLoadingRepresentatives
                             ? "جاري تحميل بيانات المندوب..."
                             : representativeNames.length > 0
-                            ? `المندوب: ${representativeNames.join(" - ")}`
-                            : "لا يوجد مندوب محدد لهذه المنطقة"}
+                              ? `المندوب: ${representativeNames.join(" - ")}`
+                              : "لا يوجد مندوب محدد لهذه المنطقة"}
                         </p>
                       )}
                     </div>
