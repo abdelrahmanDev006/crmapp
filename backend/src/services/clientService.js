@@ -434,21 +434,6 @@ async function handleClientVisit({
   }
 
   return prisma.$transaction(async (tx) => {
-    // Optimistic Locking: تحقق أن أحداً لم يعدّل العميل منذ القراءة الأولى
-    const freshClient = await tx.client.findUnique({
-      where: { id: existingClient.id },
-      select: { updatedAt: true, status: true }
-    });
-
-    if (!freshClient) {
-      throw createHttpError(404, "العميل غير موجود");
-    }
-
-    const wasModified = freshClient.updatedAt.getTime() !== new Date(existingClient.updatedAt).getTime();
-    if (wasModified) {
-      throw createHttpError(409, "تم تعديل بيانات العميل بواسطة مستخدم آخر، يرجى تحديث الصفحة والمحاولة مرة أخرى");
-    }
-
     const updatedClient = await tx.client.update({
       where: { id: existingClient.id },
       data: {
