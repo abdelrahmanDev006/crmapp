@@ -532,6 +532,14 @@ export default function ClientsPage() {
   const [exportExcelLoading, setExportExcelLoading] = useState(false);
   const [importExcelLoading, setImportExcelLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
+  const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
+  const toastTimerRef = useRef(null);
+
+  const showToast = useCallback((message, type = "success") => {
+    clearTimeout(toastTimerRef.current);
+    setToast({ message, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), 4500);
+  }, []);
   const todayDateText = getTodayInputDate();
   const debouncedSearch = useDebouncedValue(search, 350);
 
@@ -1130,21 +1138,15 @@ export default function ClientsPage() {
     if (actionState.clientId) return;
     setActionState({ clientId: client.id, outcome: "APPROVE" });
     setError("");
-    setInfoMessage("");
     try {
-      const res = await clientsApi.approve(client.id);
-      setData(prev => {
-        const isMatching = matchesCurrentFilters(res.data.item);
-        let newItems;
-        if (isMatching) {
-          newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
-        } else {
-          newItems = prev.items.filter(item => item.id !== client.id);
-        }
-        newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
-        return { ...prev, items: newItems, total: isMatching ? prev.total : Math.max(0, prev.total - 1) };
-      });
-      setInfoMessage("تم اعتماد الزيارة بنجاح.");
+      await clientsApi.approve(client.id);
+      // دائماً أزل العميل فوراً من القائمة الحالية
+      setData(prev => ({
+        ...prev,
+        items: prev.items.filter(item => item.id !== client.id),
+        total: Math.max(0, prev.total - 1)
+      }));
+      showToast(`✅ تم اعتماد إجراء العميل «${client.name}» بنجاح`);
     } catch (err) {
       setError(err.message || "تعذر اعتماد الزيارة");
     } finally {
@@ -1156,21 +1158,15 @@ export default function ClientsPage() {
     if (actionState.clientId) return;
     setActionState({ clientId: client.id, outcome: "REJECT" });
     setError("");
-    setInfoMessage("");
     try {
-      const res = await clientsApi.reject(client.id);
-      setData(prev => {
-        const isMatching = matchesCurrentFilters(res.data.item);
-        let newItems;
-        if (isMatching) {
-          newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
-        } else {
-          newItems = prev.items.filter(item => item.id !== client.id);
-        }
-        newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
-        return { ...prev, items: newItems, total: isMatching ? prev.total : Math.max(0, prev.total - 1) };
-      });
-      setInfoMessage("تم رفض الزيارة بنجاح.");
+      await clientsApi.reject(client.id);
+      // دائماً أزل العميل فوراً من القائمة الحالية
+      setData(prev => ({
+        ...prev,
+        items: prev.items.filter(item => item.id !== client.id),
+        total: Math.max(0, prev.total - 1)
+      }));
+      showToast(`↩️ تم رد إجراء العميل «${client.name}» للحالة النشطة`);
     } catch (err) {
       setError(err.message || "تعذر رفض الزيارة");
     } finally {
@@ -1183,7 +1179,7 @@ export default function ClientsPage() {
     if (isRepresentative) {
       if (outcome === "REJECTED") {
         noteText = window.prompt("يرجى إدخال سبب إلغاء العميل (اختياري):");
-        if (noteText === null) return; // User canceled the prompt
+        if (noteText === null) return;
       } else if (outcome === "NO_ANSWER") {
         noteText = window.prompt("يرجى إدخال أي ملاحظة حول عدم الرد (اختياري):");
         if (noteText === null) return;
@@ -1195,31 +1191,29 @@ export default function ClientsPage() {
 
     setActionState({ clientId: client.id, outcome });
     setError("");
-    setInfoMessage("");
+
+    const outcomeLabels = {
+      ACTIVE: "✅ تم تسجيل «تم التعامل» مع العميل",
+      NO_ANSWER: "📞 تم تسجيل «لم يرد» للعميل",
+      REJECTED: "❌ تم تسجيل «كانسل» للعميل"
+    };
 
     try {
-      const res = await clientsApi.handle(client.id, {
+      await clientsApi.handle(client.id, {
         outcome,
         note: noteText || undefined
       });
-      
-      setData(prev => {
-        const isMatching = matchesCurrentFilters(res.data.item);
-        let newItems;
-        if (isMatching) {
-          newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
-        } else {
-          newItems = prev.items.filter(item => item.id !== client.id);
-        }
-        newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
-        return { ...prev, items: newItems, total: isMatching ? prev.total : Math.max(0, prev.total - 1) };
-      });
 
-      if (isRepresentative) {
-        setInfoMessage("تم إرسال الطلب بنجاح وهو الآن في انتظار اعتماد الإدارة.");
-      } else {
-        setInfoMessage("تم تحديث حالة العميل بنجاح.");
-      }
+      // دائماً أزل العميل فوراً من القائمة الحالية بعد أي إجراء
+      setData(prev => ({
+        ...prev,
+        items: prev.items.filter(item => item.id !== client.id),
+        total: Math.max(0, prev.total - 1)
+      }));
+
+      const label = outcomeLabels[outcome] || "✅ تم تنفيذ الإجراء";
+      const suffix = isRepresentative ? " — في انتظار اعتماد الإدارة" : "";
+      showToast(`${label}: «${client.name}»${suffix}`);
     } catch (err) {
       setError(err.message || "تعذر تحديث حالة العميل");
     } finally {
@@ -1595,6 +1589,38 @@ export default function ClientsPage() {
 
   return (
     <div className={`stack clients-page${isRepresentative ? " clients-page-representative" : ""}`}>
+      {/* Toast notification */}
+      {toast && (
+        <div
+          key={toast.message}
+          style={{
+            position: "fixed",
+            top: "20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 9999,
+            background: toast.type === "error" ? "#7f1d1d" : "#064e3b",
+            color: "#fff",
+            padding: "14px 24px",
+            borderRadius: "14px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.28)",
+            fontSize: "1rem",
+            fontWeight: "700",
+            lineHeight: "1.5",
+            maxWidth: "90vw",
+            textAlign: "center",
+            animation: "toastSlideIn 0.3s ease",
+            direction: "rtl"
+          }}
+        >
+          {toast.message}
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            style={{ background: "none", border: "none", color: "#fff", marginRight: "12px", cursor: "pointer", fontSize: "1.1rem", opacity: 0.7 }}
+          >✕</button>
+        </div>
+      )}
       <section className="panel">
         <div className="panel-header split">
           <h3>العملاء</h3>
