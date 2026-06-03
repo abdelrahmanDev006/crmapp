@@ -600,6 +600,37 @@ export default function ClientsPage() {
     }
   }, [loading, data.items]);
 
+  const matchesCurrentFilters = useCallback((client) => {
+    // 1. Check Date Filter
+    if (selectedDueDate) {
+      const clientDateStr = client.nextVisitDate ? client.nextVisitDate.slice(0, 10) : "";
+      if (clientDateStr !== selectedDueDate) {
+        return false;
+      }
+    }
+
+    // 2. Check Tab Filter
+    if (activeTab === "ALL") {
+      if (!selectedDueDate && client.status === "REJECTED") return false;
+      return true;
+    }
+
+    if (activeTab === "NO_ANSWER") {
+      return client.status === "NO_ANSWER";
+    }
+
+    if (activeTab === "REJECTED") {
+      return client.status === "REJECTED";
+    }
+
+    if (activeTab === "PENDING") {
+      return client.status === "PENDING_APPROVAL";
+    }
+
+    // Otherwise, it's a visitType tab (WEEKLY, BIWEEKLY, MONTHLY, CUSTOM, ONE_TIME)
+    return client.status === "ACTIVE" && client.visitType === activeTab;
+  }, [activeTab, selectedDueDate]);
+
   const queryFilters = useMemo(() => mapTabToFilters(activeTab), [activeTab]);
   const hasDueDateFilter = Boolean(selectedDueDate);
   const selectedDueDateDisplay = selectedDueDate ? formatDate(`${selectedDueDate}T00:00:00.000Z`) : "يوم/شهر/سنة";
@@ -1103,9 +1134,15 @@ export default function ClientsPage() {
     try {
       const res = await clientsApi.approve(client.id);
       setData(prev => {
-        const newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
+        const isMatching = matchesCurrentFilters(res.data.item);
+        let newItems;
+        if (isMatching) {
+          newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
+        } else {
+          newItems = prev.items.filter(item => item.id !== client.id);
+        }
         newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
-        return { ...prev, items: newItems };
+        return { ...prev, items: newItems, total: isMatching ? prev.total : Math.max(0, prev.total - 1) };
       });
       setInfoMessage("تم اعتماد الزيارة بنجاح.");
     } catch (err) {
@@ -1123,9 +1160,15 @@ export default function ClientsPage() {
     try {
       const res = await clientsApi.reject(client.id);
       setData(prev => {
-        const newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
+        const isMatching = matchesCurrentFilters(res.data.item);
+        let newItems;
+        if (isMatching) {
+          newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
+        } else {
+          newItems = prev.items.filter(item => item.id !== client.id);
+        }
         newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
-        return { ...prev, items: newItems };
+        return { ...prev, items: newItems, total: isMatching ? prev.total : Math.max(0, prev.total - 1) };
       });
       setInfoMessage("تم رفض الزيارة بنجاح.");
     } catch (err) {
@@ -1161,9 +1204,15 @@ export default function ClientsPage() {
       });
       
       setData(prev => {
-        const newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
+        const isMatching = matchesCurrentFilters(res.data.item);
+        let newItems;
+        if (isMatching) {
+          newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
+        } else {
+          newItems = prev.items.filter(item => item.id !== client.id);
+        }
         newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
-        return { ...prev, items: newItems };
+        return { ...prev, items: newItems, total: isMatching ? prev.total : Math.max(0, prev.total - 1) };
       });
 
       if (isRepresentative) {
@@ -1234,12 +1283,16 @@ export default function ClientsPage() {
       setIsSaleCreate(false);
       
       setData(prev => {
-        const newItems = [...prev.items, createdClient];
+        const isMatching = matchesCurrentFilters(createdClient);
+        let newItems = [...prev.items];
+        if (isMatching) {
+          newItems.push(createdClient);
+        }
         newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
         return {
           ...prev,
           items: newItems,
-          total: prev.total + 1
+          total: isMatching ? prev.total + 1 : prev.total
         };
       });
     } catch (err) {
