@@ -1103,8 +1103,12 @@ export default function ClientsPage() {
     setError("");
     setInfoMessage("");
     try {
-      await clientsApi.approve(client.id);
-      await loadClients();
+      const res = await clientsApi.approve(client.id);
+      setData(prev => {
+        const newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
+        newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
+        return { ...prev, items: newItems };
+      });
       setInfoMessage("تم اعتماد الزيارة بنجاح.");
     } catch (err) {
       setError(err.message || "تعذر اعتماد الزيارة");
@@ -1119,8 +1123,12 @@ export default function ClientsPage() {
     setError("");
     setInfoMessage("");
     try {
-      await clientsApi.reject(client.id);
-      await loadClients();
+      const res = await clientsApi.reject(client.id);
+      setData(prev => {
+        const newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
+        newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
+        return { ...prev, items: newItems };
+      });
       setInfoMessage("تم رفض الزيارة بنجاح.");
     } catch (err) {
       setError(err.message || "تعذر رفض الزيارة");
@@ -1149,11 +1157,16 @@ export default function ClientsPage() {
     setInfoMessage("");
 
     try {
-      await clientsApi.handle(client.id, {
+      const res = await clientsApi.handle(client.id, {
         outcome,
         note: noteText || undefined
       });
-      await loadClients();
+      
+      setData(prev => {
+        const newItems = prev.items.map(item => item.id === client.id ? res.data.item : item);
+        newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
+        return { ...prev, items: newItems };
+      });
 
       if (isRepresentative) {
         setInfoMessage("تم إرسال الطلب بنجاح وهو الآن في انتظار اعتماد الإدارة.");
@@ -1200,13 +1213,16 @@ export default function ClientsPage() {
         note: createForm.note ? createForm.note.trim() : undefined
       };
 
+      let createdClient;
       try {
-        await clientsApi.create(createPayload);
+        const response = await clientsApi.create(createPayload);
+        createdClient = response.data.item;
       } catch (apiErr) {
         if (apiErr.status === 409 && apiErr.message) {
           const confirmAdd = window.confirm(apiErr.message + "\n\nهل تريد المتابعة وإضافة العميل على أي حال؟");
           if (confirmAdd) {
-            await clientsApi.create({ ...createPayload, force: true });
+            const response = await clientsApi.create({ ...createPayload, force: true });
+            createdClient = response.data.item;
           } else {
             return; // User cancelled
           }
@@ -1218,7 +1234,16 @@ export default function ClientsPage() {
       setCreateForm(initialCreateForm);
       setShowCreate(false);
       setIsSaleCreate(false);
-      await loadClients();
+      
+      setData(prev => {
+        const newItems = [...prev.items, createdClient];
+        newItems.sort((a, b) => new Date(a.nextVisitDate) - new Date(b.nextVisitDate) || a.id - b.id);
+        return {
+          ...prev,
+          items: newItems,
+          total: prev.total + 1
+        };
+      });
     } catch (err) {
       setError(err.message || "تعذر إضافة العميل");
     } finally {

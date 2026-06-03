@@ -26,7 +26,8 @@ const clientWithRelations = {
     },
     orderBy: {
       visitDate: "desc"
-    }
+    },
+    take: 1
   }
 };
 
