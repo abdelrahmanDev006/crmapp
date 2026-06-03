@@ -70,6 +70,9 @@ model Client {
   @@index([status, nextVisitDate])
   @@index([name])
   @@index([isDeleted])
+  @@index([isDeleted, status])
+  @@index([isDeleted, nextVisitDate])
+  @@index([isDeleted, regionId, status])
 }
 
 model VisitHistory {

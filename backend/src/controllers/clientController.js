@@ -6,6 +6,7 @@ const { getCurrentWorkWeekStart, normalizeToWorkDate } = require("../utils/dateU
 const { createHttpError } = require("../utils/httpError");
 const {
   listClients,
+  listClientsByRegionPage,
   getClientById,
   handleClientVisit,
   approveClientVisit,
@@ -112,6 +113,15 @@ const listClientRecords = asyncHandler(async (req, res) => {
   }
 
   const result = await listClients(req.query, req.user);
+  res.json(result);
+});
+
+const listClientsByRegion = asyncHandler(async (req, res) => {
+  if (req.user.role === Roles.REPRESENTATIVE && req.query.regionId && !req.user.regions?.some(r => Number(r.id) === Number(req.query.regionId))) {
+    throw createHttpError(403, "غير مصرح لك باستعراض هذه المنطقة");
+  }
+
+  const result = await listClientsByRegionPage(req.query, req.user);
   res.json(result);
 });
 
@@ -460,6 +470,7 @@ const rejectVisit = asyncHandler(async (req, res) => {
 
 module.exports = {
   listClientRecords,
+  listClientsByRegion,
   getClientDetails,
   createClient,
   updateClient,

@@ -35,6 +35,7 @@ async function getRegionSummary() {
     by: ["regionId"],
     _count: { _all: true },
     where: {
+      isDeleted: false,
       status: "NO_ANSWER"
     }
   });

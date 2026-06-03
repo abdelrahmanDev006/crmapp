@@ -21,6 +21,7 @@ export const regionsApi = {
 
 export const clientsApi = {
   list: (params) => http.get("/clients", { params }),
+  listByRegion: (params) => http.get("/clients/by-region", { params }),
   getById: (id) => http.get(`/clients/${id}`),
   create: (payload) => http.post("/clients", payload),
   update: (id, payload) => http.patch(`/clients/${id}`, payload),

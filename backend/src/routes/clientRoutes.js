@@ -5,12 +5,14 @@ const validate = require("../middlewares/validate");
 const { idParamSchema } = require("../schemas/commonSchemas");
 const {
   clientQuerySchema,
+  regionPageClientQuerySchema,
   createClientSchema,
   updateClientSchema,
   handleClientSchema
 } = require("../schemas/clientSchemas");
 const {
   listClientRecords,
+  listClientsByRegion,
   getClientDetails,
   createClient,
   updateClient,
@@ -26,6 +28,7 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get("/overdue-summary", authorizeRoles(Roles.ADMIN), getOverdueSummary);
+router.get("/by-region", validate(regionPageClientQuerySchema, "query"), listClientsByRegion);
 router.get("/", validate(clientQuerySchema, "query"), listClientRecords);
 router.get("/:id", validate(idParamSchema, "params"), getClientDetails);
 router.post("/:id/handle", validate(idParamSchema, "params"), validate(handleClientSchema), handleClient);

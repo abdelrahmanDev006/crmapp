@@ -520,7 +520,7 @@ export default function ClientsPage() {
     if (saved === "") return "";
     return user?.role === "REPRESENTATIVE" ? getTodayInputDate() : "";
   });
-  const [data, setData] = useState({ items: [], totalPages: 1, total: 0, page: 1 });
+  const [data, setData] = useState({ items: [], totalRegionPages: 1, totalRegions: 0, total: 0, regionPage: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionState, setActionState] = useState({ clientId: null, outcome: null });
@@ -917,10 +917,26 @@ export default function ClientsPage() {
     printWindow.document.close();
   };
 
+  const buildRegionPageParams = useCallback((regionPageOverride) => {
+    const params = {
+      regionPage: regionPageOverride ?? page,
+      regionPageSize: 5,
+      search: debouncedSearch || undefined
+    };
+
+    if (hasDueDateFilter) {
+      params.dueDate = selectedDueDate;
+    } else {
+      Object.assign(params, queryFilters);
+    }
+
+    return params;
+  }, [page, debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
+
   const buildClientListParams = useCallback((pageOverride, pageSizeOverride) => {
     const params = {
       page: pageOverride ?? 1,
-      pageSize: pageSizeOverride ?? 1000,
+      pageSize: pageSizeOverride ?? 100,
       search: debouncedSearch || undefined
     };
 
@@ -938,35 +954,22 @@ export default function ClientsPage() {
     setError("");
 
     try {
-      const firstResponse = await clientsApi.list(buildClientListParams(1));
-      const firstData = firstResponse.data || {};
-      const allItems = [...(firstData.items || [])];
-      const totalPages = Math.max(1, Number(firstData.totalPages || 1));
-
-      if (totalPages > 1) {
-        const promises = [];
-        for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
-          promises.push(clientsApi.list(buildClientListParams(currentPage)));
-        }
-        const responses = await Promise.all(promises);
-        for (const res of responses) {
-          allItems.push(...(res.data?.items || []));
-        }
-      }
+      const response = await clientsApi.listByRegion(buildRegionPageParams(page));
+      const responseData = response.data || {};
 
       setData({
-        items: allItems,
-        total: firstData.total || allItems.length,
-        page: 1,
-        pageSize: allItems.length,
-        totalPages: 1
+        items: responseData.items || [],
+        total: responseData.totalClients || 0,
+        totalRegions: responseData.totalRegions || 0,
+        totalRegionPages: responseData.totalRegionPages || 1,
+        regionPage: responseData.regionPage || 1
       });
     } catch (err) {
       setError(err.message || "تعذر تحميل العملاء");
     } finally {
       setLoading(false);
     }
-  }, [buildClientListParams]);
+  }, [buildRegionPageParams, page]);
 
   const isInitialMount = useRef(true);
   useEffect(() => {
@@ -1086,8 +1089,7 @@ export default function ClientsPage() {
     loadVisibleRegionRepresentatives();
   }, [groupedClientsByRegion, loadingRegionRepresentativeIds, regionRepresentatives]);
 
-  const regionPageSize = 5;
-  const totalRegionPages = Math.ceil(groupedClientsByRegion.length / regionPageSize) || 1;
+  const totalRegionPages = data.totalRegionPages || 1;
 
   useEffect(() => {
     if (!loading && totalRegionPages > 0 && page > totalRegionPages) {
@@ -1260,13 +1262,13 @@ export default function ClientsPage() {
     setInfoMessage("");
 
     try {
-      const firstPageResponse = await clientsApi.list(buildClientListParams(1, 100));
+      const firstPageResponse = await clientsApi.list(buildClientListParams(1, 1000));
       const firstPageData = firstPageResponse.data || {};
       const allItems = [...(firstPageData.items || [])];
       const totalPages = Math.max(1, Number(firstPageData.totalPages || 1));
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
-        const response = await clientsApi.list(buildClientListParams(currentPage, 100));
+        const response = await clientsApi.list(buildClientListParams(currentPage, 1000));
         allItems.push(...(response.data?.items || []));
       }
 
@@ -1319,13 +1321,13 @@ export default function ClientsPage() {
     setInfoMessage("");
 
     try {
-      const firstPageResponse = await clientsApi.list(buildClientListParams(1, 100));
+      const firstPageResponse = await clientsApi.list(buildClientListParams(1, 1000));
       const firstPageData = firstPageResponse.data || {};
       const allItems = [...(firstPageData.items || [])];
       const totalPages = Math.max(1, Number(firstPageData.totalPages || 1));
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
-        const response = await clientsApi.list(buildClientListParams(currentPage, 100));
+        const response = await clientsApi.list(buildClientListParams(currentPage, 1000));
         allItems.push(...(response.data?.items || []));
       }
 
@@ -1513,7 +1515,7 @@ export default function ClientsPage() {
     }
   }
 
-  const paginatedGroups = groupedClientsByRegion.slice((page - 1) * regionPageSize, page * regionPageSize);
+  const paginatedGroups = groupedClientsByRegion;
 
   return (
     <div className={`stack clients-page${isRepresentative ? " clients-page-representative" : ""}`}>

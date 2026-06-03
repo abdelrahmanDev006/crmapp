@@ -125,6 +125,25 @@ const clientQuerySchema = z.object({
     })
 });
 
+const regionPageClientQuerySchema = z.object({
+  regionPage: z.coerce.number().int().min(1).default(1),
+  regionPageSize: z.coerce.number().int().min(1).max(20).default(5),
+  search: z.string().trim().optional(),
+  visitType: z.enum(visitTypeValues).optional(),
+  status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED, ClientStatuses.PENDING_APPROVAL]).optional(),
+  regionId: z.coerce.number().int().positive().optional(),
+  dueDate: dateInputSchema.optional(),
+  createdDate: dateInputSchema.optional(),
+  dueOnly: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return undefined;
+      if (typeof value === "boolean") return value;
+      return value.toLowerCase() === "true";
+    })
+});
+
 const handleClientSchema = z.object({
   outcome: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]),
   note: z.string().max(500).optional(),
@@ -142,6 +161,7 @@ module.exports = {
   createClientSchema,
   updateClientSchema,
   clientQuerySchema,
+  regionPageClientQuerySchema,
   handleClientSchema,
   bulkRegionHandleSchema
 };

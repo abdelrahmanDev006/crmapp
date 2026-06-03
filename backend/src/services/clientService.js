@@ -175,6 +175,70 @@ async function listClients(filters, user) {
   };
 }
 
+async function listClientsByRegionPage(filters, user) {
+  const regionPage = Math.max(1, Number(filters.regionPage) || 1);
+  const regionPageSize = Math.min(Math.max(1, Number(filters.regionPageSize) || 5), 20);
+  const where = buildClientWhere(filters, user);
+
+  // Step 1: الحصول على المناطق اللي فيها عملاء مطابقين للفلتر (query خفيف)
+  const regionGroups = await prisma.client.groupBy({
+    by: ["regionId"],
+    where,
+    _count: { _all: true }
+  });
+
+  if (regionGroups.length === 0) {
+    return {
+      items: [],
+      totalClients: 0,
+      totalRegions: 0,
+      totalRegionPages: 1,
+      regionPage: 1,
+      regionPageSize
+    };
+  }
+
+  // Step 2: ترتيب المناطق بالكود
+  const matchingRegionIds = regionGroups.map((g) => g.regionId);
+  const regionDetails = await prisma.region.findMany({
+    where: { id: { in: matchingRegionIds } },
+    select: { id: true, code: true },
+    orderBy: { code: "asc" }
+  });
+
+  const sortedRegionIds = regionDetails.map((r) => r.id);
+
+  // Step 3: تقسيم المناطق لصفحات (5 مناطق في الصفحة)
+  const totalRegions = sortedRegionIds.length;
+  const totalRegionPages = Math.ceil(totalRegions / regionPageSize) || 1;
+  const safePage = Math.min(regionPage, totalRegionPages);
+  const pageRegionIds = sortedRegionIds.slice(
+    (safePage - 1) * regionPageSize,
+    safePage * regionPageSize
+  );
+
+  // Step 4: جلب العملاء للمناطق الـ 5 بتوع الصفحة دي بس
+  const items = await prisma.client.findMany({
+    where: {
+      ...where,
+      regionId: { in: pageRegionIds }
+    },
+    include: clientWithRelations,
+    orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }]
+  });
+
+  const totalClients = regionGroups.reduce((sum, g) => sum + g._count._all, 0);
+
+  return {
+    items,
+    totalClients,
+    totalRegions,
+    totalRegionPages,
+    regionPage: safePage,
+    regionPageSize
+  };
+}
+
 async function getClientById(id, user, includeVisits = false) {
   const client = await prisma.client.findUnique({
     where: { id: Number(id) },
@@ -586,6 +650,7 @@ async function handleRegionClients({ regionId, user, note }) {
 
 module.exports = {
   listClients,
+  listClientsByRegionPage,
   getClientById,
   handleClientVisit,
   handleRegionClients,
