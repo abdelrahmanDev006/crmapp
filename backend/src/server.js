@@ -11,6 +11,14 @@ async function start() {
   server = app.listen(env.port, () => {
     console.log(`API server running on port ${env.port}`);
   });
+
+  // Railway's reverse proxy has a 60s keepalive timeout.
+  // Node.js default keepAliveTimeout is 5s — far too low.
+  // Setting Node's timeout HIGHER than the proxy's prevents the proxy
+  // from sending requests on connections Node has already closed.
+  // This eliminates the "- -" (no response) entries in Railway logs.
+  server.keepAliveTimeout = 65000;  // 65 seconds
+  server.headersTimeout   = 66000;  // must be > keepAliveTimeout
 }
 
 async function shutdown(reason, error) {
