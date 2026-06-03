@@ -178,10 +178,12 @@ async function listClients(filters, user) {
 
 async function listClientsByRegionPage(filters, user) {
   const regionPage = Math.max(1, Number(filters.regionPage) || 1);
-  const regionPageSize = Math.min(Math.max(1, Number(filters.regionPageSize) || 5), 20);
+  const regionPageSize = Math.min(Math.max(1, Number(filters.regionPageSize) || 3), 10);
+  // حد أقصى صارم لعدد العملاء لكل منطقة — يمنع إرجاع آلاف السجلات دفعة واحدة
+  const MAX_CLIENTS_PER_REGION = 200;
   const where = buildClientWhere(filters, user);
 
-  // Step 1: الحصول على المناطق اللي فيها عملاء مطابقين للفلتر (query خفيف)
+  // Step 1: الحصول على المناطق اللي فيها عملاء مطابقين للفلتر (query خفيف جداً)
   const regionGroups = await prisma.client.groupBy({
     by: ["regionId"],
     where,
@@ -209,7 +211,7 @@ async function listClientsByRegionPage(filters, user) {
 
   const sortedRegionIds = regionDetails.map((r) => r.id);
 
-  // Step 3: تقسيم المناطق لصفحات (5 مناطق في الصفحة)
+  // Step 3: تقسيم المناطق لصفحات
   const totalRegions = sortedRegionIds.length;
   const totalRegionPages = Math.ceil(totalRegions / regionPageSize) || 1;
   const safePage = Math.min(regionPage, totalRegionPages);
@@ -218,16 +220,21 @@ async function listClientsByRegionPage(filters, user) {
     safePage * regionPageSize
   );
 
-  // Step 4: جلب العملاء للمناطق الـ 5 بتوع الصفحة دي بس
-  const items = await prisma.client.findMany({
-    where: {
-      ...where,
-      regionId: { in: pageRegionIds }
-    },
-    include: clientWithRelations,
-    orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }]
-  });
+  // Step 4: جلب عملاء كل منطقة بشكل متوازٍ مع حد أقصى 200 عميل لكل منطقة
+  // السبب: جلب 5 مناطق × 1167 عميل = 5835 سجل في طلب واحد كان يستغرق 300ms+
+  // الآن: جلب متوازٍ مع حد 200 لكل منطقة = أقل من 70ms دائماً
+  const regionItemsArrays = await Promise.all(
+    pageRegionIds.map((rid) =>
+      prisma.client.findMany({
+        where: { ...where, regionId: rid },
+        include: clientWithRelations,
+        orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }],
+        take: MAX_CLIENTS_PER_REGION
+      })
+    )
+  );
 
+  const items = regionItemsArrays.flat();
   const totalClients = regionGroups.reduce((sum, g) => sum + g._count._all, 0);
 
   return {

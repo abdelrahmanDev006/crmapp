@@ -951,7 +951,7 @@ export default function ClientsPage() {
   const buildRegionPageParams = useCallback((regionPageOverride) => {
     const params = {
       regionPage: regionPageOverride ?? page,
-      regionPageSize: 5,
+      regionPageSize: 3,
       search: debouncedSearch || undefined,
       ...queryFilters
     };
