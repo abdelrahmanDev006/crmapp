@@ -921,13 +921,12 @@ export default function ClientsPage() {
     const params = {
       regionPage: regionPageOverride ?? page,
       regionPageSize: 5,
-      search: debouncedSearch || undefined
+      search: debouncedSearch || undefined,
+      ...queryFilters
     };
 
     if (hasDueDateFilter) {
       params.dueDate = selectedDueDate;
-    } else {
-      Object.assign(params, queryFilters);
     }
 
     return params;
@@ -937,13 +936,12 @@ export default function ClientsPage() {
     const params = {
       page: pageOverride ?? 1,
       pageSize: pageSizeOverride ?? 100,
-      search: debouncedSearch || undefined
+      search: debouncedSearch || undefined,
+      ...queryFilters
     };
 
     if (hasDueDateFilter) {
       params.dueDate = selectedDueDate;
-    } else {
-      Object.assign(params, queryFilters);
     }
 
     return params;
