@@ -43,6 +43,8 @@ const authLimiter = rateLimit({
   max: env.authRateLimitMax,
   standardHeaders: true,
   legacyHeaders: false,
+  // validate: false — منع ValidationError الخاص بـ trust proxy على Railway
+  validate: { trustProxy: false },
   message: "عدد محاولات تسجيل الدخول كبير، حاول لاحقًا"
 });
 
@@ -51,6 +53,8 @@ const apiLimiter = rateLimit({
   max: 500,            // 500 طلب لكل IP في الدقيقة
   standardHeaders: true,
   legacyHeaders: false,
+  // validate: false — منع ValidationError الخاص بـ trust proxy على Railway
+  validate: { trustProxy: false },
   message: "عدد الطلبات كبير جداً، انتظر لحظة"
 });
 
