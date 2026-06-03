@@ -79,21 +79,21 @@ async function assertClientUniqueness({
     }
 
     if (normalizedName && Number.isInteger(numericRegionId) && numericRegionId > 0) {
-      const duplicateByName = await prisma.client.findFirst({
-        where: {
-          isDeleted: false,
-          regionId: numericRegionId,
-          name: {
-            equals: normalizedName,
-            mode: "insensitive"
-          },
-          ...(Number.isInteger(excludedId) && excludedId > 0 ? { id: { not: excludedId } } : {})
-        },
-        select: {
-          id: true,
-          name: true
-        }
-      });
+      const exclusionSql =
+        Number.isInteger(excludedId) && excludedId > 0
+          ? Prisma.sql`AND c.id <> ${excludedId}`
+          : Prisma.empty;
+
+      const duplicatedRows = await prisma.$queryRaw`
+        SELECT c.id, c.name
+        FROM "Client" c
+        WHERE c."isDeleted" = false
+          AND c."regionId" = ${numericRegionId}
+          AND LOWER(c.name) = LOWER(${normalizedName})
+          ${exclusionSql}
+        LIMIT 1
+      `;
+      const duplicateByName = duplicatedRows[0] || null;
 
       if (duplicateByName) {
         throw createHttpError(
