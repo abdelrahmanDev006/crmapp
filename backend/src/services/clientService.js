@@ -150,7 +150,7 @@ function enforceClientScope(user, client) {
 }
 
 async function listClients(filters, user) {
-  const MAX_PAGE_SIZE = 1000; // حد أقصى للحماية من طلبات الـ 10,000
+  const MAX_PAGE_SIZE = 50; // حد أقصى صغير جداً لمنع أي بطء أو Timeouts في حالة إن المتصفح لسه شغال بالنسخة القديمة
   const page = Math.max(1, Number(filters.page) || 1);
   const pageSize = Math.min(Math.max(1, Number(filters.pageSize) || 20), MAX_PAGE_SIZE);
   const where = buildClientWhere(filters, user);
