@@ -1139,42 +1139,41 @@ export default function ClientsPage() {
   }, [totalRegionPages, loading, page]);
 
   async function handleApproveVisit(client) {
-    if (actionState.clientId) return;
-    setActionState({ clientId: client.id, outcome: "APPROVE" });
     setError("");
+
+    // --- Optimistic Update: أزل العميل فوراً لضمان سرعة الاستخدام ---
+    setData(prev => ({
+      ...prev,
+      items: prev.items.filter(item => item.id !== client.id),
+      total: Math.max(0, prev.total - 1)
+    }));
+
     try {
       await clientsApi.approve(client.id);
-      // دائماً أزل العميل فوراً من القائمة الحالية
-      setData(prev => ({
-        ...prev,
-        items: prev.items.filter(item => item.id !== client.id),
-        total: Math.max(0, prev.total - 1)
-      }));
       showToast(`✅ تم اعتماد إجراء العميل «${client.name}» بنجاح`);
     } catch (err) {
+      // في حالة الفشل، أظهر الخطأ وأعد تحميل القائمة لتصحيح البيانات
       showToast(err.message || "تعذر اعتماد الزيارة", "error");
-    } finally {
-      setActionState({ clientId: null, outcome: null });
+      loadClients();
     }
   }
 
   async function handleRejectVisit(client) {
-    if (actionState.clientId) return;
-    setActionState({ clientId: client.id, outcome: "REJECT" });
     setError("");
+
+    // --- Optimistic Update: أزل العميل فوراً لضمان سرعة الاستخدام ---
+    setData(prev => ({
+      ...prev,
+      items: prev.items.filter(item => item.id !== client.id),
+      total: Math.max(0, prev.total - 1)
+    }));
+
     try {
       await clientsApi.reject(client.id);
-      // دائماً أزل العميل فوراً من القائمة الحالية
-      setData(prev => ({
-        ...prev,
-        items: prev.items.filter(item => item.id !== client.id),
-        total: Math.max(0, prev.total - 1)
-      }));
       showToast(`↩️ تم رد إجراء العميل «${client.name}» للحالة النشطة`);
     } catch (err) {
       showToast(err.message || "تعذر رفض الزيارة", "error");
-    } finally {
-      setActionState({ clientId: null, outcome: null });
+      loadClients();
     }
   }
 
@@ -1193,8 +1192,14 @@ export default function ClientsPage() {
       }
     }
 
-    setActionState({ clientId: client.id, outcome });
     setError("");
+
+    // --- Optimistic Update: أزل العميل فوراً لضمان سرعة الاستخدام ---
+    setData(prev => ({
+      ...prev,
+      items: prev.items.filter(item => item.id !== client.id),
+      total: Math.max(0, prev.total - 1)
+    }));
 
     const outcomeLabels = {
       ACTIVE: "✅ تم تسجيل «تم التعامل» مع العميل",
@@ -1203,25 +1208,18 @@ export default function ClientsPage() {
     };
 
     try {
+      // إرسال الطلب في الخلفية
       await clientsApi.handle(client.id, {
         outcome,
         note: noteText || undefined
       });
-
-      // دائماً أزل العميل فوراً من القائمة الحالية بعد أي إجراء
-      setData(prev => ({
-        ...prev,
-        items: prev.items.filter(item => item.id !== client.id),
-        total: Math.max(0, prev.total - 1)
-      }));
 
       const label = outcomeLabels[outcome] || "✅ تم تنفيذ الإجراء";
       const suffix = isRepresentative ? " — في انتظار اعتماد الإدارة" : "";
       showToast(`${label}: «${client.name}»${suffix}`);
     } catch (err) {
       showToast(err.message || "تعذر تحديث حالة العميل", "error");
-    } finally {
-      setActionState({ clientId: null, outcome: null });
+      loadClients();
     }
   }
 
