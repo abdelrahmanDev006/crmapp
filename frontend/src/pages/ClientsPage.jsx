@@ -20,6 +20,46 @@ const tabs = [
   { key: "PENDING", label: "في انتظار الاعتماد" }
 ];
 
+const playToastSound = (type) => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    if (type === "success") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(500, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.1);
+    } else if (type === "warning") {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+    } else if (type === "danger" || type === "error") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.2);
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.2);
+    }
+  } catch (e) {
+    // Ignore audio errors if browser blocks autoplay
+  }
+};
+
 const initialCreateForm = {
   name: "",
   phone: "",
@@ -309,7 +349,9 @@ function ClientTableRows({
   onApproveVisit,
   onRejectVisit,
   isRepresentative,
-  isAdmin
+  isAdmin,
+  selectedClientIds,
+  onToggleClientSelection
 }) {
   return clients.map((client) => {
     const clientIsNew = isNewClient(client.createdAt, todayDateText);
@@ -324,6 +366,14 @@ function ClientTableRows({
 
     return (
       <tr key={client.id} className={`client-row-${client.visitType}`}>
+        <td className="col-checkbox" data-label="تحديد" style={{ textAlign: "center", width: "40px" }}>
+          <input
+            type="checkbox"
+            checked={selectedClientIds?.has(client.id) || false}
+            onChange={() => onToggleClientSelection(client.id)}
+            style={{ width: "18px", height: "18px", cursor: "pointer" }}
+          />
+        </td>
         <td className="col-name" data-label="العميل">
           <div className="client-name-cell">
             <span className="client-name-text">{client.name}</span>
@@ -538,10 +588,61 @@ export default function ClientsPage() {
   const showToast = useCallback((message, type = "success") => {
     clearTimeout(toastTimerRef.current);
     setToast({ message, type });
+    playToastSound(type);
     toastTimerRef.current = setTimeout(() => setToast(null), 4500);
   }, []);
   const todayDateText = getTodayInputDate();
   const debouncedSearch = useDebouncedValue(search, 350);
+
+  const [selectedClientIds, setSelectedClientIds] = useState(new Set());
+  const toggleClientSelection = useCallback((id) => {
+    setSelectedClientIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleBulkOutcome = async (outcome) => {
+    if (selectedClientIds.size === 0) return;
+    
+    let noteText = "";
+    if (isRepresentative) {
+      noteText = window.prompt(`أدخل ملاحظة للعملاء المحددين (${selectedClientIds.size} عميل) - اختياري:`);
+      if (noteText === null) return;
+    }
+
+    const idsToProcess = Array.from(selectedClientIds);
+    setSelectedClientIds(new Set()); // مسح التحديد فوراً
+
+    // --- Optimistic Update ---
+    setData(prev => ({
+      ...prev,
+      items: prev.items.filter(item => !idsToProcess.includes(item.id)),
+      total: Math.max(0, prev.total - idsToProcess.length)
+    }));
+
+    const outcomeLabels = {
+      ACTIVE: "تم التعامل",
+      NO_ANSWER: "لم يرد",
+      REJECTED: "كانسل"
+    };
+    const outcomeTypes = {
+      ACTIVE: "success",
+      NO_ANSWER: "warning",
+      REJECTED: "danger"
+    };
+    const type = outcomeTypes[outcome] || "success";
+    showToast(`✅ تم بنجاح معالجة ${idsToProcess.length} عملاء كـ «${outcomeLabels[outcome]}»`, type);
+
+    try {
+      await Promise.all(idsToProcess.map(id => clientsApi.handle(id, { outcome, note: noteText || undefined })));
+    } catch (err) {
+      showToast("❌ حدث خطأ أثناء معالجة بعض العملاء", "error");
+      loadClients();
+    }
+  };
 
   useEffect(() => {
     try {
@@ -1148,9 +1249,10 @@ export default function ClientsPage() {
       total: Math.max(0, prev.total - 1)
     }));
 
+    showToast(`✅ تم اعتماد إجراء العميل «${client.name}» بنجاح`);
+
     try {
       await clientsApi.approve(client.id);
-      showToast(`✅ تم اعتماد إجراء العميل «${client.name}» بنجاح`);
     } catch (err) {
       // في حالة الفشل، أظهر الخطأ وأعد تحميل القائمة لتصحيح البيانات
       showToast(err.message || "تعذر اعتماد الزيارة", "error");
@@ -1168,9 +1270,10 @@ export default function ClientsPage() {
       total: Math.max(0, prev.total - 1)
     }));
 
+    showToast(`↩️ تم رد إجراء العميل «${client.name}» للحالة النشطة`, "warning");
+
     try {
       await clientsApi.reject(client.id);
-      showToast(`↩️ تم رد إجراء العميل «${client.name}» للحالة النشطة`);
     } catch (err) {
       showToast(err.message || "تعذر رفض الزيارة", "error");
       loadClients();
@@ -1206,6 +1309,15 @@ export default function ClientsPage() {
       NO_ANSWER: "📞 تم تسجيل «لم يرد» للعميل",
       REJECTED: "❌ تم تسجيل «كانسل» للعميل"
     };
+    const outcomeTypes = {
+      ACTIVE: "success",
+      NO_ANSWER: "warning",
+      REJECTED: "danger"
+    };
+    
+    const label = outcomeLabels[outcome] || "✅ تم تنفيذ الإجراء";
+    const suffix = isRepresentative ? " — في انتظار اعتماد الإدارة" : "";
+    showToast(`${label}: «${client.name}»${suffix}`, outcomeTypes[outcome] || "success");
 
     try {
       // إرسال الطلب في الخلفية
@@ -1213,10 +1325,6 @@ export default function ClientsPage() {
         outcome,
         note: noteText || undefined
       });
-
-      const label = outcomeLabels[outcome] || "✅ تم تنفيذ الإجراء";
-      const suffix = isRepresentative ? " — في انتظار اعتماد الإدارة" : "";
-      showToast(`${label}: «${client.name}»${suffix}`);
     } catch (err) {
       showToast(err.message || "تعذر تحديث حالة العميل", "error");
       loadClients();
@@ -1601,7 +1709,7 @@ export default function ClientsPage() {
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 9999,
-            background: toast.type === "error" ? "#7f1d1d" : "#064e3b",
+            background: toast.type === "error" || toast.type === "danger" ? "#991b1b" : toast.type === "warning" ? "#b45309" : toast.type === "info" ? "#1e40af" : "#064e3b",
             color: "#fff",
             padding: "14px 24px",
             borderRadius: "14px",
@@ -1609,17 +1717,24 @@ export default function ClientsPage() {
             fontSize: "1rem",
             fontWeight: "700",
             lineHeight: "1.5",
+            width: "auto",
+            minWidth: "300px",
             maxWidth: "90vw",
-            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
             animation: "toastSlideIn 0.3s ease",
             direction: "rtl"
           }}
         >
-          {toast.message}
+          <span style={{ flex: 1, textAlign: "right", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
+            {toast.message.replace("...", "")}
+          </span>
           <button
             type="button"
             onClick={() => setToast(null)}
-            style={{ background: "none", border: "none", color: "#fff", marginRight: "12px", cursor: "pointer", fontSize: "1.1rem", opacity: 0.7 }}
+            style={{ flexShrink: 0, background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem", opacity: 0.8, padding: 0 }}
           >✕</button>
         </div>
       )}
@@ -2003,6 +2118,7 @@ export default function ClientsPage() {
                       <table className="mobile-table clients-table">
                         <thead>
                           <tr>
+                            <th className="col-checkbox" style={{ width: "40px" }}></th>
                             <th className="col-name">العميل</th>
                             <th className="col-phone">الهاتف</th>
                             <th className="col-address">العنوان</th>
@@ -2024,6 +2140,8 @@ export default function ClientsPage() {
                             onRejectVisit={handleRejectVisit}
                             isRepresentative={isRepresentative}
                             isAdmin={isAdmin}
+                            selectedClientIds={selectedClientIds}
+                            onToggleClientSelection={toggleClientSelection}
                           />
                         </tbody>
                       </table>
@@ -2037,6 +2155,36 @@ export default function ClientsPage() {
 
         <Pagination page={page} totalPages={totalRegionPages} onChange={setPage} />
       </section>
+
+      {/* شريط الإجراءات الجماعية */}
+      {selectedClientIds.size > 0 && (
+        <div style={{
+          position: "fixed",
+          bottom: "20px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "#1e293b",
+          color: "#fff",
+          padding: "12px 24px",
+          borderRadius: "50px",
+          boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          zIndex: 9999,
+          direction: "rtl"
+        }}>
+          <span style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
+            تم تحديد ({selectedClientIds.size}) عميل
+          </span>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button type="button" onClick={() => handleBulkOutcome("ACTIVE")} className="primary-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px" }}>تم التعامل</button>
+            <button type="button" onClick={() => handleBulkOutcome("NO_ANSWER")} className="secondary-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px" }}>لم يرد</button>
+            <button type="button" onClick={() => handleBulkOutcome("REJECTED")} className="danger-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px" }}>كانسل</button>
+            <button type="button" onClick={() => setSelectedClientIds(new Set())} className="ghost-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px", color: "#ccc" }}>إلغاء التحديد</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
