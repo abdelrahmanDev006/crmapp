@@ -227,13 +227,7 @@ async function listClientsByRegionPage(filters, user) {
     pageRegionIds.map((rid) =>
       prisma.client.findMany({
         where: { ...where, regionId: rid },
-        select: {
-          id: true, name: true, phone: true, status: true,
-          nextVisitDate: true, visitType: true, noAnswerCount: true,
-          customVisitIntervalDays: true, pendingOutcome: true,
-          locationUrl: true, updatedAt: true, regionId: true,
-          region: { select: { id: true, code: true, name: true } }
-        },
+        include: clientWithRelations,
         orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }],
         take: MAX_CLIENTS_PER_REGION
       })
