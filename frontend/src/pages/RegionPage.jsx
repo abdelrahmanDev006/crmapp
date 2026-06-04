@@ -54,34 +54,7 @@ export default function RegionPage() {
     }
   }, [clientsData.totalPages, loading, page]);
 
-  async function handleWholeRegion() {
-    const confirmed = window.confirm("هل تريد تأكيد التعامل مع المنطقة بالكامل؟");
-    if (!confirmed) return;
 
-    setBulkLoading(true);
-    setError("");
-    setInfoMessage("");
-
-    try {
-      const response = await regionsApi.handleAll(id, {});
-      const updatedCount = Number(response.data?.item?.updatedCount || 0);
-      const skippedRejectedCount = Number(response.data?.item?.skippedRejectedCount || 0);
-
-      if (skippedRejectedCount > 0) {
-        setInfoMessage(
-          `تم تحديث ${updatedCount} عميل. تم تخطي ${skippedRejectedCount} عميل في قائمة الكانسل.`
-        );
-      } else {
-        setInfoMessage(`تم تحديث ${updatedCount} عميل في المنطقة.`);
-      }
-
-      await loadRegion();
-    } catch (err) {
-      setError(err.message || "تعذر تنفيذ العملية");
-    } finally {
-      setBulkLoading(false);
-    }
-  }
 
   return (
     <section className="panel">
@@ -96,9 +69,6 @@ export default function RegionPage() {
                 العملاء: {region?.clientsCount || 0} | المندوبون: {region?.representativesCount || 0}
               </p>
             </div>
-            <button type="button" className="primary-btn" disabled={bulkLoading} onClick={handleWholeRegion}>
-              {bulkLoading ? "جاري التنفيذ..." : "تم التعامل مع المنطقة بالكامل"}
-            </button>
           </div>
 
           <div className="filters-row">
