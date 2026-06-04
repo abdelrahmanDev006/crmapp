@@ -180,7 +180,7 @@ async function listClientsByRegionPage(filters, user) {
   const regionPage = Math.max(1, Number(filters.regionPage) || 1);
   const regionPageSize = Math.min(Math.max(1, Number(filters.regionPageSize) || 3), 10);
   // حد أقصى صارم لعدد العملاء لكل منطقة — يمنع إرجاع آلاف السجلات دفعة واحدة
-  const MAX_CLIENTS_PER_REGION = 50;
+  const MAX_CLIENTS_PER_REGION = 200;
   const where = buildClientWhere(filters, user);
 
   // Step 1: الحصول على المناطق اللي فيها عملاء مطابقين للفلتر (query خفيف جداً)
