@@ -231,7 +231,7 @@ async function listClientsByRegionPage(filters, user) {
           id: true, name: true, phone: true, status: true,
           nextVisitDate: true, visitType: true, noAnswerCount: true,
           customVisitIntervalDays: true, pendingOutcome: true,
-          location: true, updatedAt: true, regionId: true,
+          locationUrl: true, updatedAt: true, regionId: true,
           region: { select: { id: true, code: true, name: true } }
         },
         orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }],
