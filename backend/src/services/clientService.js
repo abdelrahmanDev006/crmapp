@@ -180,7 +180,7 @@ async function listClientsByRegionPage(filters, user) {
   const regionPage = Math.max(1, Number(filters.regionPage) || 1);
   const regionPageSize = Math.min(Math.max(1, Number(filters.regionPageSize) || 3), 10);
   // حد أقصى صارم لعدد العملاء لكل منطقة — يمنع إرجاع آلاف السجلات دفعة واحدة
-  const MAX_CLIENTS_PER_REGION = 200;
+  const MAX_CLIENTS_PER_REGION = 50;
   const where = buildClientWhere(filters, user);
 
   // Step 1: الحصول على المناطق اللي فيها عملاء مطابقين للفلتر (query خفيف جداً)
@@ -227,7 +227,13 @@ async function listClientsByRegionPage(filters, user) {
     pageRegionIds.map((rid) =>
       prisma.client.findMany({
         where: { ...where, regionId: rid },
-        include: clientWithRelations,
+        select: {
+          id: true, name: true, phone: true, status: true,
+          nextVisitDate: true, visitType: true, noAnswerCount: true,
+          customVisitIntervalDays: true, pendingOutcome: true,
+          location: true, updatedAt: true, regionId: true,
+          region: { select: { id: true, code: true, name: true } }
+        },
         orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }],
         take: MAX_CLIENTS_PER_REGION
       })

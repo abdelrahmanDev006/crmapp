@@ -1036,7 +1036,8 @@ export default function ClientsPage() {
 
   useEffect(() => {
     loadOverdueCount();
-  }, [loadOverdueCount, actionState.clientId]); // Reload count when an action finishes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadOverdueCount, data.items.length]); // Reload count only when client list changes
 
 
   useEffect(() => {
