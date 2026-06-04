@@ -1035,7 +1035,10 @@ export default function ClientsPage() {
   }, [isAdmin]);
 
   useEffect(() => {
-    loadOverdueCount();
+    const timer = setTimeout(() => {
+      loadOverdueCount();
+    }, 1000);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadOverdueCount, data.items.length]); // Reload count only when client list changes
 
