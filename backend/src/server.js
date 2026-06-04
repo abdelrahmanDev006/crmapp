@@ -17,8 +17,9 @@ async function start() {
   // Setting Node's timeout HIGHER than the proxy's prevents the proxy
   // from sending requests on connections Node has already closed.
   // This eliminates the "- -" (no response) entries in Railway logs.
-  server.keepAliveTimeout = 65000;  // 65 seconds
-  server.headersTimeout   = 66000;  // must be > keepAliveTimeout
+  server.keepAliveTimeout = 120000; // 120 seconds (Railway safe limit)
+  server.headersTimeout   = 121000;
+  server.setTimeout(120000);
 }
 
 async function shutdown(reason, error) {

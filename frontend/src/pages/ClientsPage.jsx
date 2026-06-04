@@ -1149,7 +1149,7 @@ export default function ClientsPage() {
       }));
       showToast(`✅ تم اعتماد إجراء العميل «${client.name}» بنجاح`);
     } catch (err) {
-      setError(err.message || "تعذر اعتماد الزيارة");
+      showToast(err.message || "تعذر اعتماد الزيارة", "error");
     } finally {
       setActionState({ clientId: null, outcome: null });
     }
@@ -1169,7 +1169,7 @@ export default function ClientsPage() {
       }));
       showToast(`↩️ تم رد إجراء العميل «${client.name}» للحالة النشطة`);
     } catch (err) {
-      setError(err.message || "تعذر رفض الزيارة");
+      showToast(err.message || "تعذر رفض الزيارة", "error");
     } finally {
       setActionState({ clientId: null, outcome: null });
     }
@@ -1216,7 +1216,7 @@ export default function ClientsPage() {
       const suffix = isRepresentative ? " — في انتظار اعتماد الإدارة" : "";
       showToast(`${label}: «${client.name}»${suffix}`);
     } catch (err) {
-      setError(err.message || "تعذر تحديث حالة العميل");
+      showToast(err.message || "تعذر تحديث حالة العميل", "error");
     } finally {
       setActionState({ clientId: null, outcome: null });
     }
