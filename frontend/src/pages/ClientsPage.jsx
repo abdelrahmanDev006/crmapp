@@ -815,6 +815,44 @@ export default function ClientsPage() {
     }
   }, [expandedRegionIds, regionRepresentatives]);
 
+  const handleCopyRegionPhones = async (group) => {
+    const uniquePhones = [...new Set(group.clients.map(c => String(c.phone || "").trim()).filter(Boolean))];
+    if (uniquePhones.length === 0) {
+      showToast("لا توجد أرقام متاحة للنسخ في هذه المنطقة.", "warning");
+      return;
+    }
+
+    const textToCopy = uniquePhones.join("\n");
+    let copied = false;
+
+    if (navigator?.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        copied = true;
+      } catch (err) {}
+    }
+    
+    if (!copied) {
+      try {
+        const helper = document.createElement("textarea");
+        helper.value = textToCopy;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        document.body.appendChild(helper);
+        helper.select();
+        copied = document.execCommand("copy");
+        document.body.removeChild(helper);
+      } catch (err) {}
+    }
+
+    if (copied) {
+      showToast(`تم نسخ ${uniquePhones.length} رقم بنجاح.`, "success");
+    } else {
+      showToast("تعذر نسخ الأرقام. حاول مرة أخرى.", "error");
+    }
+  };
+
   const handlePrintRegion = (group) => {
     const printWindow = window.open("", "_blank");
     const todayStr = new Date().toLocaleDateString("ar-EG");
@@ -2060,6 +2098,15 @@ export default function ClientsPage() {
                       )}
                     </div>
                     <div className="clients-region-group-actions">
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        style={{ marginLeft: "10px", background: "#f0f0f0", color: "#333" }}
+                        onClick={() => handleCopyRegionPhones(group)}
+                        title="نسخ أرقام عملاء المنطقة المفتوحة حالياً"
+                      >
+                        📋 نسخ الأرقام
+                      </button>
                       {isAdmin && (
                         <button
                           type="button"
