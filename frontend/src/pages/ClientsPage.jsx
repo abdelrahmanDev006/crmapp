@@ -830,17 +830,20 @@ export default function ClientsPage() {
 
     const clientRows = group.clients
       .map(
-        (c, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td style="font-weight:600">${c.name}</td>
-          <td style="direction:ltr;text-align:center">${c.phone}</td>
-          <td>${c.address}</td>
-          <td>${c.products || "-"}</td>
-          <td style="text-align:center;font-weight:600">${c.price || "-"}</td>
-          <td class="col-notes"></td>
-        </tr>
-      `
+        (c, i) => {
+          const noteText = c.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "";
+          return `
+            <tr>
+              <td>${i + 1}</td>
+              <td style="font-weight:600">${c.name}</td>
+              <td style="direction:ltr;text-align:center">${c.phone}</td>
+              <td>${c.address}</td>
+              <td>${c.products || "-"}</td>
+              <td style="text-align:center;font-weight:600">${c.price || "-"}</td>
+              <td class="col-notes">${noteText}</td>
+            </tr>
+          `;
+        }
       )
       .join("");
 
