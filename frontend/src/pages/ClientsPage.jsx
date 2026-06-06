@@ -823,11 +823,6 @@ export default function ClientsPage() {
     const representativeNames = regionRepresentatives[group.regionId] || [];
     const representativeText = representativeNames.length > 0 ? representativeNames.join(" - ") : "غير محدد";
 
-    const totalPrice = group.clients.reduce((sum, c) => {
-      const priceVal = parseFloat(String(c.price || "0").replace(/[^0-9.]/g, ""));
-      return sum + (isNaN(priceVal) ? 0 : priceVal);
-    }, 0);
-
     const clientRows = group.clients
       .map(
         (c, i) => {
@@ -839,7 +834,6 @@ export default function ClientsPage() {
               <td style="direction:ltr;text-align:center">${c.phone}</td>
               <td>${c.address}</td>
               <td>${c.products || "-"}</td>
-              <td style="text-align:center;font-weight:600">${c.price || "-"}</td>
               <td class="col-notes">${noteText}</td>
             </tr>
           `;
@@ -949,27 +943,7 @@ export default function ClientsPage() {
             .col-notes {
               min-width: 100px;
             }
-            .total-bar {
-              margin-top: 18px;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              background: linear-gradient(135deg, #f0f9f9 0%, #e4f3f2 100%);
-              border: 1px solid #c5dedd;
-              border-radius: 10px;
-              padding: 14px 22px;
-            }
-            .total-bar .total-label {
-              font-size: 14px;
-              font-weight: 700;
-              color: #2a4a50;
-            }
-            .total-bar .total-amount {
-              font-size: 22px;
-              font-weight: 900;
-              color: #0e7a78;
-              direction: ltr;
-            }
+
             .report-footer {
               margin-top: 28px;
               padding-top: 14px;
@@ -991,7 +965,6 @@ export default function ClientsPage() {
               tbody tr:nth-child(even) { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
               .meta-grid { margin-bottom: 16px; }
               .meta-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              .total-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             }
           </style>
         </head>
@@ -1014,10 +987,6 @@ export default function ClientsPage() {
               <div class="meta-label">عدد العملاء</div>
               <div class="meta-value">${group.clients.length}</div>
             </div>
-            <div class="meta-card">
-              <div class="meta-label">إجمالي المبالغ</div>
-              <div class="meta-value">${totalPrice.toLocaleString("ar-EG")}</div>
-            </div>
           </div>
 
           <table>
@@ -1028,7 +997,6 @@ export default function ClientsPage() {
                 <th>الهاتف</th>
                 <th>العنوان</th>
                 <th>المنتجات</th>
-                <th>السعر</th>
                 <th class="col-notes">ملاحظات</th>
               </tr>
             </thead>
@@ -1036,11 +1004,6 @@ export default function ClientsPage() {
               ${clientRows}
             </tbody>
           </table>
-
-          <div class="total-bar">
-            <span class="total-label">إجمالي المبالغ لجميع العملاء</span>
-            <span class="total-amount">${totalPrice.toLocaleString("ar-EG")} جنيه</span>
-          </div>
 
           <div class="report-footer">
             <span>طُبع بتاريخ: ${new Date().toLocaleString("ar-EG")}</span>
