@@ -834,6 +834,7 @@ export default function ClientsPage() {
               <td style="direction:ltr;text-align:center">${c.phone}</td>
               <td>${c.address}</td>
               <td>${c.products || "-"}</td>
+              <td style="text-align:center;font-weight:600">${c.price || "-"}</td>
               <td class="col-notes">${noteText}</td>
             </tr>
           `;
@@ -997,6 +998,7 @@ export default function ClientsPage() {
                 <th>الهاتف</th>
                 <th>العنوان</th>
                 <th>المنتجات</th>
+                <th>السعر</th>
                 <th class="col-notes">ملاحظات</th>
               </tr>
             </thead>
