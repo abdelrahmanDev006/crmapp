@@ -415,6 +415,8 @@ function ClientTableRows({
 
         <td className="col-visit-type" data-label="الزيارة">
           <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
+          {client.nextVisitDate && <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "4px" }}>الأساسي: {client.nextVisitDate.slice(0, 10)}</div>}
+          {client.exceptionalNextVisitDate && <div style={{ fontSize: "0.8rem", color: "#d9534f", fontWeight: "bold" }}>الشكوى: {client.exceptionalNextVisitDate.slice(0, 10)}</div>}
         </td>
         <td className="col-notes details-note-text" data-label="الملاحظات" title={client.exceptionalReason || (client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "")}>
           {client.isExceptional && <span style={{ color: "#d9534f", fontWeight: "bold", display: "block" }}>⚠️ استثنائي</span>}
@@ -755,9 +757,16 @@ export default function ClientsPage({ forceTab }) {
   const matchesCurrentFilters = useCallback((client) => {
     // 1. Check Date Filter
     if (selectedDueDate) {
-      const clientDateStr = client.nextVisitDate ? client.nextVisitDate.slice(0, 10) : "";
-      if (clientDateStr !== selectedDueDate) {
-        return false;
+      if (activeTab === "EXCEPTIONAL") {
+        const clientDateStr = client.exceptionalNextVisitDate ? client.exceptionalNextVisitDate.slice(0, 10) : "";
+        if (clientDateStr !== selectedDueDate) {
+          return false;
+        }
+      } else {
+        const clientDateStr = client.nextVisitDate ? client.nextVisitDate.slice(0, 10) : "";
+        if (clientDateStr !== selectedDueDate) {
+          return false;
+        }
       }
     }
 

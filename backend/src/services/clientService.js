@@ -139,7 +139,12 @@ function buildClientWhere(filters, user) {
 
   if (filters.exceptionalOnly === true || filters.exceptionalOnly === "true") {
     where.isExceptional = true;
-    delete where.nextVisitDate; // Ignore date filters for exceptional clients
+    
+    // Map the date filter to exceptionalNextVisitDate if it exists
+    if (where.nextVisitDate) {
+      where.exceptionalNextVisitDate = where.nextVisitDate;
+      delete where.nextVisitDate;
+    }
     
     if (!filters.status) {
       where.status = {
@@ -671,11 +676,19 @@ async function toggleExceptionalStatus(clientId, user, isExceptional, exceptiona
 
   enforceClientScope(user, existing);
 
+  let nextExceptionalDate = null;
+  if (isExceptional) {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + 7);
+    nextExceptionalDate = normalizeToWorkDate(d);
+  }
+
   const updatedClient = await prisma.client.update({
     where: { id: clientId },
     data: {
       isExceptional,
-      exceptionalReason: isExceptional ? exceptionalReason : null
+      exceptionalReason: isExceptional ? exceptionalReason : null,
+      exceptionalNextVisitDate: nextExceptionalDate
     },
     include: clientWithRelations
   });
