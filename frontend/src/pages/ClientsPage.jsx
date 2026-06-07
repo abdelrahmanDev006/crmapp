@@ -601,6 +601,10 @@ export default function ClientsPage({ forceTab }) {
   useEffect(() => {
     if (forceTab) {
       setActiveTab(forceTab);
+    } else {
+      const saved = localStorage.getItem("crm_activeTab");
+      const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL"];
+      setActiveTab(validTabs.includes(saved) ? saved : "ALL");
     }
   }, [forceTab]);
   const [page, setPage] = useState(() => {
