@@ -959,12 +959,12 @@ export default function ClientsPage() {
               color: #fff;
               font-weight: 700;
               font-size: 11px;
-              padding: 10px 8px;
+              padding: 12px 10px;
               text-align: right;
               letter-spacing: 0.2px;
             }
             td {
-              padding: 12px 6px;
+              padding: 20px 10px;
               font-size: 11.5px;
               text-align: right;
               border-bottom: 1px solid #e8f0ef;
