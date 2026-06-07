@@ -448,7 +448,7 @@ function ClientTableRows({
                   <Link
                     className="secondary-btn"
                     to={`/clients/${client.id}?edit=true`}
-                    style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0", background: "#f0f0f0", color: "#333", border: "1px solid #ccc" }}
+                    style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", background: "#f0f0f0", color: "#333", border: "1px solid #ccc", flex: "1 0 auto", textAlign: "center", whiteSpace: "nowrap" }}
                   >
                     تعديل
                   </Link>
@@ -461,7 +461,7 @@ function ClientTableRows({
                 <button
                   type="button"
                   className="primary-btn"
-                  style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
+                  style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
                   disabled={isActionLoadingForClient}
                   onClick={() => onHandleClient(client, "ACTIVE")}
                 >
@@ -470,7 +470,7 @@ function ClientTableRows({
                 <button
                   type="button"
                   className="secondary-btn"
-                  style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
+                  style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
                   disabled={isActionLoadingForClient}
                   onClick={() => onHandleClient(client, "NO_ANSWER")}
                 >
@@ -480,7 +480,7 @@ function ClientTableRows({
                   <button
                     type="button"
                     className="danger-btn"
-                    style={{ gridColumn: "span 2", padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
+                    style={{ gridColumn: "span 2", padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
                     disabled={isActionLoadingForClient}
                     onClick={() => onHandleClient(client, "REJECTED")}
                   >
