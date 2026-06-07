@@ -965,10 +965,11 @@ export default function ClientsPage() {
             }
             td {
               padding: 25px 5px;
-              font-size: 10.5px;
+              font-size: 11px;
+              font-weight: 700;
               text-align: right;
-              border-bottom: 1px solid #e8f0ef;
-              color: #2a3d45;
+              border-bottom: 2px solid #a0b6b5;
+              color: #1a2a32;
             }
             tr {
               page-break-inside: avoid;
