@@ -964,7 +964,7 @@ export default function ClientsPage() {
               letter-spacing: 0.2px;
             }
             td {
-              padding: 45px 5px;
+              padding: 25px 5px;
               font-size: 10.5px;
               text-align: right;
               border-bottom: 1px solid #e8f0ef;
