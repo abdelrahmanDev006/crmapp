@@ -958,14 +958,14 @@ export default function ClientsPage() {
             th {
               color: #fff;
               font-weight: 700;
-              font-size: 11px;
-              padding: 12px 10px;
+              font-size: 10px;
+              padding: 10px 5px;
               text-align: right;
               letter-spacing: 0.2px;
             }
             td {
-              padding: 16px 8px;
-              font-size: 11.5px;
+              padding: 20px 5px;
+              font-size: 10.5px;
               text-align: right;
               border-bottom: 1px solid #e8f0ef;
               color: #2a3d45;
@@ -984,9 +984,6 @@ export default function ClientsPage() {
             }
             .col-address {
               width: 35%;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
             }
             .col-notes {
               min-width: 100px;
@@ -1007,7 +1004,7 @@ export default function ClientsPage() {
               color: #0e7a78;
             }
             @media print {
-              @page { size: landscape; margin: 10mm; }
+              @page { margin: 10mm; }
               body { padding: 0; }
               .report-header { border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
               thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
