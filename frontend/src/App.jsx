@@ -51,6 +51,7 @@ export default function App() {
             }
           />
           <Route path="clients" element={<ClientsPage />} />
+          <Route path="exceptional-clients" element={<ClientsPage forceTab="EXCEPTIONAL" />} />
           <Route path="regions/:id" element={<RegionPage />} />
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
             <Route path="clients/:id" element={<ClientDetailsPage />} />

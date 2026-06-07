@@ -568,7 +568,7 @@ function ClientTableRows({
   });
 }
 
-export default function ClientsPage() {
+export default function ClientsPage({ forceTab }) {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
   const isRepresentative = user?.role === "REPRESENTATIVE";
@@ -587,10 +587,17 @@ export default function ClientsPage() {
     }
   });
   const [activeTab, setActiveTab] = useState(() => {
+    if (forceTab) return forceTab;
     const saved = localStorage.getItem("crm_activeTab");
     const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL", "EXCEPTIONAL"];
     return validTabs.includes(saved) ? saved : "ALL";
   });
+
+  useEffect(() => {
+    if (forceTab) {
+      setActiveTab(forceTab);
+    }
+  }, [forceTab]);
   const [page, setPage] = useState(() => {
     const saved = Number(localStorage.getItem("crm_page"));
     return Number.isInteger(saved) && saved > 0 ? saved : 1;
@@ -2022,20 +2029,23 @@ export default function ClientsPage() {
           </form>
         )}
 
-        {isAdmin && (
+        {isAdmin && !forceTab && (
           <div className="tabs-row">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                className={activeTab === tab.key ? "tab-btn active" : "tab-btn"}
-                onClick={() => onTabChange(tab.key)}
-                disabled={hasDueDateFilter}
-                title={hasDueDateFilter ? "ألغِ فلتر التاريخ أولًا لاستخدام التبويبات" : tab.label}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {tabs.map((tab) => {
+              if (tab.key === "EXCEPTIONAL") return null; // Hide from regular tabs since it has its own page now
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={activeTab === tab.key ? "tab-btn active" : "tab-btn"}
+                  onClick={() => onTabChange(tab.key)}
+                  disabled={hasDueDateFilter}
+                  title={hasDueDateFilter ? "ألغِ فلتر التاريخ أولًا لاستخدام التبويبات" : tab.label}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         )}
 

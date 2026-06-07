@@ -32,6 +32,9 @@ export default function AppShell() {
           <NavLink to="/clients" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")} onClick={handleFreshNav}>
             العملاء
           </NavLink>
+          <NavLink to="/exceptional-clients" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")} onClick={handleFreshNav}>
+            عملاء الشكاوى
+          </NavLink>
           {isAdmin && (
             <>
               <NavLink to="/users" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")} onClick={handleFreshNav}>
