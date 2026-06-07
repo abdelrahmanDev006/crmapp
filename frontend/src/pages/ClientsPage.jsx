@@ -980,7 +980,7 @@ export default function ClientsPage() {
               font-weight: 700;
             }
             .col-address {
-              white-space: nowrap;
+              width: 40%;
             }
             .col-notes {
               min-width: 100px;
@@ -1037,7 +1037,7 @@ export default function ClientsPage() {
                 <th>#</th>
                 <th>اسم العميل</th>
                 <th>الهاتف</th>
-                <th>العنوان</th>
+                <th class="col-address">العنوان</th>
                 <th>المنتجات</th>
                 <th>السعر</th>
                 <th class="col-notes">ملاحظات</th>
