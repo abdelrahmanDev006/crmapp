@@ -2106,24 +2106,26 @@ export default function ClientsPage() {
                       )}
                     </div>
                     <div className="clients-region-group-actions">
-                      <button
-                        type="button"
-                        className="secondary-btn"
-                        style={{ marginLeft: "10px", background: "#f0f0f0", color: "#333" }}
-                        onClick={() => handleCopyRegionPhones(group)}
-                        title="نسخ أرقام عملاء المنطقة المفتوحة حالياً"
-                      >
-                        📋 نسخ الأرقام
-                      </button>
                       {isAdmin && (
-                        <button
-                          type="button"
-                          className="secondary-btn"
-                          style={{ marginLeft: "10px", background: "#f0f0f0", color: "#333" }}
-                          onClick={() => handlePrintRegion(group)}
-                        >
-                          🖨️ طباعة
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="secondary-btn"
+                            style={{ marginLeft: "10px", background: "#f0f0f0", color: "#333" }}
+                            onClick={() => handleCopyRegionPhones(group)}
+                            title="نسخ أرقام عملاء المنطقة المفتوحة حالياً"
+                          >
+                            📋 نسخ الأرقام
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-btn"
+                            style={{ marginLeft: "10px", background: "#f0f0f0", color: "#333" }}
+                            onClick={() => handlePrintRegion(group)}
+                          >
+                            🖨️ طباعة
+                          </button>
+                        </>
                       )}
                       <strong>{group.clients.length} عميل</strong>
                       <button

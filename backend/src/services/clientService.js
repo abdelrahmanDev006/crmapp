@@ -160,7 +160,7 @@ async function listClients(filters, user) {
     prisma.client.findMany({
       where,
       include: clientWithRelations,
-      orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }],
+      orderBy: [{ address: "asc" }, { nextVisitDate: "asc" }, { id: "asc" }],
       skip: (page - 1) * pageSize,
       take: pageSize
     }),
@@ -228,7 +228,7 @@ async function listClientsByRegionPage(filters, user) {
       prisma.client.findMany({
         where: { ...where, regionId: rid },
         include: clientWithRelations,
-        orderBy: [{ nextVisitDate: "asc" }, { id: "asc" }],
+        orderBy: [{ address: "asc" }, { nextVisitDate: "asc" }, { id: "asc" }],
         take: MAX_CLIENTS_PER_REGION
       })
     )
