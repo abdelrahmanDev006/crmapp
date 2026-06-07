@@ -122,6 +122,14 @@ const clientQuerySchema = z.object({
       if (value === undefined) return undefined;
       if (typeof value === "boolean") return value;
       return value.toLowerCase() === "true";
+    }),
+  exceptionalOnly: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return undefined;
+      if (typeof value === "boolean") return value;
+      return value.toLowerCase() === "true";
     })
 });
 
@@ -135,6 +143,14 @@ const regionPageClientQuerySchema = z.object({
   dueDate: dateInputSchema.optional(),
   createdDate: dateInputSchema.optional(),
   dueOnly: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return undefined;
+      if (typeof value === "boolean") return value;
+      return value.toLowerCase() === "true";
+    }),
+  exceptionalOnly: z
     .union([z.boolean(), z.string()])
     .optional()
     .transform((value) => {
