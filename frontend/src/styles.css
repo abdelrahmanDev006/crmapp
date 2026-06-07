@@ -414,7 +414,9 @@ td {
 
 .table-wrapper table.clients-table th.col-price,
 .table-wrapper table.clients-table td.col-price {
-  width: 5%;
+  width: 6%;
+  min-width: 65px;
+  white-space: nowrap;
 }
 
 .table-wrapper table.clients-table th.col-visit-type,
