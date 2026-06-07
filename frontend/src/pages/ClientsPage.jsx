@@ -357,7 +357,8 @@ function ClientTableRows({
   isAdmin,
   selectedClientIds,
   onToggleClientSelection,
-  onToggleExceptional
+  onToggleExceptional,
+  isExceptionalTab
 }) {
   return clients.map((client) => {
     const clientIsNew = isNewClient(client.createdAt, todayDateText);
@@ -468,7 +469,7 @@ function ClientTableRows({
 
             {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && client.visitType !== "ONE_TIME" && (
               <>
-                {client.isExceptional ? (
+                {isExceptionalTab ? (
                   <button
                     type="button"
                     className="primary-btn"
@@ -489,20 +490,22 @@ function ClientTableRows({
                     >
                       {isHandleActionLoading ? "..." : "تم التعامل"}
                     </button>
-                    <button
-                      type="button"
-                      className="ghost-btn"
-                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap", border: "1px solid #f39c12", color: "#f39c12" }}
-                      disabled={isActionLoadingForClient}
-                      onClick={() => {
-                        const reason = window.prompt("سبب المشكلة (الشكوى):");
-                        if (reason !== null) {
-                          onToggleExceptional(client.id, true, reason);
-                        }
-                      }}
-                    >
-                      ⚠️ استثنائي
-                    </button>
+                    {!client.isExceptional && (
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap", border: "1px solid #f39c12", color: "#f39c12" }}
+                        disabled={isActionLoadingForClient}
+                        onClick={() => {
+                          const reason = window.prompt("سبب المشكلة (الشكوى):");
+                          if (reason !== null) {
+                            onToggleExceptional(client.id, true, reason);
+                          }
+                        }}
+                      >
+                        ⚠️ استثنائي
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="secondary-btn"
@@ -591,7 +594,7 @@ export default function ClientsPage({ forceTab }) {
   const [activeTab, setActiveTab] = useState(() => {
     if (forceTab) return forceTab;
     const saved = localStorage.getItem("crm_activeTab");
-    const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL", "EXCEPTIONAL"];
+    const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL"];
     return validTabs.includes(saved) ? saved : "ALL";
   });
 
@@ -698,7 +701,9 @@ export default function ClientsPage({ forceTab }) {
   }, [expandedRegionIds]);
 
   useEffect(() => {
-    localStorage.setItem("crm_activeTab", activeTab);
+    if (activeTab !== "EXCEPTIONAL") {
+      localStorage.setItem("crm_activeTab", activeTab);
+    }
     localStorage.setItem("crm_page", page.toString());
     localStorage.setItem("crm_search", search);
     localStorage.setItem("crm_selectedDueDate", selectedDueDate);
@@ -2250,6 +2255,7 @@ export default function ClientsPage({ forceTab }) {
                             selectedClientIds={selectedClientIds}
                             onToggleClientSelection={toggleClientSelection}
                             onToggleExceptional={handleToggleExceptional}
+                            isExceptionalTab={activeTab === "EXCEPTIONAL"}
                           />
                         </tbody>
                       </table>
