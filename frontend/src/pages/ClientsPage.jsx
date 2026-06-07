@@ -870,7 +870,7 @@ export default function ClientsPage() {
               <td>${i + 1}</td>
               <td style="font-weight:600">${c.name}</td>
               <td style="direction:ltr;text-align:center">${c.phone}</td>
-              <td>${c.address}</td>
+              <td class="col-address">${c.address}</td>
               <td>${c.products || "-"}</td>
               <td style="text-align:center;font-weight:600">${c.price || "-"}</td>
               <td class="col-notes">${noteText}</td>
@@ -958,14 +958,14 @@ export default function ClientsPage() {
             th {
               color: #fff;
               font-weight: 700;
-              font-size: 12px;
-              padding: 12px 10px;
+              font-size: 11px;
+              padding: 10px 8px;
               text-align: right;
               letter-spacing: 0.2px;
             }
             td {
-              padding: 20px 10px;
-              font-size: 13px;
+              padding: 12px 6px;
+              font-size: 11.5px;
               text-align: right;
               border-bottom: 1px solid #e8f0ef;
               color: #2a3d45;
@@ -975,9 +975,12 @@ export default function ClientsPage() {
             }
             td:first-child, th:first-child {
               text-align: center;
-              width: 40px;
+              width: 30px;
               color: #7a9a9e;
               font-weight: 700;
+            }
+            .col-address {
+              white-space: nowrap;
             }
             .col-notes {
               min-width: 100px;
