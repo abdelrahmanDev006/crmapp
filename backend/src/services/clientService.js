@@ -137,6 +137,17 @@ function buildClientWhere(filters, user) {
     }
   }
 
+  if (filters.exceptionalOnly === true || filters.exceptionalOnly === "true") {
+    where.isExceptional = true;
+    delete where.nextVisitDate; // Ignore date filters for exceptional clients
+    
+    if (!filters.status) {
+      where.status = {
+        not: ClientStatuses.REJECTED
+      };
+    }
+  }
+
   return where;
 }
 
@@ -649,5 +660,25 @@ module.exports = {
   handleRegionClients,
   enforceClientScope,
   approveClientVisit,
-  rejectClientVisit
+  rejectClientVisit,
+  toggleExceptionalStatus
 };
+
+async function toggleExceptionalStatus(clientId, user, isExceptional, exceptionalReason) {
+  const existing = await prisma.client.findUnique({
+    where: { id: clientId }
+  });
+
+  enforceClientScope(user, existing);
+
+  const updatedClient = await prisma.client.update({
+    where: { id: clientId },
+    data: {
+      isExceptional,
+      exceptionalReason: isExceptional ? exceptionalReason : null
+    },
+    include: clientWithRelations
+  });
+
+  return updatedClient;
+}

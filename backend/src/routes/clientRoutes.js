@@ -8,7 +8,8 @@ const {
   regionPageClientQuerySchema,
   createClientSchema,
   updateClientSchema,
-  handleClientSchema
+  handleClientSchema,
+  toggleExceptionalSchema
 } = require("../schemas/clientSchemas");
 const {
   listClientRecords,
@@ -20,7 +21,8 @@ const {
   deleteClient,
   approveVisit,
   rejectVisit,
-  getOverdueSummary
+  getOverdueSummary,
+  toggleExceptional
 } = require("../controllers/clientController");
 
 const router = express.Router();
@@ -37,5 +39,6 @@ router.post("/:id/reject", authorizeRoles(Roles.ADMIN), validate(idParamSchema, 
 router.post("/", authorizeRoles(Roles.ADMIN), validate(createClientSchema), createClient);
 router.patch("/:id", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), validate(updateClientSchema), updateClient);
 router.delete("/:id", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), deleteClient);
+router.put("/:id/exceptional", validate(idParamSchema, "params"), validate(toggleExceptionalSchema), toggleExceptional);
 
 module.exports = router;

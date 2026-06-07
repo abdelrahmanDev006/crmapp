@@ -431,7 +431,8 @@ td {
 
 .table-wrapper table.clients-table th.col-actions,
 .table-wrapper table.clients-table td.col-actions {
-  width: 15%;
+  width: 20%;
+  white-space: nowrap;
 }
 
 .table-wrapper table.clients-table th,

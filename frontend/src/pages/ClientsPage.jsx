@@ -17,7 +17,8 @@ const tabs = [
   { key: "ONE_TIME", label: "عملاء البيع" },
   { key: "NO_ANSWER", label: "لم يرد" },
   { key: "REJECTED", label: "كانسل" },
-  { key: "PENDING", label: "في انتظار الاعتماد" }
+  { key: "PENDING", label: "في انتظار الاعتماد" },
+  { key: "EXCEPTIONAL", label: "استثنائي" }
 ];
 
 const playToastSound = (type) => {
@@ -80,6 +81,10 @@ const NEW_CLIENT_WINDOW_DAYS = 7;
 function mapTabToFilters(tab) {
   if (tab === "ALL") {
     return {};
+  }
+
+  if (tab === "EXCEPTIONAL") {
+    return { exceptionalOnly: true };
   }
 
   if (tab === "NO_ANSWER") {
@@ -351,7 +356,8 @@ function ClientTableRows({
   isRepresentative,
   isAdmin,
   selectedClientIds,
-  onToggleClientSelection
+  onToggleClientSelection,
+  onToggleExceptional
 }) {
   return clients.map((client) => {
     const clientIsNew = isNewClient(client.createdAt, todayDateText);
@@ -410,8 +416,10 @@ function ClientTableRows({
         <td className="col-visit-type" data-label="الزيارة">
           <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
         </td>
-        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || ""}>
-          {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "-"}
+        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.exceptionalReason || (client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "")}>
+          {client.isExceptional && <span style={{ color: "#d9534f", fontWeight: "bold", display: "block" }}>⚠️ استثنائي</span>}
+          {client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.8rem", marginBottom: "4px" }}>السبب: {client.exceptionalReason}</div> : null}
+          {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || (client.exceptionalReason ? "" : "-")}
         </td>
 
         <td className="actions-cell col-actions" data-label="الإجراءات">
@@ -458,34 +466,62 @@ function ClientTableRows({
 
             {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && client.visitType !== "ONE_TIME" && (
               <>
-                <button
-                  type="button"
-                  className="primary-btn"
-                  style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
-                  disabled={isActionLoadingForClient}
-                  onClick={() => onHandleClient(client, "ACTIVE")}
-                >
-                  {isHandleActionLoading ? "..." : "تم التعامل"}
-                </button>
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
-                  disabled={isActionLoadingForClient}
-                  onClick={() => onHandleClient(client, "NO_ANSWER")}
-                >
-                  {isNoAnswerActionLoading ? "..." : "لم يرد"}
-                </button>
-                {isRepresentative && (
+                {client.isExceptional ? (
                   <button
                     type="button"
-                    className="danger-btn"
-                    style={{ gridColumn: "span 2", padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
+                    className="primary-btn"
+                    style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap", background: "#20c997" }}
                     disabled={isActionLoadingForClient}
-                    onClick={() => onHandleClient(client, "REJECTED")}
+                    onClick={() => onToggleExceptional(client.id, false)}
                   >
-                    {isCancelActionLoading ? "..." : "كانسل"}
+                    تم حل الشكوى
                   </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="primary-btn"
+                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => onHandleClient(client, "ACTIVE")}
+                    >
+                      {isHandleActionLoading ? "..." : "تم التعامل"}
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap", border: "1px solid #f39c12", color: "#f39c12" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => {
+                        const reason = window.prompt("سبب المشكلة (الشكوى):");
+                        if (reason !== null) {
+                          onToggleExceptional(client.id, true, reason);
+                        }
+                      }}
+                    >
+                      ⚠️ استثنائي
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => onHandleClient(client, "NO_ANSWER")}
+                    >
+                      {isNoAnswerActionLoading ? "..." : "لم يرد"}
+                    </button>
+                    {isRepresentative && (
+                      <button
+                        type="button"
+                        className="danger-btn"
+                        style={{ gridColumn: "span 2", padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
+                        disabled={isActionLoadingForClient}
+                        onClick={() => onHandleClient(client, "REJECTED")}
+                      >
+                        {isCancelActionLoading ? "..." : "كانسل"}
+                      </button>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -552,7 +588,7 @@ export default function ClientsPage() {
   });
   const [activeTab, setActiveTab] = useState(() => {
     const saved = localStorage.getItem("crm_activeTab");
-    const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL"];
+    const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL", "EXCEPTIONAL"];
     return validTabs.includes(saved) ? saved : "ALL";
   });
   const [page, setPage] = useState(() => {
@@ -719,6 +755,10 @@ export default function ClientsPage() {
     }
 
     // 2. Check Tab Filter
+    if (activeTab === "EXCEPTIONAL") {
+      return client.isExceptional === true;
+    }
+
     if (activeTab === "ALL") {
       if (!selectedDueDate && client.status === "REJECTED") return false;
       return true;
@@ -1344,6 +1384,29 @@ export default function ClientsPage() {
       loadClients();
     }
   }
+
+  const handleToggleExceptional = useCallback(async (clientId, isExceptional, reason = null) => {
+    try {
+      await clientsApi.toggleExceptional(clientId, { isExceptional, exceptionalReason: reason });
+      showToast(isExceptional ? "تم إضافة العميل للاستثنائيين" : "تم حل الشكوى", "success");
+      
+      // Optimistic update
+      setData(prev => ({
+        ...prev,
+        items: prev.items.map(item => 
+          item.id === clientId 
+            ? { ...item, isExceptional, exceptionalReason: isExceptional ? reason : null }
+            : item
+        ).filter(item => {
+          if (!isExceptional && activeTab === "EXCEPTIONAL") return false;
+          return true;
+        })
+      }));
+    } catch (err) {
+      showToast(err.message || "تعذر تحديث حالة العميل الاستثنائي", "error");
+      loadClients();
+    }
+  }, [activeTab, loadClients, showToast]);
 
   async function handleCreateClient(event) {
     event.preventDefault();
@@ -2167,6 +2230,7 @@ export default function ClientsPage() {
                             isAdmin={isAdmin}
                             selectedClientIds={selectedClientIds}
                             onToggleClientSelection={toggleClientSelection}
+                            onToggleExceptional={handleToggleExceptional}
                           />
                         </tbody>
                       </table>

@@ -10,7 +10,8 @@ const {
   getClientById,
   handleClientVisit,
   approveClientVisit,
-  rejectClientVisit
+  rejectClientVisit,
+  toggleExceptionalStatus
 } = require("../services/clientService");
 const { logActivity } = require("../services/logService");
 
@@ -468,6 +469,16 @@ const rejectVisit = asyncHandler(async (req, res) => {
   });
 });
 
+const toggleExceptional = asyncHandler(async (req, res) => {
+  const { isExceptional, exceptionalReason } = req.body;
+  const client = await toggleExceptionalStatus(Number(req.params.id), req.user, isExceptional, exceptionalReason);
+  
+  res.json({
+    message: isExceptional ? "تم إضافة العميل للاستثنائيين" : "تم حل مشكلة العميل الاستثنائي",
+    item: client
+  });
+});
+
 module.exports = {
   listClientRecords,
   listClientsByRegion,
@@ -478,5 +489,6 @@ module.exports = {
   deleteClient,
   approveVisit,
   rejectVisit,
-  getOverdueSummary
+  getOverdueSummary,
+  toggleExceptional
 };

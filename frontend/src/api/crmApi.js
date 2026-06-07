@@ -29,7 +29,8 @@ export const clientsApi = {
   approve: (id) => http.post(`/clients/${id}/approve`),
   reject: (id) => http.post(`/clients/${id}/reject`),
   remove: (id) => http.delete(`/clients/${id}`),
-  getOverdueSummary: () => http.get("/clients/overdue-summary")
+  getOverdueSummary: () => http.get("/clients/overdue-summary"),
+  toggleExceptional: (id, payload) => http.put(`/clients/${id}/exceptional`, payload)
 };
 
 export const usersApi = {

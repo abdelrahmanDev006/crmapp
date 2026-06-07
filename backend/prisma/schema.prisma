@@ -61,6 +61,8 @@ model Client {
   pendingOutcome                 ClientStatus?
   pendingVisitType               VisitType?
   deletedAt                      DateTime?
+  isExceptional                  Boolean        @default(false)
+  exceptionalReason              String?
   isDeleted                      Boolean        @default(false)
   createdBy                      User?          @relation("ClientCreator", fields: [createdById], references: [id])
   region                         Region         @relation(fields: [regionId], references: [id])

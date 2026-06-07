@@ -157,11 +157,17 @@ const bulkRegionHandleSchema = z.object({
   note: z.string().max(500).optional()
 });
 
+const toggleExceptionalSchema = z.object({
+  isExceptional: z.boolean(),
+  exceptionalReason: z.string().max(500).optional().nullable()
+});
+
 module.exports = {
   createClientSchema,
   updateClientSchema,
   clientQuerySchema,
   regionPageClientQuerySchema,
   handleClientSchema,
-  bulkRegionHandleSchema
+  bulkRegionHandleSchema,
+  toggleExceptionalSchema
 };
