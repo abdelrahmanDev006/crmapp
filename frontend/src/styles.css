@@ -820,12 +820,7 @@ tbody tr:hover {
 }
 
 .actions-cell {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
   min-width: 0;
-  justify-content: flex-start;
-  align-items: center;
   white-space: normal;
 }
 
@@ -835,14 +830,10 @@ tbody tr:hover {
 
 .table-wrapper table.clients-table td.actions-cell {
   direction: rtl;
-  display: flex;
-  flex-wrap: wrap;
   width: 100%;
-  gap: 6px;
-  align-items: stretch;
   white-space: normal;
-  justify-content: flex-start;
   overflow: visible;
+  vertical-align: middle;
 }
 
 .table-wrapper table.clients-table td.actions-cell>* {
