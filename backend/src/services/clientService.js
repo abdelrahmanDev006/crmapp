@@ -678,9 +678,9 @@ async function toggleExceptionalStatus(clientId, user, isExceptional, exceptiona
 
   let nextExceptionalDate = null;
   if (isExceptional) {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() + 7);
-    nextExceptionalDate = normalizeToWorkDate(d);
+    const baseDate = existing.nextVisitDate ? new Date(existing.nextVisitDate) : new Date();
+    baseDate.setUTCDate(baseDate.getUTCDate() + 7);
+    nextExceptionalDate = normalizeToWorkDate(baseDate);
   }
 
   const updatedClient = await prisma.client.update({
