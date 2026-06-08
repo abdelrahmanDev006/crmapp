@@ -317,8 +317,10 @@ function resolveNextVisitDate({
   referenceDate
 }) {
   // ONE_TIME: no next visit after ANY handling (ACTIVE, REJECTED, NO_ANSWER)
+  // Since nextVisitDate is now required in the DB, we set it to a far future date 
+  // so it never appears in due or overdue lists.
   if (visitType === VisitTypes.ONE_TIME) {
-    return null;
+    return new Date("2099-12-31T23:59:59.999Z");
   }
 
   if (outcome === ClientStatuses.REJECTED) {
