@@ -42,12 +42,7 @@ function chunkArray(items, chunkSize) {
 }
 
 function buildClientWhere(filters, user) {
-  const where = { 
-    isDeleted: false,
-    NOT: [
-      { isExceptional: true, status: ClientStatuses.REJECTED }
-    ]
-  }; // استبعاد العملاء المحذوفين والشكاوى المنتهية
+  const where = { isDeleted: false }; // استبعاد العملاء المحذوفين
 
   if (user.role === Roles.REPRESENTATIVE) {
     const userRegionIds = user.regions?.map(r => r.id) || [];
@@ -459,8 +454,11 @@ async function handleClientVisit({
   }
 
   return prisma.$transaction(async (tx) => {
-    const finalStatus = isExceptional ? ClientStatuses.REJECTED : newStatus;
-    const finalNextVisitDate = isExceptional ? new Date() : newNextVisitDate;
+    // If it's a clone (complaint) and an action is taken, convert it to a ONE_TIME visit 
+    // so it moves to the Sales Clients filter, keep it ACTIVE, and set date to 2099.
+    const finalStatus = isExceptional ? ClientStatuses.ACTIVE : newStatus;
+    const finalNextVisitDate = isExceptional ? new Date("2099-12-31T23:59:59.999Z") : newNextVisitDate;
+    const finalVisitType = isExceptional ? VisitTypes.ONE_TIME : nextVisitType;
 
     const updatedClient = await tx.client.update({
       where: { id: existingClient.id },
@@ -468,7 +466,7 @@ async function handleClientVisit({
         status: finalStatus,
         noAnswerCount: newNoAnswerCount,
         nextVisitDate: finalNextVisitDate,
-        visitType: nextVisitType,
+        visitType: finalVisitType,
         customVisitIntervalDays: nextCustomVisitIntervalDays,
         pendingOutcome: null,
         pendingNote: null,

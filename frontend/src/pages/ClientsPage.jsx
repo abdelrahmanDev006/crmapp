@@ -741,10 +741,6 @@ export default function ClientsPage({ forceTab }) {
   }, [loading, data.items]);
 
   const matchesCurrentFilters = useCallback((client) => {
-    // 0. Always hide archived/handled exceptional clients
-    if (client.isExceptional && client.status === "REJECTED") {
-      return false;
-    }
 
     // 1. Check Date Filter
     if (selectedDueDate) {
