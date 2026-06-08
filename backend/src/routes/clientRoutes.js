@@ -39,6 +39,6 @@ router.post("/:id/reject", authorizeRoles(Roles.ADMIN), validate(idParamSchema, 
 router.post("/", authorizeRoles(Roles.ADMIN), validate(createClientSchema), createClient);
 router.patch("/:id", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), validate(updateClientSchema), updateClient);
 router.delete("/:id", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), deleteClient);
-router.put("/:id/exceptional", validate(idParamSchema, "params"), validate(toggleExceptionalSchema), toggleExceptional);
+router.put("/:id/exceptional", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), validate(toggleExceptionalSchema), toggleExceptional);
 
 module.exports = router;

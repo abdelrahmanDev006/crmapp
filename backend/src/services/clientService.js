@@ -562,7 +562,8 @@ async function handleRegionClients({ regionId, user, note }) {
 
   const clients = await prisma.client.findMany({
     where: {
-      regionId: Number(regionId)
+      regionId: Number(regionId),
+      isDeleted: false
     },
     select: {
       id: true,
@@ -582,7 +583,9 @@ async function handleRegionClients({ regionId, user, note }) {
     };
   }
 
-  const eligibleClients = clients.filter((client) => client.status !== ClientStatuses.REJECTED);
+  const eligibleClients = clients.filter((client) => 
+    client.status !== ClientStatuses.REJECTED && client.visitType !== VisitTypes.ONE_TIME
+  );
 
   const skippedRejectedCount = clients.length - eligibleClients.length;
 
