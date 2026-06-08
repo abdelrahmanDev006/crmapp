@@ -17,8 +17,7 @@ const tabs = [
   { key: "ONE_TIME", label: "عملاء البيع" },
   { key: "NO_ANSWER", label: "لم يرد" },
   { key: "REJECTED", label: "كانسل" },
-  { key: "PENDING", label: "في انتظار الاعتماد" },
-  { key: "EXCEPTIONAL", label: "شكوى" }
+  { key: "PENDING", label: "في انتظار الاعتماد" }
 ];
 
 const playToastSound = (type) => {
@@ -81,10 +80,6 @@ const NEW_CLIENT_WINDOW_DAYS = 7;
 function mapTabToFilters(tab) {
   if (tab === "ALL") {
     return {};
-  }
-
-  if (tab === "EXCEPTIONAL") {
-    return { exceptionalOnly: true };
   }
 
   if (tab === "NO_ANSWER") {
@@ -358,8 +353,7 @@ function ClientTableRows({
   selectedClientIds,
   onToggleClientSelection,
   onToggleExceptional,
-  onRequestExceptional,
-  isExceptionalTab
+  onRequestExceptional
 }) {
   return clients.map((client) => {
     const clientIsNew = isNewClient(client.createdAt, todayDateText);
@@ -384,7 +378,10 @@ function ClientTableRows({
         </td>
         <td className="col-name" data-label="العميل">
           <div className="client-name-cell">
-            <span className="client-name-text">{client.name}</span>
+            <span className="client-name-text">
+              {client.name}
+              {client.isExceptional && <span style={{ color: "#d9534f", fontWeight: "bold", fontSize: "0.85em", marginRight: "6px" }}>(شكوى ⚠️)</span>}
+            </span>
             <span className={clientIsNew ? "client-freshness-pill client-freshness-new" : "client-freshness-pill client-freshness-old"}>
               {clientIsNew ? "جديد" : "قديم"}
             </span>
@@ -417,27 +414,10 @@ function ClientTableRows({
 
         <td className="col-visit-type" data-label="الزيارة">
           <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
-          {isExceptionalTab && (
-            <>
-              {client.nextVisitDate && (
-                <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "6px", whiteSpace: "nowrap" }}>
-                  <span style={{ display: "block", fontSize: "0.75rem" }}>الميعاد الأصلي:</span>
-                  <strong style={{ display: "block", direction: "ltr" }}>{formatDate(client.nextVisitDate)}</strong>
-                </div>
-              )}
-              {client.exceptionalNextVisitDate && (
-                <div style={{ fontSize: "0.8rem", color: "#d9534f", marginTop: "4px", whiteSpace: "nowrap", padding: "2px", background: "#fdf2f2", borderRadius: "4px" }}>
-                  <span style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold" }}>ميعاد الشكوى:</span>
-                  <strong style={{ display: "block", direction: "ltr" }}>{formatDate(client.exceptionalNextVisitDate)}</strong>
-                </div>
-              )}
-            </>
-          )}
         </td>
-        <td className="col-notes details-note-text" data-label="الملاحظات" title={isExceptionalTab ? (client.exceptionalReason || "") : (client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "")}>
-          {isExceptionalTab && client.isExceptional && <span style={{ color: "#d9534f", fontWeight: "bold", display: "block" }}>⚠️ شكوى</span>}
-          {isExceptionalTab && client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.8rem", marginBottom: "4px" }}>السبب: {client.exceptionalReason}</div> : null}
-          {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || ((isExceptionalTab && client.exceptionalReason) ? "" : "-")}
+        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || ""}>
+          {client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.85rem", marginBottom: "4px" }}>{client.exceptionalReason}</div> : null}
+          {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || (!client.exceptionalReason ? "-" : null)}
         </td>
 
         <td className="actions-cell col-actions" data-label="الإجراءات">
@@ -459,7 +439,7 @@ function ClientTableRows({
 
             {!isRepresentative && (
               <>
-                {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && !isExceptionalTab && (
+                {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && (
                   <button
                     type="button"
                     className="danger-btn"
@@ -484,61 +464,47 @@ function ClientTableRows({
 
             {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && (
               <>
-                {isExceptionalTab ? (
+                <button
+                  type="button"
+                  className="primary-btn"
+                  style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
+                  disabled={isActionLoadingForClient}
+                  onClick={() => onHandleClient(client, "ACTIVE")}
+                >
+                  {isHandleActionLoading ? "..." : "تم التعامل"}
+                </button>
+                {!client.isExceptional && (
                   <button
                     type="button"
-                    className="primary-btn"
-                    style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap", background: "#20c997" }}
+                    className="ghost-btn"
+                    style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap", border: "1px solid #f39c12", color: "#f39c12" }}
                     disabled={isActionLoadingForClient}
-                    onClick={() => onToggleExceptional(client.id, false)}
+                    onClick={() => {
+                      onRequestExceptional(client);
+                    }}
                   >
-                    تم حل الشكوى
+                    ⚠️ شكوى
                   </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="primary-btn"
-                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
-                      disabled={isActionLoadingForClient}
-                      onClick={() => onHandleClient(client, "ACTIVE")}
-                    >
-                      {isHandleActionLoading ? "..." : "تم التعامل"}
-                    </button>
-                    {!client.isExceptional && (
-                      <button
-                        type="button"
-                        className="ghost-btn"
-                        style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap", border: "1px solid #f39c12", color: "#f39c12" }}
-                        disabled={isActionLoadingForClient}
-                        onClick={() => {
-                          onRequestExceptional(client);
-                        }}
-                      >
-                        ⚠️ شكوى
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
-                      disabled={isActionLoadingForClient}
-                      onClick={() => onHandleClient(client, "NO_ANSWER")}
-                    >
-                      {isNoAnswerActionLoading ? "..." : "لم يرد"}
-                    </button>
-                    {isRepresentative && (
-                      <button
-                        type="button"
-                        className="danger-btn"
-                        style={{ gridColumn: "span 2", padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
-                        disabled={isActionLoadingForClient}
-                        onClick={() => onHandleClient(client, "REJECTED")}
-                      >
-                        {isCancelActionLoading ? "..." : "كانسل"}
-                      </button>
-                    )}
-                  </>
+                )}
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
+                  disabled={isActionLoadingForClient}
+                  onClick={() => onHandleClient(client, "NO_ANSWER")}
+                >
+                  {isNoAnswerActionLoading ? "..." : "لم يرد"}
+                </button>
+                {isRepresentative && (
+                  <button
+                    type="button"
+                    className="danger-btn"
+                    style={{ gridColumn: "span 2", padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
+                    disabled={isActionLoadingForClient}
+                    onClick={() => onHandleClient(client, "REJECTED")}
+                  >
+                    {isCancelActionLoading ? "..." : "كانسل"}
+                  </button>
                 )}
               </>
             )}
@@ -718,9 +684,7 @@ export default function ClientsPage({ forceTab }) {
   }, [expandedRegionIds]);
 
   useEffect(() => {
-    if (activeTab !== "EXCEPTIONAL") {
-      localStorage.setItem("crm_activeTab", activeTab);
-    }
+    localStorage.setItem("crm_activeTab", activeTab);
     localStorage.setItem("crm_page", page.toString());
     localStorage.setItem("crm_search", search);
     localStorage.setItem("crm_selectedDueDate", selectedDueDate);
@@ -777,25 +741,20 @@ export default function ClientsPage({ forceTab }) {
   }, [loading, data.items]);
 
   const matchesCurrentFilters = useCallback((client) => {
+    // 0. Always hide archived/handled exceptional clients
+    if (client.isExceptional && client.status === "REJECTED") {
+      return false;
+    }
+
     // 1. Check Date Filter
     if (selectedDueDate) {
-      if (activeTab === "EXCEPTIONAL") {
-        const clientDateStr = client.exceptionalNextVisitDate ? client.exceptionalNextVisitDate.slice(0, 10) : "";
-        if (clientDateStr !== selectedDueDate) {
-          return false;
-        }
-      } else {
-        const clientDateStr = client.nextVisitDate ? client.nextVisitDate.slice(0, 10) : "";
-        if (clientDateStr !== selectedDueDate) {
-          return false;
-        }
+      const clientDateStr = client.nextVisitDate ? client.nextVisitDate.slice(0, 10) : "";
+      if (clientDateStr !== selectedDueDate) {
+        return false;
       }
     }
 
-    // 2. Check Tab Filter
-    if (activeTab === "EXCEPTIONAL") {
-      return client.isExceptional === true;
-    }
+
 
     if (activeTab === "ALL") {
       if (!selectedDueDate && client.status === "REJECTED") return false;
@@ -1423,23 +1382,12 @@ export default function ClientsPage({ forceTab }) {
     }
   }
 
-  const handleToggleExceptional = useCallback(async (clientId, isExceptional, reason = null, customDate = null) => {
+  const handleToggleExceptional = useCallback(async (clientId, isExceptional, reason = null, customDate = null, products = "", price = "") => {
     try {
-      await clientsApi.toggleExceptional(clientId, { isExceptional, exceptionalReason: reason, exceptionalNextVisitDate: customDate });
-      showToast(isExceptional ? "تم إضافة العميل لعملاء الشكاوى" : "تم حل الشكوى", "success");
+      await clientsApi.toggleExceptional(clientId, { isExceptional, exceptionalReason: reason, exceptionalNextVisitDate: customDate, products, price });
+      showToast(isExceptional ? "تم تسجيل الشكوى كنسخة مستقلة بنجاح" : "تم حل الشكوى", "success");
       
-      // Optimistic update
-      setData(prev => ({
-        ...prev,
-        items: prev.items.map(item => 
-          item.id === clientId 
-            ? { ...item, isExceptional, exceptionalReason: isExceptional ? reason : null }
-            : item
-        ).filter(item => {
-          if (!isExceptional && activeTab === "EXCEPTIONAL") return false;
-          return true;
-        })
-      }));
+      loadClients();
     } catch (err) {
       showToast(err.message || "تعذر تحديث حالة شكوى العميل", "error");
       loadClients();
@@ -2063,7 +2011,6 @@ export default function ClientsPage({ forceTab }) {
         {isAdmin && !forceTab && (
           <div className="tabs-row">
             {tabs.map((tab) => {
-              if (tab.key === "EXCEPTIONAL") return null; // Hide from regular tabs since it has its own page now
               return (
                 <button
                   key={tab.key}
@@ -2272,8 +2219,7 @@ export default function ClientsPage({ forceTab }) {
                             selectedClientIds={selectedClientIds}
                             onToggleClientSelection={toggleClientSelection}
                             onToggleExceptional={handleToggleExceptional}
-                            onRequestExceptional={(client) => setExceptionalModalData({ clientId: client.id, reason: "", date: "" })}
-                            isExceptionalTab={activeTab === "EXCEPTIONAL"}
+                            onRequestExceptional={(client) => setExceptionalModalData({ clientId: client.id, reason: "", date: "", products: client.products || "", price: client.price || "" })}
                           />
                         </tbody>
                       </table>
@@ -2321,22 +2267,48 @@ export default function ClientsPage({ forceTab }) {
       {/* نافذة تحديد الشكوى */}
       {exceptionalModalData && (
         <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', width: '100%', maxWidth: '400px', direction: 'rtl' }}>
-            <h3 style={{ margin: '0 0 16px 0', color: '#333' }}>إضافة العميل لقسم الشكاوى</h3>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', width: '100%', maxWidth: '400px', direction: 'rtl', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#333' }}>تسجيل شكوى جديدة</h3>
+            <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '16px' }}>
+              سيتم إنشاء نسخة منفصلة من هذا العميل لمعالجة الشكوى، ولن يتأثر ميعاد زيارته الأصلي.
+            </p>
+            
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>سبب المشكلة (الشكوى):</label>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>المنتجات:</label>
+              <textarea
+                value={exceptionalModalData.products}
+                onChange={(e) => setExceptionalModalData({ ...exceptionalModalData, products: e.target.value })}
+                className="inline-edit-input"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', minHeight: '60px' }}
+                placeholder="تعديل منتجات الشكوى..."
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>السعر:</label>
               <input
                 type="text"
+                value={exceptionalModalData.price}
+                onChange={(e) => setExceptionalModalData({ ...exceptionalModalData, price: e.target.value })}
+                className="inline-edit-input"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                placeholder="تعديل السعر..."
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>الملاحظات (خاصة بنسخة الشكوى):</label>
+              <textarea
                 value={exceptionalModalData.reason}
                 onChange={(e) => setExceptionalModalData({ ...exceptionalModalData, reason: e.target.value })}
                 className="inline-edit-input"
-                style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
-                placeholder="أدخل سبب الشكوى..."
-                autoFocus
+                style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', minHeight: '60px' }}
+                placeholder="أضف ملاحظة للعميل المستنسخ..."
               />
             </div>
+            
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>تاريخ حل الشكوى:</label>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>تاريخ حل الشكوى (ميعاد الزيارة):</label>
               <input
                 type="date"
                 value={exceptionalModalData.date}
@@ -2345,6 +2317,7 @@ export default function ClientsPage({ forceTab }) {
                 style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
               />
             </div>
+            
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button 
                 className="primary-btn"
@@ -2353,11 +2326,18 @@ export default function ClientsPage({ forceTab }) {
                     alert("يرجى تحديد تاريخ الشكوى");
                     return;
                   }
-                  handleToggleExceptional(exceptionalModalData.clientId, true, exceptionalModalData.reason, exceptionalModalData.date);
+                  handleToggleExceptional(
+                    exceptionalModalData.clientId, 
+                    true, 
+                    exceptionalModalData.reason, 
+                    exceptionalModalData.date,
+                    exceptionalModalData.products,
+                    exceptionalModalData.price
+                  );
                   setExceptionalModalData(null);
                 }}
               >
-                تأكيد وحفظ
+                تأكيد واستنساخ العميل
               </button>
               <button 
                 className="ghost-btn"

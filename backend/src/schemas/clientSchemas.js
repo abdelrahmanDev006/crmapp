@@ -176,7 +176,9 @@ const bulkRegionHandleSchema = z.object({
 const toggleExceptionalSchema = z.object({
   isExceptional: z.boolean(),
   exceptionalReason: z.string().max(500).optional().nullable(),
-  exceptionalNextVisitDate: dateInputSchema.optional().nullable()
+  exceptionalNextVisitDate: dateInputSchema.optional().nullable(),
+  products: z.string().trim().max(1000).optional(),
+  price: z.string().trim().max(120).optional()
 });
 
 module.exports = {

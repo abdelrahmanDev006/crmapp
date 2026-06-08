@@ -42,7 +42,12 @@ function chunkArray(items, chunkSize) {
 }
 
 function buildClientWhere(filters, user) {
-  const where = { isDeleted: false }; // استبعاد العملاء المحذوفين
+  const where = { 
+    isDeleted: false,
+    NOT: [
+      { isExceptional: true, status: ClientStatuses.REJECTED }
+    ]
+  }; // استبعاد العملاء المحذوفين والشكاوى المنتهية
 
   if (user.role === Roles.REPRESENTATIVE) {
     const userRegionIds = user.regions?.map(r => r.id) || [];
@@ -435,7 +440,9 @@ async function handleClientVisit({
   const generatedNote =
     [note, statusRecoveryNote, visitTypeChangeNote, customIntervalChangeNote].filter(Boolean).join(" | ") || null;
 
-  if (user.role === Roles.REPRESENTATIVE) {
+  const isExceptional = existingClient.isExceptional;
+
+  if (user.role === Roles.REPRESENTATIVE && !isExceptional) {
     return prisma.client.update({
       where: { id: existingClient.id },
       data: {
@@ -450,12 +457,15 @@ async function handleClientVisit({
   }
 
   return prisma.$transaction(async (tx) => {
+    const finalStatus = isExceptional ? ClientStatuses.REJECTED : newStatus;
+    const finalNextVisitDate = isExceptional ? new Date() : newNextVisitDate;
+
     const updatedClient = await tx.client.update({
       where: { id: existingClient.id },
       data: {
-        status: newStatus,
+        status: finalStatus,
         noAnswerCount: newNoAnswerCount,
-        nextVisitDate: newNextVisitDate,
+        nextVisitDate: finalNextVisitDate,
         visitType: nextVisitType,
         customVisitIntervalDays: nextCustomVisitIntervalDays,
         pendingOutcome: null,
@@ -474,7 +484,7 @@ async function handleClientVisit({
         newStatus: newStatus || ClientStatuses.ACTIVE,
         note: generatedNote,
         previousNextVisitDate,
-        newNextVisitDate,
+        newNextVisitDate: finalNextVisitDate,
         visitDate: new Date()
       }
     });
@@ -672,33 +682,57 @@ module.exports = {
   toggleExceptionalStatus
 };
 
-async function toggleExceptionalStatus(clientId, user, isExceptional, exceptionalReason, customDate) {
+async function toggleExceptionalStatus(clientId, user, isExceptional, exceptionalReason, customDate, products, price) {
   const existing = await prisma.client.findUnique({
     where: { id: clientId }
   });
 
   enforceClientScope(user, existing);
 
-  let nextExceptionalDate = null;
-  if (isExceptional) {
-    if (customDate) {
-      nextExceptionalDate = normalizeToWorkDate(new Date(customDate));
-    } else {
-      const baseDate = existing.nextVisitDate ? new Date(existing.nextVisitDate) : new Date();
-      baseDate.setUTCDate(baseDate.getUTCDate() + 7);
-      nextExceptionalDate = normalizeToWorkDate(baseDate);
-    }
+  // إذا كان إزالة للشكوى، نقوم بتحديث العميل الحالي (رغم أننا الآن نتعامل بنسخ منفصلة، نحتفظ بهذا للنسخ القديمة أو التراجع)
+  if (!isExceptional) {
+    const updatedClient = await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        isExceptional: false,
+        exceptionalReason: null,
+        exceptionalNextVisitDate: null
+      },
+      include: clientWithRelations
+    });
+    return updatedClient;
   }
 
-  const updatedClient = await prisma.client.update({
-    where: { id: clientId },
+  // إذا كان إضافة شكوى، نقوم باستنساخ العميل
+  let nextExceptionalDate = null;
+  if (customDate) {
+    nextExceptionalDate = normalizeToWorkDate(new Date(customDate));
+  } else {
+    const baseDate = new Date();
+    baseDate.setUTCDate(baseDate.getUTCDate() + 7);
+    nextExceptionalDate = normalizeToWorkDate(baseDate);
+  }
+
+  const clonedClient = await prisma.client.create({
     data: {
-      isExceptional,
-      exceptionalReason: isExceptional ? exceptionalReason : null,
+      name: existing.name,
+      phone: existing.phone,
+      address: existing.address,
+      regionId: existing.regionId,
+      visitType: existing.visitType,
+      customVisitIntervalDays: existing.customVisitIntervalDays,
+      status: ClientStatuses.ACTIVE,
+      nextVisitDate: nextExceptionalDate,
+      createdById: user.id,
+      locationUrl: existing.locationUrl,
+      products: products !== undefined ? products : existing.products,
+      price: price !== undefined ? price : existing.price,
+      isExceptional: true,
+      exceptionalReason: exceptionalReason || null,
       exceptionalNextVisitDate: nextExceptionalDate
     },
     include: clientWithRelations
   });
 
-  return updatedClient;
+  return clonedClient;
 }

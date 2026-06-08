@@ -470,11 +470,11 @@ const rejectVisit = asyncHandler(async (req, res) => {
 });
 
 const toggleExceptional = asyncHandler(async (req, res) => {
-  const { isExceptional, exceptionalReason, exceptionalNextVisitDate } = req.body;
-  const client = await toggleExceptionalStatus(Number(req.params.id), req.user, isExceptional, exceptionalReason, exceptionalNextVisitDate);
+  const { isExceptional, exceptionalReason, exceptionalNextVisitDate, products, price } = req.body;
+  const client = await toggleExceptionalStatus(Number(req.params.id), req.user, isExceptional, exceptionalReason, exceptionalNextVisitDate, products, price);
   
   res.json({
-    message: isExceptional ? "تم إضافة العميل للاستثنائيين" : "تم حل مشكلة العميل الاستثنائي",
+    message: isExceptional ? "تم تسجيل الشكوى كعميل مستقل" : "تم إلغاء حالة الشكوى",
     item: client
   });
 });
