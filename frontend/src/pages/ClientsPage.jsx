@@ -416,8 +416,18 @@ function ClientTableRows({
 
         <td className="col-visit-type" data-label="الزيارة">
           <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
-          {client.nextVisitDate && <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "4px" }}>الأساسي: {client.nextVisitDate.slice(0, 10)}</div>}
-          {client.exceptionalNextVisitDate && <div style={{ fontSize: "0.8rem", color: "#d9534f", fontWeight: "bold" }}>الشكوى: {client.exceptionalNextVisitDate.slice(0, 10)}</div>}
+          {client.nextVisitDate && (
+            <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "6px", whiteSpace: "nowrap" }}>
+              <span style={{ display: "block", fontSize: "0.75rem" }}>الميعاد الأصلي:</span>
+              <strong style={{ display: "block", direction: "ltr" }}>{client.nextVisitDate.slice(0, 10)}</strong>
+            </div>
+          )}
+          {client.exceptionalNextVisitDate && (
+            <div style={{ fontSize: "0.8rem", color: "#d9534f", marginTop: "4px", whiteSpace: "nowrap", padding: "2px", background: "#fdf2f2", borderRadius: "4px" }}>
+              <span style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold" }}>ميعاد الشكوى:</span>
+              <strong style={{ display: "block", direction: "ltr" }}>{client.exceptionalNextVisitDate.slice(0, 10)}</strong>
+            </div>
+          )}
         </td>
         <td className="col-notes details-note-text" data-label="الملاحظات" title={client.exceptionalReason || (client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "")}>
           {client.isExceptional && <span style={{ color: "#d9534f", fontWeight: "bold", display: "block" }}>⚠️ استثنائي</span>}
@@ -444,7 +454,7 @@ function ClientTableRows({
 
             {!isRepresentative && (
               <>
-                {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && client.visitType !== "ONE_TIME" && (
+                {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && client.visitType !== "ONE_TIME" && !isExceptionalTab && (
                   <button
                     type="button"
                     className="danger-btn"
