@@ -1297,12 +1297,28 @@ export default function ClientsPage({ forceTab }) {
   async function handleApproveVisit(client) {
     setError("");
 
-    // --- Optimistic Update: أزل العميل فوراً لضمان سرعة الاستخدام ---
-    setData(prev => ({
-      ...prev,
-      items: prev.items.filter(item => item.id !== client.id),
-      total: Math.max(0, prev.total - 1)
-    }));
+    // --- Optimistic Update: قم بتحديث العميل بدلاً من حذفه إذا كان لا يزال يطابق الفلاتر ---
+    setData(prev => {
+      const updatedClient = {
+        ...client,
+        status: client.pendingOutcome || "ACTIVE",
+        pendingOutcome: null,
+        nextVisitDate: client.visitType === "ONE_TIME" ? "2099-12-31T23:59:59.999Z" : client.nextVisitDate
+      };
+
+      if (matchesCurrentFilters(updatedClient)) {
+        return {
+          ...prev,
+          items: prev.items.map(item => item.id === client.id ? updatedClient : item)
+        };
+      } else {
+        return {
+          ...prev,
+          items: prev.items.filter(item => item.id !== client.id),
+          total: Math.max(0, prev.total - 1)
+        };
+      }
+    });
 
     showToast(`✅ تم اعتماد إجراء العميل «${client.name}» بنجاح`);
 
@@ -1318,12 +1334,27 @@ export default function ClientsPage({ forceTab }) {
   async function handleRejectVisit(client) {
     setError("");
 
-    // --- Optimistic Update: أزل العميل فوراً لضمان سرعة الاستخدام ---
-    setData(prev => ({
-      ...prev,
-      items: prev.items.filter(item => item.id !== client.id),
-      total: Math.max(0, prev.total - 1)
-    }));
+    // --- Optimistic Update: قم بتحديث العميل بدلاً من حذفه إذا كان لا يزال يطابق الفلاتر ---
+    setData(prev => {
+      const updatedClient = {
+        ...client,
+        status: "ACTIVE",
+        pendingOutcome: null
+      };
+
+      if (matchesCurrentFilters(updatedClient)) {
+        return {
+          ...prev,
+          items: prev.items.map(item => item.id === client.id ? updatedClient : item)
+        };
+      } else {
+        return {
+          ...prev,
+          items: prev.items.filter(item => item.id !== client.id),
+          total: Math.max(0, prev.total - 1)
+        };
+      }
+    });
 
     showToast(`↩️ تم رد إجراء العميل «${client.name}» للحالة النشطة`, "warning");
 
@@ -1352,12 +1383,29 @@ export default function ClientsPage({ forceTab }) {
 
     setError("");
 
-    // --- Optimistic Update: أزل العميل فوراً لضمان سرعة الاستخدام ---
-    setData(prev => ({
-      ...prev,
-      items: prev.items.filter(item => item.id !== client.id),
-      total: Math.max(0, prev.total - 1)
-    }));
+    // --- Optimistic Update: قم بتحديث العميل بدلاً من حذفه إذا كان لا يزال يطابق الفلاتر ---
+    setData(prev => {
+      const isRepresentativePending = isRepresentative;
+      const updatedClient = {
+        ...client,
+        status: isRepresentativePending ? "PENDING_APPROVAL" : outcome,
+        pendingOutcome: isRepresentativePending ? outcome : null,
+        nextVisitDate: (!isRepresentativePending && client.visitType === "ONE_TIME") ? "2099-12-31T23:59:59.999Z" : client.nextVisitDate
+      };
+
+      if (matchesCurrentFilters(updatedClient)) {
+        return {
+          ...prev,
+          items: prev.items.map(item => item.id === client.id ? updatedClient : item)
+        };
+      } else {
+        return {
+          ...prev,
+          items: prev.items.filter(item => item.id !== client.id),
+          total: Math.max(0, prev.total - 1)
+        };
+      }
+    });
 
     const outcomeLabels = {
       ACTIVE: "✅ تم تسجيل «تم التعامل» مع العميل",
