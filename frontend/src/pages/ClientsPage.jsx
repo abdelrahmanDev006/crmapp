@@ -18,7 +18,7 @@ const tabs = [
   { key: "NO_ANSWER", label: "لم يرد" },
   { key: "REJECTED", label: "كانسل" },
   { key: "PENDING", label: "في انتظار الاعتماد" },
-  { key: "EXCEPTIONAL", label: "استثنائي" }
+  { key: "EXCEPTIONAL", label: "شكوى" }
 ];
 
 const playToastSound = (type) => {
@@ -435,7 +435,7 @@ function ClientTableRows({
           )}
         </td>
         <td className="col-notes details-note-text" data-label="الملاحظات" title={client.exceptionalReason || (client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "")}>
-          {client.isExceptional && <span style={{ color: "#d9534f", fontWeight: "bold", display: "block" }}>⚠️ استثنائي</span>}
+          {client.isExceptional && <span style={{ color: "#d9534f", fontWeight: "bold", display: "block" }}>⚠️ شكوى</span>}
           {client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.8rem", marginBottom: "4px" }}>السبب: {client.exceptionalReason}</div> : null}
           {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || (client.exceptionalReason ? "" : "-")}
         </td>
@@ -515,7 +515,7 @@ function ClientTableRows({
                           onRequestExceptional(client);
                         }}
                       >
-                        ⚠️ استثنائي
+                        ⚠️ شكوى
                       </button>
                     )}
                     <button
@@ -1426,7 +1426,7 @@ export default function ClientsPage({ forceTab }) {
   const handleToggleExceptional = useCallback(async (clientId, isExceptional, reason = null, customDate = null) => {
     try {
       await clientsApi.toggleExceptional(clientId, { isExceptional, exceptionalReason: reason, exceptionalNextVisitDate: customDate });
-      showToast(isExceptional ? "تم إضافة العميل للاستثنائيين" : "تم حل الشكوى", "success");
+      showToast(isExceptional ? "تم إضافة العميل لعملاء الشكاوى" : "تم حل الشكوى", "success");
       
       // Optimistic update
       setData(prev => ({
@@ -1441,7 +1441,7 @@ export default function ClientsPage({ forceTab }) {
         })
       }));
     } catch (err) {
-      showToast(err.message || "تعذر تحديث حالة العميل الاستثنائي", "error");
+      showToast(err.message || "تعذر تحديث حالة شكوى العميل", "error");
       loadClients();
     }
   }, [activeTab, loadClients, showToast]);
@@ -2322,7 +2322,7 @@ export default function ClientsPage({ forceTab }) {
       {exceptionalModalData && (
         <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', width: '100%', maxWidth: '400px', direction: 'rtl' }}>
-            <h3 style={{ margin: '0 0 16px 0', color: '#333' }}>إضافة عميل استثنائي (شكوى)</h3>
+            <h3 style={{ margin: '0 0 16px 0', color: '#333' }}>إضافة العميل لقسم الشكاوى</h3>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>سبب المشكلة (الشكوى):</label>
               <input
