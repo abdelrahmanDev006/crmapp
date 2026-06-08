@@ -501,16 +501,7 @@ async function handleClientVisit({
       }
     });
 
-    // ONE_TIME: soft-delete client after successful sale
-    if (nextVisitType === VisitTypes.ONE_TIME && newStatus === ClientStatuses.ACTIVE) {
-      await tx.client.update({
-        where: { id: existingClient.id },
-        data: {
-          isDeleted: true,
-          deletedAt: new Date()
-        }
-      });
-    }
+    // ONE_TIME clients: keep in system after handling (no longer soft-deleted)
 
     return updatedClient;
   });
