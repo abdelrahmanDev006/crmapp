@@ -459,7 +459,7 @@ function ClientTableRows({
 
             {!isRepresentative && (
               <>
-                {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && client.visitType !== "ONE_TIME" && !isExceptionalTab && (
+                {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && !isExceptionalTab && (
                   <button
                     type="button"
                     className="danger-btn"
@@ -482,7 +482,7 @@ function ClientTableRows({
               </>
             )}
 
-            {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && client.visitType !== "ONE_TIME" && (
+            {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && (
               <>
                 {isExceptionalTab ? (
                   <button

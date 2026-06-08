@@ -311,6 +311,11 @@ function resolveNextVisitDate({
   advanceDays,
   referenceDate
 }) {
+  // ONE_TIME: no next visit after ANY handling (ACTIVE, REJECTED, NO_ANSWER)
+  if (visitType === VisitTypes.ONE_TIME) {
+    return null;
+  }
+
   if (outcome === ClientStatuses.REJECTED) {
     // Keep canceled clients available for manual reactivation/offers at any time.
     return referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
@@ -324,11 +329,6 @@ function resolveNextVisitDate({
         : normalizeToWorkDate(new Date());
     const noAnswerRetryDate = addWorkDaysWith28DayMonth(noAnswerBaseDate, 7);
     return normalizeToWorkDate(noAnswerRetryDate);
-  }
-
-  // ONE_TIME: no next visit after successful handling
-  if (visitType === VisitTypes.ONE_TIME) {
-    return null;
   }
 
   if (Number.isFinite(Number(advanceDays)) && Number(advanceDays) > 0) {
