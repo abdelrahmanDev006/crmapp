@@ -419,13 +419,13 @@ function ClientTableRows({
           {client.nextVisitDate && (
             <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "6px", whiteSpace: "nowrap" }}>
               <span style={{ display: "block", fontSize: "0.75rem" }}>الميعاد الأصلي:</span>
-              <strong style={{ display: "block", direction: "ltr" }}>{client.nextVisitDate.slice(0, 10)}</strong>
+              <strong style={{ display: "block", direction: "ltr" }}>{formatDate(client.nextVisitDate)}</strong>
             </div>
           )}
           {client.exceptionalNextVisitDate && (
             <div style={{ fontSize: "0.8rem", color: "#d9534f", marginTop: "4px", whiteSpace: "nowrap", padding: "2px", background: "#fdf2f2", borderRadius: "4px" }}>
               <span style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold" }}>ميعاد الشكوى:</span>
-              <strong style={{ display: "block", direction: "ltr" }}>{client.exceptionalNextVisitDate.slice(0, 10)}</strong>
+              <strong style={{ display: "block", direction: "ltr" }}>{formatDate(client.exceptionalNextVisitDate)}</strong>
             </div>
           )}
         </td>
