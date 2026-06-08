@@ -750,8 +750,8 @@ export default function ClientsPage({ forceTab }) {
       return false;
     }
 
-    // 1. Check Date Filter
-    if (selectedDueDate) {
+    // 1. Check Date Filter (SKIP IF ONE_TIME TAB to show all sales history)
+    if (selectedDueDate && activeTab !== "ONE_TIME") {
       const clientDateStr = client.nextVisitDate ? client.nextVisitDate.slice(0, 10) : "";
       if (clientDateStr !== selectedDueDate) {
         return false;

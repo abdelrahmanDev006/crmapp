@@ -49,21 +49,25 @@ function buildClientWhere(filters, user) {
     ]
   }; // استبعاد العملاء المحذوفين والشكاوى المنتهية
 
+  const isOneTimeFilter = filters.visitType === VisitTypes.ONE_TIME;
+
   if (user.role === Roles.REPRESENTATIVE) {
     const userRegionIds = user.regions?.map(r => r.id) || [];
     where.regionId = { in: userRegionIds };
 
-    if (user.allowedDate) {
-      const selectedDate = normalizeToWorkDate(user.allowedDate);
-      const nextDay = new Date(selectedDate);
-      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    if (!isOneTimeFilter) {
+      if (user.allowedDate) {
+        const selectedDate = normalizeToWorkDate(user.allowedDate);
+        const nextDay = new Date(selectedDate);
+        nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-      where.nextVisitDate = {
-        gte: selectedDate,
-        lt: nextDay
-      };
-    } else {
-      where.id = -1; // Hide all clients if no allowedDate is set
+        where.nextVisitDate = {
+          gte: selectedDate,
+          lt: nextDay
+        };
+      } else {
+        where.id = -1; // Hide all clients if no allowedDate is set
+      }
     }
   }
 
@@ -107,38 +111,40 @@ function buildClientWhere(filters, user) {
     }
   }
 
-  if (filters.dueDate && user.role !== Roles.REPRESENTATIVE) {
-    const selectedDate = normalizeToWorkDate(filters.dueDate);
-    const nextDay = new Date(selectedDate);
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  if (!isOneTimeFilter) {
+    if (filters.dueDate && user.role !== Roles.REPRESENTATIVE) {
+      const selectedDate = normalizeToWorkDate(filters.dueDate);
+      const nextDay = new Date(selectedDate);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-    where.nextVisitDate = {
-      gte: selectedDate,
-      lt: nextDay
-    };
+      where.nextVisitDate = {
+        gte: selectedDate,
+        lt: nextDay
+      };
 
-    if (!filters.status) {
-      where.status = {
-        not: ClientStatuses.REJECTED
+      if (!filters.status) {
+        where.status = {
+          not: ClientStatuses.REJECTED
+        };
+      }
+    } else if (filters.dueOnly === true || filters.dueOnly === "true") {
+      where.nextVisitDate = {
+        lte: normalizeToWorkDate(new Date())
       };
-    }
-  } else if (filters.dueOnly === true || filters.dueOnly === "true") {
-    where.nextVisitDate = {
-      lte: normalizeToWorkDate(new Date())
-    };
-    if (!filters.status) {
-      where.status = {
-        in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER]
+      if (!filters.status) {
+        where.status = {
+          in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER]
+        };
+      }
+    } else if (filters.overdueOnly === true || filters.overdueOnly === "true") {
+      where.nextVisitDate = {
+        lt: normalizeToWorkDate(new Date())
       };
-    }
-  } else if (filters.overdueOnly === true || filters.overdueOnly === "true") {
-    where.nextVisitDate = {
-      lt: normalizeToWorkDate(new Date())
-    };
-    if (!filters.status) {
-      where.status = {
-        in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER]
-      };
+      if (!filters.status) {
+        where.status = {
+          in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER]
+        };
+      }
     }
   }
 
