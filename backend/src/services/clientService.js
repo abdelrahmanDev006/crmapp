@@ -669,7 +669,7 @@ module.exports = {
   toggleExceptionalStatus
 };
 
-async function toggleExceptionalStatus(clientId, user, isExceptional, exceptionalReason) {
+async function toggleExceptionalStatus(clientId, user, isExceptional, exceptionalReason, customDate) {
   const existing = await prisma.client.findUnique({
     where: { id: clientId }
   });
@@ -678,9 +678,13 @@ async function toggleExceptionalStatus(clientId, user, isExceptional, exceptiona
 
   let nextExceptionalDate = null;
   if (isExceptional) {
-    const baseDate = existing.nextVisitDate ? new Date(existing.nextVisitDate) : new Date();
-    baseDate.setUTCDate(baseDate.getUTCDate() + 7);
-    nextExceptionalDate = normalizeToWorkDate(baseDate);
+    if (customDate) {
+      nextExceptionalDate = normalizeToWorkDate(new Date(customDate));
+    } else {
+      const baseDate = existing.nextVisitDate ? new Date(existing.nextVisitDate) : new Date();
+      baseDate.setUTCDate(baseDate.getUTCDate() + 7);
+      nextExceptionalDate = normalizeToWorkDate(baseDate);
+    }
   }
 
   const updatedClient = await prisma.client.update({

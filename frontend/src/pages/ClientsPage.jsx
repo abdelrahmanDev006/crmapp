@@ -358,6 +358,7 @@ function ClientTableRows({
   selectedClientIds,
   onToggleClientSelection,
   onToggleExceptional,
+  onRequestExceptional,
   isExceptionalTab
 }) {
   return clients.map((client) => {
@@ -511,10 +512,7 @@ function ClientTableRows({
                         style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap", border: "1px solid #f39c12", color: "#f39c12" }}
                         disabled={isActionLoadingForClient}
                         onClick={() => {
-                          const reason = window.prompt("سبب المشكلة (الشكوى):");
-                          if (reason !== null) {
-                            onToggleExceptional(client.id, true, reason);
-                          }
+                          onRequestExceptional(client);
                         }}
                       >
                         ⚠️ استثنائي
@@ -593,6 +591,7 @@ export default function ClientsPage({ forceTab }) {
   const isRepresentative = user?.role === "REPRESENTATIVE";
   const importFileInputRef = useRef(null);
   const restoredScrollRef = useRef(false);
+  const [exceptionalModalData, setExceptionalModalData] = useState(null);
 
   const [regions, setRegions] = useState([]);
   const [regionRepresentatives, setRegionRepresentatives] = useState({});
@@ -1424,9 +1423,9 @@ export default function ClientsPage({ forceTab }) {
     }
   }
 
-  const handleToggleExceptional = useCallback(async (clientId, isExceptional, reason = null) => {
+  const handleToggleExceptional = useCallback(async (clientId, isExceptional, reason = null, customDate = null) => {
     try {
-      await clientsApi.toggleExceptional(clientId, { isExceptional, exceptionalReason: reason });
+      await clientsApi.toggleExceptional(clientId, { isExceptional, exceptionalReason: reason, exceptionalNextVisitDate: customDate });
       showToast(isExceptional ? "تم إضافة العميل للاستثنائيين" : "تم حل الشكوى", "success");
       
       // Optimistic update
@@ -2273,6 +2272,7 @@ export default function ClientsPage({ forceTab }) {
                             selectedClientIds={selectedClientIds}
                             onToggleClientSelection={toggleClientSelection}
                             onToggleExceptional={handleToggleExceptional}
+                            onRequestExceptional={(client) => setExceptionalModalData({ clientId: client.id, reason: "", date: "" })}
                             isExceptionalTab={activeTab === "EXCEPTIONAL"}
                           />
                         </tbody>
@@ -2314,6 +2314,58 @@ export default function ClientsPage({ forceTab }) {
             <button type="button" onClick={() => handleBulkOutcome("NO_ANSWER")} className="secondary-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px" }}>لم يرد</button>
             <button type="button" onClick={() => handleBulkOutcome("REJECTED")} className="danger-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px" }}>كانسل</button>
             <button type="button" onClick={() => setSelectedClientIds(new Set())} className="ghost-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px", color: "#ccc" }}>إلغاء التحديد</button>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة تحديد الشكوى */}
+      {exceptionalModalData && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', width: '100%', maxWidth: '400px', direction: 'rtl' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#333' }}>إضافة عميل استثنائي (شكوى)</h3>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>سبب المشكلة (الشكوى):</label>
+              <input
+                type="text"
+                value={exceptionalModalData.reason}
+                onChange={(e) => setExceptionalModalData({ ...exceptionalModalData, reason: e.target.value })}
+                className="inline-edit-input"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                placeholder="أدخل سبب الشكوى..."
+                autoFocus
+              />
+            </div>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>تاريخ حل الشكوى:</label>
+              <input
+                type="date"
+                value={exceptionalModalData.date}
+                onChange={(e) => setExceptionalModalData({ ...exceptionalModalData, date: e.target.value })}
+                className="inline-edit-input"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button 
+                className="primary-btn"
+                onClick={() => {
+                  if (!exceptionalModalData.date) {
+                    alert("يرجى تحديد تاريخ الشكوى");
+                    return;
+                  }
+                  handleToggleExceptional(exceptionalModalData.clientId, true, exceptionalModalData.reason, exceptionalModalData.date);
+                  setExceptionalModalData(null);
+                }}
+              >
+                تأكيد وحفظ
+              </button>
+              <button 
+                className="ghost-btn"
+                onClick={() => setExceptionalModalData(null)}
+              >
+                إلغاء
+              </button>
+            </div>
           </div>
         </div>
       )}

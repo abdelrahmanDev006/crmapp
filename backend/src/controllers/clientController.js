@@ -470,8 +470,8 @@ const rejectVisit = asyncHandler(async (req, res) => {
 });
 
 const toggleExceptional = asyncHandler(async (req, res) => {
-  const { isExceptional, exceptionalReason } = req.body;
-  const client = await toggleExceptionalStatus(Number(req.params.id), req.user, isExceptional, exceptionalReason);
+  const { isExceptional, exceptionalReason, exceptionalNextVisitDate } = req.body;
+  const client = await toggleExceptionalStatus(Number(req.params.id), req.user, isExceptional, exceptionalReason, exceptionalNextVisitDate);
   
   res.json({
     message: isExceptional ? "تم إضافة العميل للاستثنائيين" : "تم حل مشكلة العميل الاستثنائي",
