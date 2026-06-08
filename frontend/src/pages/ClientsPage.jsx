@@ -94,6 +94,10 @@ function mapTabToFilters(tab) {
     return { status: "PENDING_APPROVAL" };
   }
 
+  if (tab === "ONE_TIME") {
+    return { visitType: "ONE_TIME" };
+  }
+
   return {
     status: "ACTIVE",
     visitType: tab
@@ -1423,7 +1427,7 @@ export default function ClientsPage({ forceTab }) {
         visitType: createForm.visitType,
         customVisitIntervalDays: customVisitIntervalDays || undefined,
         status: createForm.status,
-        nextVisitDate: createForm.nextVisitDate ? `${createForm.nextVisitDate}T00:00:00.000Z` : undefined,
+        nextVisitDate: createForm.nextVisitDate ? `${createForm.nextVisitDate}T00:00:00.000Z` : (createForm.visitType === "ONE_TIME" ? "2099-12-31T23:59:59.999Z" : undefined),
         note: createForm.note ? createForm.note.trim() : undefined
       };
 
