@@ -777,7 +777,11 @@ export default function ClientsPage({ forceTab }) {
       return client.status === "PENDING_APPROVAL";
     }
 
-    // Otherwise, it's a visitType tab (WEEKLY, BIWEEKLY, MONTHLY, CUSTOM, ONE_TIME)
+    // Otherwise, it's a visitType tab
+    if (activeTab === "ONE_TIME") {
+      return client.visitType === "ONE_TIME";
+    }
+
     return client.status === "ACTIVE" && client.visitType === activeTab;
   }, [activeTab, selectedDueDate]);
 
