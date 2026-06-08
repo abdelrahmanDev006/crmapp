@@ -434,10 +434,10 @@ function ClientTableRows({
             </>
           )}
         </td>
-        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.exceptionalReason || (client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "")}>
-          {client.isExceptional && <span style={{ color: "#d9534f", fontWeight: "bold", display: "block" }}>⚠️ شكوى</span>}
-          {client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.8rem", marginBottom: "4px" }}>السبب: {client.exceptionalReason}</div> : null}
-          {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || (client.exceptionalReason ? "" : "-")}
+        <td className="col-notes details-note-text" data-label="الملاحظات" title={isExceptionalTab ? (client.exceptionalReason || "") : (client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "")}>
+          {isExceptionalTab && client.isExceptional && <span style={{ color: "#d9534f", fontWeight: "bold", display: "block" }}>⚠️ شكوى</span>}
+          {isExceptionalTab && client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.8rem", marginBottom: "4px" }}>السبب: {client.exceptionalReason}</div> : null}
+          {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || ((isExceptionalTab && client.exceptionalReason) ? "" : "-")}
         </td>
 
         <td className="actions-cell col-actions" data-label="الإجراءات">
