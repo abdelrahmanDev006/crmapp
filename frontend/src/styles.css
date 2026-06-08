@@ -374,7 +374,7 @@ table {
 th,
 td {
   padding: clamp(6px, 0.45vw + 4px, 10px) clamp(6px, 0.5vw + 4px, 12px);
-  border-bottom: 1px solid #e8efef;
+  border-bottom: 2px solid #c9dada;
   text-align: center;
   vertical-align: middle;
   white-space: normal;
