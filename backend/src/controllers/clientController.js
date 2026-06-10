@@ -11,7 +11,8 @@ const {
   handleClientVisit,
   approveClientVisit,
   rejectClientVisit,
-  toggleExceptionalStatus
+  toggleExceptionalStatus,
+  bulkEditClients
 } = require("../services/clientService");
 const { logActivity } = require("../services/logService");
 
@@ -479,6 +480,14 @@ const toggleExceptional = asyncHandler(async (req, res) => {
   });
 });
 
+const bulkEdit = asyncHandler(async (req, res) => {
+  const result = await bulkEditClients(req.user, req.body);
+  res.json({
+    message: `تم تعديل ${result.updatedCount} عميل بنجاح`,
+    updatedCount: result.updatedCount
+  });
+});
+
 module.exports = {
   listClientRecords,
   listClientsByRegion,
@@ -490,5 +499,6 @@ module.exports = {
   approveVisit,
   rejectVisit,
   getOverdueSummary,
-  toggleExceptional
+  toggleExceptional,
+  bulkEdit
 };

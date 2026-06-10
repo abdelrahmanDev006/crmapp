@@ -30,7 +30,8 @@ export const clientsApi = {
   reject: (id) => http.post(`/clients/${id}/reject`),
   remove: (id) => http.delete(`/clients/${id}`),
   getOverdueSummary: () => http.get("/clients/overdue-summary"),
-  toggleExceptional: (id, payload) => http.put(`/clients/${id}/exceptional`, payload)
+  toggleExceptional: (id, payload) => http.put(`/clients/${id}/exceptional`, payload),
+  bulkEdit: (payload) => http.put("/clients/bulk-edit", payload)
 };
 
 export const usersApi = {

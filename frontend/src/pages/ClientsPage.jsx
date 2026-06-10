@@ -630,6 +630,8 @@ export default function ClientsPage({ forceTab }) {
   const debouncedSearch = useDebouncedValue(search, 350);
 
   const [selectedClientIds, setSelectedClientIds] = useState(new Set());
+  const [bulkEditModalData, setBulkEditModalData] = useState(null);
+  const [isBulkEditLoading, setIsBulkEditLoading] = useState(false);
   const toggleClientSelection = useCallback((id) => {
     setSelectedClientIds((prev) => {
       const next = new Set(prev);
@@ -638,6 +640,38 @@ export default function ClientsPage({ forceTab }) {
       return next;
     });
   }, []);
+
+  const handleBulkEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!bulkEditModalData || selectedClientIds.size === 0) return;
+
+    const { regionId, nextVisitDate } = bulkEditModalData;
+    if (!regionId && !nextVisitDate) {
+      setError("يجب تحديد منطقة أو تاريخ زيارة للتعديل");
+      return;
+    }
+
+    setIsBulkEditLoading(true);
+    setError("");
+
+    try {
+      const payload = {
+        clientIds: Array.from(selectedClientIds),
+        regionId: regionId ? Number(regionId) : null,
+        nextVisitDate: nextVisitDate || null
+      };
+
+      await clientsApi.bulkEdit(payload);
+      showToast(`تم التعديل بنجاح`);
+      setBulkEditModalData(null);
+      setSelectedClientIds(new Set());
+      fetchData(); // Reload data to reflect changes
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "حدث خطأ أثناء التعديل");
+    } finally {
+      setIsBulkEditLoading(false);
+    }
+  };
 
   const handleBulkOutcome = async (outcome) => {
     if (selectedClientIds.size === 0) return;
@@ -2312,11 +2346,56 @@ export default function ClientsPage({ forceTab }) {
             تم تحديد ({selectedClientIds.size}) عميل
           </span>
           <div style={{ display: "flex", gap: "8px" }}>
+            <button type="button" onClick={() => setBulkEditModalData({ regionId: "", nextVisitDate: "" })} className="primary-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px", background: "#3b82f6" }}>تعديل</button>
             <button type="button" onClick={() => handleBulkOutcome("ACTIVE")} className="primary-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px" }}>تم التعامل</button>
             <button type="button" onClick={() => handleBulkOutcome("NO_ANSWER")} className="secondary-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px" }}>لم يرد</button>
             <button type="button" onClick={() => handleBulkOutcome("REJECTED")} className="danger-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px" }}>كانسل</button>
             <button type="button" onClick={() => setSelectedClientIds(new Set())} className="ghost-btn" style={{ minHeight: "0", padding: "6px 16px", borderRadius: "20px", color: "#ccc" }}>إلغاء التحديد</button>
           </div>
+        </div>
+      )}
+
+      {/* نافذة التعديل الجماعي */}
+      {bulkEditModalData && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
+          <form onSubmit={handleBulkEditSubmit} style={{ background: '#fff', padding: '24px', borderRadius: '8px', width: '100%', maxWidth: '400px', direction: 'rtl' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#333' }}>تعديل جماعي ({selectedClientIds.size} عميل)</h3>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>تغيير المنطقة (اختياري):</label>
+              <select
+                value={bulkEditModalData.regionId}
+                onChange={(e) => setBulkEditModalData({ ...bulkEditModalData, regionId: e.target.value })}
+                className="inline-edit-input"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+              >
+                <option value="">-- احتفظ بالمنطقة الحالية --</option>
+                {regions.map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>تغيير تاريخ الزيارة القادمة (اختياري):</label>
+              <input
+                type="date"
+                value={bulkEditModalData.nextVisitDate}
+                onChange={(e) => setBulkEditModalData({ ...bulkEditModalData, nextVisitDate: e.target.value })}
+                className="inline-edit-input"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setBulkEditModalData(null)} className="ghost-btn">
+                إلغاء
+              </button>
+              <button type="submit" disabled={isBulkEditLoading} className="primary-btn">
+                {isBulkEditLoading ? "جاري التعديل..." : "حفظ التعديلات"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

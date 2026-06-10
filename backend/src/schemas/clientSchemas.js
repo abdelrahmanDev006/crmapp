@@ -181,6 +181,14 @@ const toggleExceptionalSchema = z.object({
   price: z.string().trim().max(120).optional()
 });
 
+const bulkEditClientSchema = z.object({
+  clientIds: z.array(z.coerce.number().int().positive()).min(1, "يجب تحديد عميل واحد على الأقل"),
+  regionId: z.coerce.number().int().positive().optional().nullable(),
+  nextVisitDate: dateInputSchema.optional().nullable()
+}).refine(data => data.regionId !== undefined || data.nextVisitDate !== undefined, {
+  message: "يجب تحديد منطقة أو تاريخ زيارة قادمة للتعديل"
+});
+
 module.exports = {
   createClientSchema,
   updateClientSchema,
@@ -188,5 +196,6 @@ module.exports = {
   regionPageClientQuerySchema,
   handleClientSchema,
   bulkRegionHandleSchema,
-  toggleExceptionalSchema
+  toggleExceptionalSchema,
+  bulkEditClientSchema
 };

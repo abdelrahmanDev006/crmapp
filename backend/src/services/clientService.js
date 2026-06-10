@@ -673,6 +673,51 @@ async function handleRegionClients({ regionId, user, note }) {
   };
 }
 
+async function bulkEditClients(user, data) {
+  const { clientIds, regionId, nextVisitDate } = data;
+  
+  if (!clientIds || clientIds.length === 0) {
+    throw createHttpError(400, "يجب تحديد عميل واحد على الأقل");
+  }
+
+  const updateData = {};
+  if (regionId !== undefined && regionId !== null) {
+    updateData.regionId = regionId;
+  }
+  
+  if (nextVisitDate !== undefined && nextVisitDate !== null) {
+    const parsedDate = new Date(nextVisitDate);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      updateData.nextVisitDate = normalizeToWorkDate(parsedDate);
+    }
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw createHttpError(400, "يجب تحديد منطقة أو تاريخ للزيارة");
+  }
+
+  if (user.role !== "ADMIN") {
+    const clients = await prisma.client.findMany({
+      where: { id: { in: clientIds } },
+      select: { regionId: true }
+    });
+    
+    const allowedRegionIds = user.regions.map(r => r.id);
+    const hasUnauthorizedRegion = clients.some(c => !allowedRegionIds.includes(c.regionId));
+    
+    if (hasUnauthorizedRegion || (regionId && !allowedRegionIds.includes(regionId))) {
+      throw createHttpError(403, "غير مصرح لك بتعديل هؤلاء العملاء أو نقلهم لهذه المنطقة");
+    }
+  }
+
+  const result = await prisma.client.updateMany({
+    where: { id: { in: clientIds } },
+    data: updateData
+  });
+
+  return { updatedCount: result.count };
+}
+
 module.exports = {
   listClients,
   listClientsByRegionPage,
@@ -682,7 +727,8 @@ module.exports = {
   enforceClientScope,
   approveClientVisit,
   rejectClientVisit,
-  toggleExceptionalStatus
+  toggleExceptionalStatus,
+  bulkEditClients
 };
 
 async function toggleExceptionalStatus(clientId, user, isExceptional, exceptionalReason, customDate, products, price) {

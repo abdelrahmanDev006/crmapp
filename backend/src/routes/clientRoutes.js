@@ -9,7 +9,8 @@ const {
   createClientSchema,
   updateClientSchema,
   handleClientSchema,
-  toggleExceptionalSchema
+  toggleExceptionalSchema,
+  bulkEditClientSchema
 } = require("../schemas/clientSchemas");
 const {
   listClientRecords,
@@ -22,7 +23,8 @@ const {
   approveVisit,
   rejectVisit,
   getOverdueSummary,
-  toggleExceptional
+  toggleExceptional,
+  bulkEdit
 } = require("../controllers/clientController");
 
 const router = express.Router();
@@ -32,6 +34,7 @@ router.use(authenticate);
 router.get("/overdue-summary", authorizeRoles(Roles.ADMIN), getOverdueSummary);
 router.get("/by-region", validate(regionPageClientQuerySchema, "query"), listClientsByRegion);
 router.get("/", validate(clientQuerySchema, "query"), listClientRecords);
+router.put("/bulk-edit", validate(bulkEditClientSchema), bulkEdit);
 router.get("/:id", validate(idParamSchema, "params"), getClientDetails);
 router.post("/:id/handle", validate(idParamSchema, "params"), validate(handleClientSchema), handleClient);
 router.post("/:id/approve", authorizeRoles(Roles.ADMIN), validate(idParamSchema, "params"), approveVisit);
