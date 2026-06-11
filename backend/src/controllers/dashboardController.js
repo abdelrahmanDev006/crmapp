@@ -34,7 +34,7 @@ const summary = asyncHandler(async (req, res) => {
   const statusCounts = statusGroups.reduce((acc, group) => {
     acc[group.status] = group._count._all;
     return acc;
-  }, { ACTIVE: 0, NO_ANSWER: 0, REJECTED: 0, PENDING_APPROVAL: 0 });
+  }, { ACTIVE: 0, NO_ANSWER: 0, REJECTED: 0 });
 
   const totalClients = Object.values(statusCounts).reduce((a, b) => a + b, 0);
   const activeClients = statusCounts.ACTIVE;

@@ -9,8 +9,6 @@ const {
   listClientsByRegionPage,
   getClientById,
   handleClientVisit,
-  approveClientVisit,
-  rejectClientVisit,
   toggleExceptionalStatus,
   bulkEditClients
 } = require("../services/clientService");
@@ -436,39 +434,6 @@ const deleteClient = asyncHandler(async (req, res) => {
   });
 });
 
-const approveVisit = asyncHandler(async (req, res) => {
-  const updatedClient = await approveClientVisit(req.params.id, req.user);
-  await logActivity({
-    userId: req.user.id,
-    action: "APPROVE_VISIT",
-    entityType: "CLIENT",
-    entityId: updatedClient.id,
-    entityName: updatedClient.name,
-    details: `تم اعتماد الإجراء للعميل: ${updatedClient.name}`
-  });
-
-  res.json({
-    message: "تم اعتماد الزيارة بنجاح",
-    item: updatedClient
-  });
-});
-
-const rejectVisit = asyncHandler(async (req, res) => {
-  const updatedClient = await rejectClientVisit(req.params.id, req.user);
-  await logActivity({
-    userId: req.user.id,
-    action: "REJECT_VISIT",
-    entityType: "CLIENT",
-    entityId: updatedClient.id,
-    entityName: updatedClient.name,
-    details: `تم رفض الإجراء للعميل: ${updatedClient.name}`
-  });
-
-  res.json({
-    message: "تم رفض الزيارة وإعادة العميل للحالة النشطة",
-    item: updatedClient
-  });
-});
 
 const toggleExceptional = asyncHandler(async (req, res) => {
   const { isExceptional, exceptionalReason, exceptionalNextVisitDate, products, price } = req.body;
@@ -496,8 +461,6 @@ module.exports = {
   updateClient,
   handleClient,
   deleteClient,
-  approveVisit,
-  rejectVisit,
   getOverdueSummary,
   toggleExceptional,
   bulkEdit

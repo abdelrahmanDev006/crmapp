@@ -14,8 +14,7 @@ const VisitTypes = {
 const ClientStatuses = {
   ACTIVE: "ACTIVE",
   NO_ANSWER: "NO_ANSWER",
-  REJECTED: "REJECTED",
-  PENDING_APPROVAL: "PENDING_APPROVAL"
+  REJECTED: "REJECTED"
 };
 
 const VisitIntervalDays = {

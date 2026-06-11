@@ -19,10 +19,9 @@ const clientWithRelations = {
   },
   visits: {
     select: {
-      note: true
-    },
-    where: {
-      note: { not: null }
+      note: true,
+      visitDate: true,
+      newStatus: true
     },
     orderBy: {
       visitDate: "desc"
@@ -61,10 +60,25 @@ function buildClientWhere(filters, user) {
         const nextDay = new Date(selectedDate);
         nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-        where.nextVisitDate = {
-          gte: selectedDate,
-          lt: nextDay
-        };
+        where.OR = [
+          {
+            nextVisitDate: {
+              gte: selectedDate,
+              lt: nextDay
+            }
+          },
+          {
+            visits: {
+              some: {
+                visitDate: {
+                  gte: selectedDate,
+                  lt: nextDay
+                },
+                visitedById: user.id
+              }
+            }
+          }
+        ];
       } else {
         where.id = -1; // Hide all clients if no allowedDate is set
       }
@@ -454,20 +468,32 @@ async function handleClientVisit({
 
   const isExceptional = existingClient.isExceptional;
 
-  if (user.role === Roles.REPRESENTATIVE && !isExceptional) {
-    return prisma.client.update({
-      where: { id: existingClient.id },
-      data: {
-        status: ClientStatuses.PENDING_APPROVAL,
-        pendingOutcome: newStatus,
-        pendingNote: generatedNote,
-        pendingVisitType: nextVisitType,
-        pendingCustomVisitIntervalDays: nextCustomVisitIntervalDays
-      },
-      include: clientWithRelations
+  // Representatives' actions now go through directly but DO NOT modify the Client's main status or nextVisitDate
+  // They only record the visit history so the representative gets credited.
+  if (user.role === Roles.REPRESENTATIVE) {
+    return prisma.$transaction(async (tx) => {
+      await tx.visitHistory.create({
+        data: {
+          client: { connect: { id: existingClient.id } },
+          visitedBy: { connect: { id: user.id } },
+          previousStatus: previousStatus || ClientStatuses.ACTIVE,
+          newStatus: newStatus || ClientStatuses.ACTIVE,
+          note: generatedNote,
+          previousNextVisitDate,
+          newNextVisitDate: previousNextVisitDate, // No change
+          visitDate: new Date()
+        }
+      });
+
+      // return the client with relations so the frontend gets the new visit
+      return tx.client.findUnique({
+        where: { id: existingClient.id },
+        include: clientWithRelations
+      });
     });
   }
 
+  // Admin actions apply fully
   return prisma.$transaction(async (tx) => {
     const finalStatus = isExceptional ? ClientStatuses.REJECTED : newStatus;
     const finalNextVisitDate = isExceptional ? new Date() : newNextVisitDate;
@@ -501,60 +527,10 @@ async function handleClientVisit({
       }
     });
 
-    // ONE_TIME clients: keep in system after handling (no longer soft-deleted)
-
     return updatedClient;
   });
 }
 
-async function approveClientVisit(clientId, user) {
-  if (user.role !== Roles.ADMIN) {
-    throw createHttpError(403, "ليس لديك صلاحية لاعتماد الزيارات");
-  }
-
-  const client = await prisma.client.findUnique({
-    where: { id: Number(clientId) }
-  });
-
-  if (!client || client.status !== ClientStatuses.PENDING_APPROVAL) {
-    throw createHttpError(400, "لا يوجد زيارة معلقة لاعتمادها");
-  }
-
-  return handleClientVisit({
-    clientId: client.id,
-    user, // Admin user
-    outcome: client.pendingOutcome,
-    note: client.pendingNote,
-    visitType: client.pendingVisitType,
-    customVisitIntervalDays: client.pendingCustomVisitIntervalDays
-  });
-}
-
-async function rejectClientVisit(clientId, user) {
-  if (user.role !== Roles.ADMIN) {
-    throw createHttpError(403, "ليس لديك صلاحية لرفض الزيارات");
-  }
-
-  const client = await prisma.client.findUnique({
-    where: { id: Number(clientId) }
-  });
-
-  if (!client || client.status !== ClientStatuses.PENDING_APPROVAL) {
-    throw createHttpError(400, "لا يوجد زيارة معلقة لرفضها");
-  }
-
-  return prisma.client.update({
-    where: { id: client.id },
-    data: {
-      status: ClientStatuses.ACTIVE, // Revert to active
-      pendingOutcome: null,
-      pendingNote: null,
-      pendingVisitType: null,
-      pendingCustomVisitIntervalDays: null
-    },
-    include: clientWithRelations
-  });
-}
 
 async function handleRegionClients({ regionId, user, note }) {
   if (user.role !== Roles.ADMIN && user.role !== Roles.REPRESENTATIVE) {
@@ -725,8 +701,6 @@ module.exports = {
   handleClientVisit,
   handleRegionClients,
   enforceClientScope,
-  approveClientVisit,
-  rejectClientVisit,
   toggleExceptionalStatus,
   bulkEditClients
 };

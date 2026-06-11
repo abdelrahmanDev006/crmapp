@@ -16,8 +16,7 @@ const tabs = [
   { key: "CUSTOM", label: "ميعاد آخر" },
   { key: "ONE_TIME", label: "عملاء البيع" },
   { key: "NO_ANSWER", label: "لم يرد" },
-  { key: "REJECTED", label: "كانسل" },
-  { key: "PENDING", label: "في انتظار الاعتماد" }
+  { key: "REJECTED", label: "كانسل" }
 ];
 
 const playToastSound = (type) => {
@@ -90,9 +89,7 @@ function mapTabToFilters(tab) {
     return { status: "REJECTED" };
   }
 
-  if (tab === "PENDING") {
-    return { status: "PENDING_APPROVAL" };
-  }
+
 
   if (tab === "ONE_TIME") {
     return { visitType: "ONE_TIME" };
@@ -350,8 +347,6 @@ function ClientTableRows({
   todayDateText,
   actionState,
   onHandleClient,
-  onApproveVisit,
-  onRejectVisit,
   isRepresentative,
   isAdmin,
   selectedClientIds,
@@ -359,6 +354,22 @@ function ClientTableRows({
   onToggleExceptional,
   onRequestExceptional
 }) {
+  const getTodayAction = (client) => {
+    if (!client.visits || client.visits.length === 0) return null;
+    const lastVisit = client.visits[0];
+    if (!lastVisit.visitDate) return null;
+    
+    // Parse the visitDate as local date to match todayDateText (which is local)
+    const visitDateObj = new Date(lastVisit.visitDate);
+    const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
+    const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
+    
+    if (visitDateStr === todayDateText) {
+      return lastVisit.newStatus;
+    }
+    return null;
+  };
+
   return clients.map((client) => {
     const clientIsNew = isNewClient(client.createdAt, todayDateText);
     const locationHref = getLocationHref(client.locationUrl);
@@ -372,14 +383,16 @@ function ClientTableRows({
 
     return (
       <tr key={client.id} className={`client-row-${client.visitType}`}>
-        <td className="col-checkbox" data-label="تحديد" style={{ textAlign: "center", width: "40px" }}>
-          <input
-            type="checkbox"
-            checked={selectedClientIds?.has(client.id) || false}
-            onChange={() => onToggleClientSelection(client.id)}
-            style={{ width: "18px", height: "18px", cursor: "pointer" }}
-          />
-        </td>
+        {!isRepresentative && (
+          <td className="col-checkbox" data-label="تحديد" style={{ textAlign: "center", width: "40px" }}>
+            <input
+              type="checkbox"
+              checked={selectedClientIds?.has(client.id) || false}
+              onChange={() => onToggleClientSelection(client.id)}
+              style={{ width: "18px", height: "18px", cursor: "pointer" }}
+            />
+          </td>
+        )}
         <td className="col-name" data-label="العميل">
           <div className="client-name-cell">
             <span className="client-name-text">
@@ -391,8 +404,8 @@ function ClientTableRows({
             </span>
           </div>
         </td>
-        <td className="col-phone" data-label="الهاتف">{client.phone}</td>
-        <td className="col-address" data-label="العنوان">{client.address}</td>
+        {!isRepresentative && <td className="col-phone" data-label="الهاتف">{client.phone}</td>}
+        {!isRepresentative && <td className="col-address" data-label="العنوان">{client.address}</td>}
         <td className="col-location" data-label="اللوكيشن">
           {locationHref ? (
             <a
@@ -413,140 +426,129 @@ function ClientTableRows({
           )}
         </td>
 
-        <td className="col-products" data-label="المنتجات">{client.products}</td>
+        {!isRepresentative && <td className="col-products" data-label="المنتجات">{client.products}</td>}
         <td className="col-price" data-label="السعر">{client.price || "-"}</td>
 
-        <td className="col-visit-type" data-label="الزيارة">
-          <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
-        </td>
+        {!isRepresentative && (
+          <td className="col-visit-type" data-label="الزيارة">
+            <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
+          </td>
+        )}
         <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || ""}>
           {client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.85rem", marginBottom: "4px" }}>{client.exceptionalReason}</div> : null}
           {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || (!client.exceptionalReason ? "-" : null)}
         </td>
 
         <td className="actions-cell col-actions" data-label="الإجراءات">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", width: "100%", maxWidth: "180px", margin: "0 auto" }}>
-            {isRepresentative && (dialHref || locationHref) && (
-              <div style={{ gridColumn: "span 2", display: "flex", gap: "4px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%", maxWidth: "180px", margin: "0 auto" }}>
+            {isRepresentative ? (
+              /* === أزرار المندوب: اتصال + تم التعامل + لم يرد فقط === */
+              <>
                 {dialHref && (
-                  <a className="ghost-btn quick-action-btn" href={dialHref} style={{ flex: 1, padding: "4px" }}>
-                    اتصال
+                  <a className="ghost-btn quick-action-btn" href={dialHref} style={{ padding: "6px 10px", textAlign: "center", border: "1px solid #3b82f6", color: "#3b82f6", borderRadius: "6px", fontWeight: "bold" }}>
+                    📞 اتصال
                   </a>
                 )}
-                {locationHref && (
-                  <a className="ghost-btn quick-action-btn" href={locationHref} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "4px" }}>
-                    خريطة
-                  </a>
-                )}
-              </div>
-            )}
-
-            {!isRepresentative && (
-              <>
-                {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && (
-                  <button
-                    type="button"
-                    className="danger-btn"
-                    style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
-                    disabled={isActionLoadingForClient}
-                    onClick={() => onHandleClient(client, "REJECTED")}
-                  >
-                    {isCancelActionLoading ? "..." : "كانسل"}
-                  </button>
-                )}
-                {isAdmin && (
-                  <Link
-                    className="secondary-btn"
-                    to={`/clients/${client.id}?edit=true`}
-                    style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", background: "#f0f0f0", color: "#333", border: "1px solid #ccc", flex: "1 0 auto", textAlign: "center", whiteSpace: "nowrap" }}
-                  >
-                    تعديل
-                  </Link>
-                )}
-              </>
-            )}
-
-            {client.status !== "REJECTED" && client.status !== "PENDING_APPROVAL" && (
-              <>
-                <button
-                  type="button"
-                  className="primary-btn"
-                  style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
-                  disabled={isActionLoadingForClient}
-                  onClick={() => onHandleClient(client, "ACTIVE")}
-                >
-                  {isHandleActionLoading ? "..." : "تم التعامل"}
-                </button>
-                {!client.isExceptional && (
-                  <button
-                    type="button"
-                    className="ghost-btn"
-                    style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap", border: "1px solid #f39c12", color: "#f39c12" }}
-                    disabled={isActionLoadingForClient}
-                    onClick={() => {
-                      onRequestExceptional(client);
-                    }}
-                  >
-                    ⚠️ شكوى
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
-                  disabled={isActionLoadingForClient}
-                  onClick={() => onHandleClient(client, "NO_ANSWER")}
-                >
-                  {isNoAnswerActionLoading ? "..." : "لم يرد"}
-                </button>
-                {isRepresentative && (
-                  <button
-                    type="button"
-                    className="danger-btn"
-                    style={{ gridColumn: "span 2", padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", flex: "1 0 auto", whiteSpace: "nowrap" }}
-                    disabled={isActionLoadingForClient}
-                    onClick={() => onHandleClient(client, "REJECTED")}
-                  >
-                    {isCancelActionLoading ? "..." : "كانسل"}
-                  </button>
-                )}
-              </>
-            )}
-
-            {!isRepresentative && client.status === "PENDING_APPROVAL" && (
-              <div className="admin-approval-actions" style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: "6px", background: "#fff3cd", padding: "6px", borderRadius: "8px", border: "1px solid #ffeeba" }}>
-                <div style={{ fontSize: "0.8rem", color: "#856404", fontWeight: "bold", textAlign: "center", lineHeight: "1.2" }}>
-                  <div style={{ marginBottom: "4px" }}>
-                    <span style={{ display: "block", padding: "3px", background: "#ffc107", color: "#000", borderRadius: "4px", fontSize: "0.85rem" }}>
-                      {client.pendingOutcome === "ACTIVE" ? "تم التعامل" :
-                        client.pendingOutcome === "NO_ANSWER" ? "لم يرد" :
-                          client.pendingOutcome === "REJECTED" ? "كانسل" :
-                            client.pendingOutcome === "POSTPONED" ? "مؤجل" :
-                              client.pendingOutcome || "غير معروف"}
-                    </span>
+                {getTodayAction(client) === "ACTIVE" ? (
+                  <div style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#15803d", fontWeight: "bold", background: "#dcfce7", borderRadius: "6px", border: "1px solid #bbf7d0" }}>
+                    ✅ تم التحصيل
                   </div>
+                ) : getTodayAction(client) === "NO_ANSWER" ? (
+                  <div style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#b91c1c", fontWeight: "bold", background: "#fee2e2", borderRadius: "6px", border: "1px solid #fecaca" }}>
+                    ❌ لم يرد
+                  </div>
+                ) : client.status !== "REJECTED" && (
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button
+                      type="button"
+                      className="primary-btn"
+                      style={{ flex: 1, padding: "6px 8px", fontSize: "0.85rem", minHeight: "0", whiteSpace: "nowrap" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => onHandleClient(client, "ACTIVE")}
+                    >
+                      {isHandleActionLoading ? "..." : "✅ تم التعامل"}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      style={{ flex: 1, padding: "6px 8px", fontSize: "0.85rem", minHeight: "0", whiteSpace: "nowrap" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => onHandleClient(client, "NO_ANSWER")}
+                    >
+                      {isNoAnswerActionLoading ? "..." : "لم يرد"}
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* === أزرار الأدمن (كما هي) === */
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  {client.status !== "REJECTED" && (
+                    <button
+                      type="button"
+                      className="danger-btn"
+                      style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => onHandleClient(client, "REJECTED")}
+                    >
+                      {isCancelActionLoading ? "..." : "كانسل"}
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <Link
+                      className="secondary-btn"
+                      to={`/clients/${client.id}?edit=true`}
+                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", background: "#f0f0f0", color: "#333", border: "1px solid #ccc", textAlign: "center", whiteSpace: "nowrap" }}
+                    >
+                      تعديل
+                    </Link>
+                  )}
                 </div>
-                <div style={{ display: "flex", gap: "4px" }}>
-                  <button
-                    type="button"
-                    className="primary-btn"
-                    disabled={isActionLoadingForClient}
-                    onClick={() => onApproveVisit(client)}
-                    style={{ flex: 1, background: "#28a745", borderColor: "#28a745", padding: "4px 0", fontSize: "0.85rem" }}
-                  >
-                    {isApproveLoading ? "..." : "اعتماد"}
-                  </button>
-                  <button
-                    type="button"
-                    className="danger-btn"
-                    disabled={isActionLoadingForClient}
-                    onClick={() => onRejectVisit(client)}
-                    style={{ flex: 1, padding: "4px 0", fontSize: "0.85rem" }}
-                  >
-                    {isRejectLoading ? "..." : "رفض"}
-                  </button>
-                </div>
-              </div>
+
+                {client.status !== "REJECTED" && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <button
+                      type="button"
+                      className="primary-btn"
+                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", whiteSpace: "nowrap" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => onHandleClient(client, "ACTIVE")}
+                    >
+                      {isHandleActionLoading ? "..." : "تم التعامل"}
+                    </button>
+                    {!client.isExceptional && (
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", whiteSpace: "nowrap", border: "1px solid #f39c12", color: "#f39c12" }}
+                        disabled={isActionLoadingForClient}
+                        onClick={() => onRequestExceptional(client)}
+                      >
+                        ⚠️ شكوى
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", whiteSpace: "nowrap" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => onHandleClient(client, "NO_ANSWER")}
+                    >
+                      {isNoAnswerActionLoading ? "..." : "لم يرد"}
+                    </button>
+                    <button
+                      type="button"
+                      className="danger-btn"
+                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", whiteSpace: "nowrap" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => onHandleClient(client, "REJECTED")}
+                    >
+                      {isCancelActionLoading ? "..." : "كانسل"}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </td>
@@ -577,7 +579,7 @@ export default function ClientsPage({ forceTab }) {
   const [activeTab, setActiveTab] = useState(() => {
     if (forceTab) return forceTab;
     const saved = localStorage.getItem("crm_activeTab");
-    const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL"];
+    const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED"];
     return validTabs.includes(saved) ? saved : "ALL";
   });
 
@@ -586,7 +588,7 @@ export default function ClientsPage({ forceTab }) {
       setActiveTab(forceTab);
     } else {
       const saved = localStorage.getItem("crm_activeTab");
-      const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED", "PENDING_APPROVAL"];
+      const validTabs = ["ALL", "ACTIVE", "NO_ANSWER", "REJECTED"];
       setActiveTab(validTabs.includes(saved) ? saved : "ALL");
     }
   }, [forceTab]);
@@ -677,10 +679,6 @@ export default function ClientsPage({ forceTab }) {
     if (selectedClientIds.size === 0) return;
     
     let noteText = "";
-    if (isRepresentative) {
-      noteText = window.prompt(`أدخل ملاحظة للعملاء المحددين (${selectedClientIds.size} عميل) - اختياري:`);
-      if (noteText === null) return;
-    }
 
     const idsToProcess = Array.from(selectedClientIds);
     setSelectedClientIds(new Set()); // مسح التحديد فوراً
@@ -805,10 +803,6 @@ export default function ClientsPage({ forceTab }) {
 
     if (activeTab === "REJECTED") {
       return client.status === "REJECTED";
-    }
-
-    if (activeTab === "PENDING") {
-      return client.status === "PENDING_APPROVAL";
     }
 
     // Otherwise, it's a visitType tab
@@ -1332,103 +1326,31 @@ export default function ClientsPage({ forceTab }) {
     }
   }, [totalRegionPages, loading, page]);
 
-  async function handleApproveVisit(client) {
-    setError("");
 
-    // --- Optimistic Update: قم بتحديث العميل بدلاً من حذفه إذا كان لا يزال يطابق الفلاتر ---
-    setData(prev => {
-      const updatedClient = {
-        ...client,
-        status: client.pendingOutcome || "ACTIVE",
-        pendingOutcome: null,
-        nextVisitDate: client.visitType === "ONE_TIME" ? "2099-12-31T23:59:59.999Z" : client.nextVisitDate
-      };
-
-      if (matchesCurrentFilters(updatedClient)) {
-        return {
-          ...prev,
-          items: prev.items.map(item => item.id === client.id ? updatedClient : item)
-        };
-      } else {
-        return {
-          ...prev,
-          items: prev.items.filter(item => item.id !== client.id),
-          total: Math.max(0, prev.total - 1)
-        };
-      }
-    });
-
-    showToast(`✅ تم اعتماد إجراء العميل «${client.name}» بنجاح`);
-
-    try {
-      await clientsApi.approve(client.id);
-    } catch (err) {
-      // في حالة الفشل، أظهر الخطأ وأعد تحميل القائمة لتصحيح البيانات
-      showToast(err.message || "تعذر اعتماد الزيارة", "error");
-      loadClients();
-    }
-  }
-
-  async function handleRejectVisit(client) {
-    setError("");
-
-    // --- Optimistic Update: قم بتحديث العميل بدلاً من حذفه إذا كان لا يزال يطابق الفلاتر ---
-    setData(prev => {
-      const updatedClient = {
-        ...client,
-        status: "ACTIVE",
-        pendingOutcome: null
-      };
-
-      if (matchesCurrentFilters(updatedClient)) {
-        return {
-          ...prev,
-          items: prev.items.map(item => item.id === client.id ? updatedClient : item)
-        };
-      } else {
-        return {
-          ...prev,
-          items: prev.items.filter(item => item.id !== client.id),
-          total: Math.max(0, prev.total - 1)
-        };
-      }
-    });
-
-    showToast(`↩️ تم رد إجراء العميل «${client.name}» للحالة النشطة`, "warning");
-
-    try {
-      await clientsApi.reject(client.id);
-    } catch (err) {
-      showToast(err.message || "تعذر رفض الزيارة", "error");
-      loadClients();
-    }
-  }
 
   async function handleClientOutcome(client, outcome) {
-    let noteText = "";
-    if (isRepresentative) {
-      if (outcome === "REJECTED") {
-        noteText = window.prompt("يرجى إدخال سبب إلغاء العميل (اختياري):");
-        if (noteText === null) return;
-      } else if (outcome === "NO_ANSWER") {
-        noteText = window.prompt("يرجى إدخال أي ملاحظة حول عدم الرد (اختياري):");
-        if (noteText === null) return;
-      } else if (outcome === "ACTIVE") {
-        noteText = window.prompt("برجاء كتابة تفاصيل التعامل أو أي ملاحظات (اختياري):");
-        if (noteText === null) return;
-      }
-    }
+    let noteText = ""; // No more prompts for notes
 
     setError("");
 
     // --- Optimistic Update: قم بتحديث العميل بدلاً من حذفه إذا كان لا يزال يطابق الفلاتر ---
     setData(prev => {
-      const isRepresentativePending = isRepresentative;
+      const isRepresentativePending = false; // We removed pending for reps
+      const newVisit = {
+        visitDate: new Date().toISOString(),
+        newStatus: outcome,
+        note: noteText
+      };
+      
       const updatedClient = {
         ...client,
-        status: isRepresentativePending ? "PENDING_APPROVAL" : outcome,
-        pendingOutcome: isRepresentativePending ? outcome : null,
-        nextVisitDate: (!isRepresentativePending && client.visitType === "ONE_TIME") ? "2099-12-31T23:59:59.999Z" : client.nextVisitDate
+        // Only update status and nextVisitDate optimistically if user is ADMIN
+        // Rep actions do not affect the main client status, only VisitHistory
+        ...(isAdmin ? {
+          status: outcome,
+          nextVisitDate: (client.visitType === "ONE_TIME") ? "2099-12-31T23:59:59.999Z" : client.nextVisitDate,
+        } : {}),
+        visits: [newVisit, ...(client.visits || [])]
       };
 
       if (matchesCurrentFilters(updatedClient)) {
@@ -1457,8 +1379,7 @@ export default function ClientsPage({ forceTab }) {
     };
     
     const label = outcomeLabels[outcome] || "✅ تم تنفيذ الإجراء";
-    const suffix = isRepresentative ? " — في انتظار اعتماد الإدارة" : "";
-    showToast(`${label}: «${client.name}»${suffix}`, outcomeTypes[outcome] || "success");
+    showToast(`${label}: «${client.name}»`, outcomeTypes[outcome] || "success");
 
     try {
       // إرسال الطلب في الخلفية
@@ -1850,6 +1771,33 @@ export default function ClientsPage({ forceTab }) {
 
   const paginatedGroups = groupedClientsByRegion;
 
+  const getTodayAction = (client) => {
+    if (!client.visits || client.visits.length === 0) return null;
+    const lastVisit = client.visits[0];
+    if (!lastVisit.visitDate) return null;
+    
+    // Parse the visitDate as local date to match todayDateText (which is local)
+    const visitDateObj = new Date(lastVisit.visitDate);
+    const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
+    const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
+    
+    if (visitDateStr === todayDateText) {
+      return lastVisit.newStatus;
+    }
+    return null;
+  };
+
+  const parsePrice = (p) => {
+    if (!p) return 0;
+    const num = parseFloat(String(p).replace(/[^0-9.]/g, ""));
+    return Number.isFinite(num) ? num : 0;
+  };
+
+  const grandTotalRequired = data.items.reduce((sum, c) => sum + parsePrice(c.price), 0);
+  const grandTotalCollected = data.items
+    .filter(c => getTodayAction(c) === "ACTIVE")
+    .reduce((sum, c) => sum + parsePrice(c.price), 0);
+
   return (
     <div className={`stack clients-page${isRepresentative ? " clients-page-representative" : ""}`}>
       {/* Toast notification */}
@@ -2225,8 +2173,27 @@ export default function ClientsPage({ forceTab }) {
         ) : data.items.length === 0 ? (
           <div className="table-empty">لا توجد بيانات في هذا التصنيف</div>
         ) : (
-          <div className="clients-region-groups">
-            {paginatedGroups.map((group) => {
+          <>
+            {isRepresentative && (
+              <div style={{ display: "flex", gap: "16px", padding: "16px 20px", background: "#eef2ff", borderRadius: "8px", border: "1px solid #c7d2fe", marginBottom: "16px", direction: "rtl", flexWrap: "wrap", justifyContent: "center", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
+                <div style={{ textAlign: "center", minWidth: "120px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>إجمالي المطلوب اليوم</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#b91c1c" }}>{grandTotalRequired.toLocaleString("ar-EG")} جنيه</div>
+                </div>
+                <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
+                <div style={{ textAlign: "center", minWidth: "120px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>إجمالي المحصل</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#15803d" }}>{grandTotalCollected.toLocaleString("ar-EG")} جنيه</div>
+                </div>
+                <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
+                <div style={{ textAlign: "center", minWidth: "120px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>إجمالي المتبقي</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#ea580c" }}>{(grandTotalRequired - grandTotalCollected).toLocaleString("ar-EG")} جنيه</div>
+                </div>
+              </div>
+            )}
+            <div className="clients-region-groups">
+              {paginatedGroups.map((group) => {
               const representativeNames = regionRepresentatives[group.regionId] || [];
               const isLoadingRepresentatives = Boolean(loadingRegionRepresentativeIds[group.regionId]);
               const isExpanded = Boolean(expandedRegionIds[group.regionId]);
@@ -2246,6 +2213,33 @@ export default function ClientsPage({ forceTab }) {
                         </p>
                       )}
                     </div>
+                    
+                    {/* ملخص التحصيل للمندوب - مدمج بجوار اسم المنطقة */}
+                    {isRepresentative && (() => {
+                      const totalRequired = group.clients.reduce((sum, c) => sum + parsePrice(c.price), 0);
+                      const totalCollected = group.clients
+                        .filter(c => getTodayAction(c) === "ACTIVE")
+                        .reduce((sum, c) => sum + parsePrice(c.price), 0);
+                      return (
+                        <div style={{ display: "flex", gap: "12px", alignItems: "center", background: "#f0fdf4", padding: "4px 12px", borderRadius: "20px", border: "1px solid #bbf7d0", margin: "0 auto", flexWrap: "wrap", justifyContent: "center" }}>
+                          <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
+                            <span style={{ color: "#666" }}>المطلوب:</span>
+                            <span style={{ fontWeight: "bold", color: "#b91c1c" }}>{totalRequired.toLocaleString("ar-EG")} ج</span>
+                          </div>
+                          <div style={{ width: "1px", height: "14px", background: "#d1d5db" }} />
+                          <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
+                            <span style={{ color: "#666" }}>تم تحصيله:</span>
+                            <span style={{ fontWeight: "bold", color: "#15803d" }}>{totalCollected.toLocaleString("ar-EG")} ج</span>
+                          </div>
+                          <div style={{ width: "1px", height: "14px", background: "#d1d5db" }} />
+                          <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
+                            <span style={{ color: "#666" }}>المتبقي:</span>
+                            <span style={{ fontWeight: "bold", color: "#ea580c" }}>{(totalRequired - totalCollected).toLocaleString("ar-EG")} ج</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     <div className="clients-region-group-actions">
                       {isAdmin && (
                         <>
@@ -2284,14 +2278,14 @@ export default function ClientsPage({ forceTab }) {
                       <table className="mobile-table clients-table">
                         <thead>
                           <tr>
-                            <th className="col-checkbox" style={{ width: "40px" }}></th>
+                            {!isRepresentative && <th className="col-checkbox" style={{ width: "40px" }}></th>}
                             <th className="col-name">العميل</th>
-                            <th className="col-phone">الهاتف</th>
-                            <th className="col-address">العنوان</th>
+                            {!isRepresentative && <th className="col-phone">الهاتف</th>}
+                            {!isRepresentative && <th className="col-address">العنوان</th>}
                             <th className="col-location">اللوكيشن</th>
-                            <th className="col-products">المنتجات</th>
+                            {!isRepresentative && <th className="col-products">المنتجات</th>}
                             <th className="col-price">السعر</th>
-                            <th className="col-visit-type">الزيارة</th>
+                            {!isRepresentative && <th className="col-visit-type">الزيارة</th>}
                             <th className="col-notes">الملاحظات</th>
                             <th className="col-actions">الإجراءات</th>
                           </tr>
@@ -2302,8 +2296,6 @@ export default function ClientsPage({ forceTab }) {
                             todayDateText={todayDateText}
                             actionState={actionState}
                             onHandleClient={handleClientOutcome}
-                            onApproveVisit={handleApproveVisit}
-                            onRejectVisit={handleRejectVisit}
                             isRepresentative={isRepresentative}
                             isAdmin={isAdmin}
                             selectedClientIds={selectedClientIds}
@@ -2319,6 +2311,7 @@ export default function ClientsPage({ forceTab }) {
               );
             })}
           </div>
+          </>
         )}
 
         <Pagination page={page} totalPages={totalRegionPages} onChange={setPage} />
