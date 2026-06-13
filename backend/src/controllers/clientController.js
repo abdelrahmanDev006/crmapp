@@ -191,7 +191,8 @@ const createClient = asyncHandler(async (req, res) => {
         nextVisitDate: payload.nextVisitDate
           ? normalizeToWorkDate(payload.nextVisitDate)
           : getCurrentWorkWeekStart(new Date()),
-        createdById: req.user.id
+        createdById: req.user.id,
+        note: payload.note && String(payload.note).trim() !== "" ? String(payload.note).trim() : null
       },
       include: {
         region: true
@@ -300,6 +301,11 @@ const updateClient = asyncHandler(async (req, res) => {
   if (Object.prototype.hasOwnProperty.call(req.body, "locationUrl")) {
     const normalizedLocationUrl = String(req.body.locationUrl || "").trim();
     updatePayload.locationUrl = normalizedLocationUrl || null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.body, "note")) {
+    const normalizedNote = String(req.body.note || "").trim();
+    updatePayload.note = normalizedNote || null;
   }
 
   if (Object.prototype.hasOwnProperty.call(req.body, "price")) {
