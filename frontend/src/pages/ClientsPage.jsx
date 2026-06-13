@@ -657,7 +657,7 @@ export default function ClientsPage({ forceTab }) {
       showToast(`تم التعديل بنجاح`);
       setBulkEditModalData(null);
       setSelectedClientIds(new Set());
-      fetchData(); // Reload data to reflect changes
+      loadClients(); // Reload data to reflect changes
     } catch (err) {
       setError(err.response?.data?.message || err.message || "حدث خطأ أثناء التعديل");
     } finally {
@@ -800,7 +800,7 @@ export default function ClientsPage({ forceTab }) {
       return client.visitType === "ONE_TIME";
     }
 
-    return client.status === "ACTIVE" && client.visitType === activeTab;
+    return client.status !== "REJECTED" && client.visitType === activeTab;
   }, [activeTab, selectedDueDate]);
 
   const queryFilters = useMemo(() => mapTabToFilters(activeTab), [activeTab]);
