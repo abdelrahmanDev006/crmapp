@@ -434,9 +434,9 @@ function ClientTableRows({
             <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
           </td>
         )}
-        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || ""}>
+        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.find(v => v?.note && v.note.trim() !== "")?.note || client.note || ""}>
           {client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.85rem", marginBottom: "4px" }}>{client.exceptionalReason}</div> : null}
-          {client.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || (!client.exceptionalReason ? "-" : null)}
+          {client.visits?.find(v => v?.note && v.note.trim() !== "")?.note || client.note || (!client.exceptionalReason ? "-" : null)}
         </td>
 
         <td className="actions-cell col-actions" data-label="الإجراءات">
@@ -484,17 +484,7 @@ function ClientTableRows({
               /* === أزرار الأدمن (كما هي) === */
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                  {client.status !== "REJECTED" && (
-                    <button
-                      type="button"
-                      className="danger-btn"
-                      style={{ padding: "4px 8px", fontSize: "0.85rem", minHeight: "0" }}
-                      disabled={isActionLoadingForClient}
-                      onClick={() => onHandleClient(client, "REJECTED")}
-                    >
-                      {isCancelActionLoading ? "..." : "كانسل"}
-                    </button>
-                  )}
+
                   {isAdmin && (
                     <Link
                       className="secondary-btn"
