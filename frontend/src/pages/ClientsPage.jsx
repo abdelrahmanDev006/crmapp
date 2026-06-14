@@ -927,7 +927,11 @@ export default function ClientsPage({ forceTab }) {
     const clientRows = group.clients
       .map(
         (c, i) => {
-          const noteText = c.visits?.find(v => v?.note !== null && v?.note !== undefined)?.note || "";
+          const visitNote = c.visits?.find(v => v?.note && v.note.trim() !== "")?.note || c.note || "";
+          const noteContent = c.exceptionalReason 
+            ? `<div style="color: #d9534f; font-size: 0.85rem; margin-bottom: 4px;">${c.exceptionalReason}</div>${visitNote}`
+            : (visitNote || "-");
+
           return `
             <tr>
               <td>${i + 1}</td>
@@ -936,7 +940,7 @@ export default function ClientsPage({ forceTab }) {
               <td class="col-address">${c.address}</td>
               <td>${c.products || "-"}</td>
               <td style="text-align:center;font-weight:600">${c.price || "-"}</td>
-              <td class="col-notes">${noteText}</td>
+              <td class="col-notes">${noteContent}</td>
             </tr>
           `;
         }
