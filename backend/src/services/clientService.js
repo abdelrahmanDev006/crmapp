@@ -55,6 +55,10 @@ function buildClientWhere(filters, user) {
     const userRegionIds = user.regions?.map(r => r.id) || [];
     where.regionId = { in: userRegionIds };
 
+    if (!filters.status) {
+      where.status = { not: ClientStatuses.REJECTED };
+    }
+
     if (!isOneTimeFilter) {
       if (user.allowedDate) {
         const selectedDate = normalizeToWorkDate(user.allowedDate);
@@ -409,11 +413,11 @@ async function handleClientVisit({
   user,
   outcome,
   note,
+  paymentMethod,
   visitType,
   customVisitIntervalDays,
   advanceDays,
-  referenceDate,
-  paymentMethod
+  referenceDate
 }) {
   const existingClient = await getClientById(clientId, user, false);
 
@@ -470,8 +474,7 @@ async function handleClientVisit({
 
   const isExceptional = existingClient.isExceptional;
 
-  // Representatives' actions now go through directly but DO NOT modify the Client's main status or nextVisitDate
-  // They only record the visit history so the representative gets credited.
+  // Representatives record the visit history only — never modify client data
   if (user.role === Roles.REPRESENTATIVE) {
     return prisma.$transaction(async (tx) => {
       await tx.visitHistory.create({
@@ -483,12 +486,11 @@ async function handleClientVisit({
           note: generatedNote,
           paymentMethod: paymentMethod || null,
           previousNextVisitDate,
-          newNextVisitDate: previousNextVisitDate, // No change
+          newNextVisitDate: previousNextVisitDate,
           visitDate: new Date()
         }
       });
 
-      // return the client with relations so the frontend gets the new visit
       return tx.client.findUnique({
         where: { id: existingClient.id },
         include: clientWithRelations

@@ -1350,9 +1350,9 @@ export default function ClientsPage({ forceTab }) {
 
 
 
-  async function handleClientOutcome(client, outcome, paymentMethod = null) {
+  async function handleClientOutcome(client, outcome, paymentMethod = null, collectedPrice = null) {
     if (outcome === "ACTIVE" && !paymentMethod) {
-      setPaymentModalData({ client, outcome });
+      setPaymentModalData({ client, outcome, collectedPrice: client.price || "" });
       return;
     }
 
@@ -1362,7 +1362,6 @@ export default function ClientsPage({ forceTab }) {
 
     // --- Optimistic Update: قم بتحديث العميل بدلاً من حذفه إذا كان لا يزال يطابق الفلاتر ---
     setData(prev => {
-      const isRepresentativePending = false; // We removed pending for reps
       const newVisit = {
         visitDate: new Date().toISOString(),
         newStatus: outcome,
@@ -1371,12 +1370,11 @@ export default function ClientsPage({ forceTab }) {
       
       const updatedClient = {
         ...client,
-        // Only update status and nextVisitDate optimistically if user is ADMIN
-        // Rep actions do not affect the main client status, only VisitHistory
         ...(isAdmin ? {
           status: outcome,
           nextVisitDate: (client.visitType === "ONE_TIME") ? "2099-12-31T23:59:59.999Z" : client.nextVisitDate,
         } : {}),
+        ...(collectedPrice !== null ? { price: String(collectedPrice) } : {}),
         visits: [{...newVisit, paymentMethod}, ...(client.visits || [])]
       };
 
@@ -1409,7 +1407,6 @@ export default function ClientsPage({ forceTab }) {
     showToast(`${label}: «${client.name}»`, outcomeTypes[outcome] || "success");
 
     try {
-      // إرسال الطلب في الخلفية
       await clientsApi.handle(client.id, {
         outcome,
         note: noteText || undefined,
@@ -1837,9 +1834,13 @@ export default function ClientsPage({ forceTab }) {
   };
 
   const grandTotalRequired = data.items.reduce((sum, c) => sum + parsePrice(c.price), 0);
-  const grandTotalCollected = data.items
-    .filter(c => getTodayAction(c) === "ACTIVE")
+  const grandTotalCash = data.items
+    .filter(c => getTodayAction(c) === "ACTIVE" && getTodayPaymentMethod(c) === "CASH")
     .reduce((sum, c) => sum + parsePrice(c.price), 0);
+  const grandTotalVisa = data.items
+    .filter(c => getTodayAction(c) === "ACTIVE" && getTodayPaymentMethod(c) === "VISA")
+    .reduce((sum, c) => sum + parsePrice(c.price), 0);
+  const grandTotalCollected = grandTotalCash + grandTotalVisa;
 
   return (
     <div className={`stack clients-page${isRepresentative ? " clients-page-representative" : ""}`}>
@@ -2219,19 +2220,29 @@ export default function ClientsPage({ forceTab }) {
           <>
             {isRepresentative && (
               <div style={{ display: "flex", gap: "16px", padding: "16px 20px", background: "#eef2ff", borderRadius: "8px", border: "1px solid #c7d2fe", marginBottom: "16px", direction: "rtl", flexWrap: "wrap", justifyContent: "center", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
-                <div style={{ textAlign: "center", minWidth: "120px" }}>
-                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>إجمالي المطلوب اليوم</div>
-                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#b91c1c" }}>{grandTotalRequired.toLocaleString("ar-EG")} جنيه</div>
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>المطلوب</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#b91c1c" }}>{grandTotalRequired.toLocaleString("ar-EG")} ج</div>
                 </div>
                 <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
-                <div style={{ textAlign: "center", minWidth: "120px" }}>
-                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>إجمالي المحصل</div>
-                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#15803d" }}>{grandTotalCollected.toLocaleString("ar-EG")} جنيه</div>
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>💵 كاش</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#15803d" }}>{grandTotalCash.toLocaleString("ar-EG")} ج</div>
                 </div>
                 <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
-                <div style={{ textAlign: "center", minWidth: "120px" }}>
-                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>إجمالي المتبقي</div>
-                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#ea580c" }}>{(grandTotalRequired - grandTotalCollected).toLocaleString("ar-EG")} جنيه</div>
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>💳 فيزا</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#1d4ed8" }}>{grandTotalVisa.toLocaleString("ar-EG")} ج</div>
+                </div>
+                <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>الإجمالي</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#15803d" }}>{grandTotalCollected.toLocaleString("ar-EG")} ج</div>
+                </div>
+                <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>المتبقي</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#ea580c" }}>{(grandTotalRequired - grandTotalCollected).toLocaleString("ar-EG")} ج</div>
                 </div>
               </div>
             )}
@@ -2401,18 +2412,31 @@ export default function ClientsPage({ forceTab }) {
         </div>
       )}
 
-      {/* نافذة التعديل الجماعي */}
+      {/* نافذة إدخال المبلغ وطريقة الدفع */}
       {paymentModalData && (
         <div className="modal-overlay" onClick={() => setPaymentModalData(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', padding: '28px', borderRadius: '16px', maxWidth: '380px', width: '100%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', direction: 'rtl' }}>
-            <h3 style={{ marginBottom: '20px' }}>كيف تم الدفع؟</h3>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', padding: '28px', borderRadius: '16px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', direction: 'rtl' }}>
+            <h3 style={{ marginBottom: '8px' }}>تسجيل التحصيل</h3>
+            <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '16px' }}>العميل: {paymentModalData.client.name}</p>
+            <div style={{ marginBottom: '20px', textAlign: 'right' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '0.95rem' }}>المبلغ المحصل</label>
+              <input
+                type="number"
+                value={paymentModalData.collectedPrice}
+                onChange={(e) => setPaymentModalData({ ...paymentModalData, collectedPrice: e.target.value })}
+                style={{ width: '100%', padding: '10px 12px', border: '2px solid #d1d5db', borderRadius: '8px', fontSize: '1.2rem', fontWeight: 'bold', textAlign: 'center' }}
+                placeholder="أدخل المبلغ"
+                min="0"
+                step="0.01"
+              />
+            </div>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button 
                 type="button" 
                 className="primary-btn" 
                 style={{ flex: 1, padding: '12px', fontSize: '1.1rem', background: '#10b981' }}
                 onClick={() => {
-                  handleClientOutcome(paymentModalData.client, paymentModalData.outcome, "CASH");
+                  handleClientOutcome(paymentModalData.client, paymentModalData.outcome, "CASH", paymentModalData.collectedPrice);
                   setPaymentModalData(null);
                 }}
               >
@@ -2423,7 +2447,7 @@ export default function ClientsPage({ forceTab }) {
                 className="primary-btn" 
                 style={{ flex: 1, padding: '12px', fontSize: '1.1rem', background: '#3b82f6' }}
                 onClick={() => {
-                  handleClientOutcome(paymentModalData.client, paymentModalData.outcome, "VISA");
+                  handleClientOutcome(paymentModalData.client, paymentModalData.outcome, "VISA", paymentModalData.collectedPrice);
                   setPaymentModalData(null);
                 }}
               >
