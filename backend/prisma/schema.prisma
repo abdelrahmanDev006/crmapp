@@ -87,6 +87,7 @@ model VisitHistory {
   previousStatus        ClientStatus
   newStatus             ClientStatus
   note                  String?
+  paymentMethod         PaymentMethod?
   previousNextVisitDate DateTime?
   newNextVisitDate      DateTime?
   createdAt             DateTime     @default(now())
@@ -131,4 +132,9 @@ enum ClientStatus {
   NO_ANSWER
   REJECTED
   PENDING_APPROVAL
+}
+
+enum PaymentMethod {
+  CASH
+  VISA
 }

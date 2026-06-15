@@ -427,7 +427,14 @@ function ClientTableRows({
         </td>
 
         {!isRepresentative && <td className="col-products" data-label="المنتجات">{client.products}</td>}
-        <td className="col-price" data-label="السعر">{client.price || "-"}</td>
+        <td className="col-price" data-label="السعر">
+          {client.price || "-"}
+          {getTodayAction(client) === "ACTIVE" && getTodayPaymentMethod(client) && (
+            <div style={{ fontSize: "0.8rem", color: getTodayPaymentMethod(client) === "CASH" ? "#10b981" : "#3b82f6", fontWeight: "bold", marginTop: "4px" }}>
+              ({getTodayPaymentMethod(client) === "CASH" ? "كاش" : "فيزا"})
+            </div>
+          )}
+        </td>
 
         {!isRepresentative && (
           <td className="col-visit-type" data-label="الزيارة">
@@ -445,9 +452,14 @@ function ClientTableRows({
               /* === أزرار المندوب: اتصال + تم التعامل + لم يرد فقط === */
               <>
                 {dialHref && (
-                  <a className="ghost-btn quick-action-btn" href={dialHref} style={{ padding: "6px 10px", textAlign: "center", border: "1px solid #3b82f6", color: "#3b82f6", borderRadius: "6px", fontWeight: "bold" }}>
-                    📞 اتصال
-                  </a>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <a className="ghost-btn quick-action-btn" href={dialHref} style={{ flex: 1, padding: "6px 10px", textAlign: "center", border: "1px solid #3b82f6", color: "#3b82f6", borderRadius: "6px", fontWeight: "bold" }}>
+                      📞 اتصال
+                    </a>
+                    <a className="ghost-btn quick-action-btn" href={`https://wa.me/${client.phone.replace(/\\D/g, '').replace(/^0/, '20')}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "6px 10px", textAlign: "center", border: "1px solid #25D366", color: "#25D366", borderRadius: "6px", fontWeight: "bold" }}>
+                      💬 واتساب
+                    </a>
+                  </div>
                 )}
                 {getTodayAction(client) === "ACTIVE" ? (
                   <div style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#15803d", fontWeight: "bold", background: "#dcfce7", borderRadius: "6px", border: "1px solid #bbf7d0" }}>
@@ -623,6 +635,7 @@ export default function ClientsPage({ forceTab }) {
 
   const [selectedClientIds, setSelectedClientIds] = useState(new Set());
   const [bulkEditModalData, setBulkEditModalData] = useState(null);
+  const [paymentModalData, setPaymentModalData] = useState(null);
   const [isBulkEditLoading, setIsBulkEditLoading] = useState(false);
   const toggleClientSelection = useCallback((id) => {
     setSelectedClientIds((prev) => {
@@ -1322,7 +1335,12 @@ export default function ClientsPage({ forceTab }) {
 
 
 
-  async function handleClientOutcome(client, outcome) {
+  async function handleClientOutcome(client, outcome, paymentMethod = null) {
+    if (outcome === "ACTIVE" && !paymentMethod) {
+      setPaymentModalData({ client, outcome });
+      return;
+    }
+
     let noteText = ""; // No more prompts for notes
 
     setError("");
@@ -1344,7 +1362,7 @@ export default function ClientsPage({ forceTab }) {
           status: outcome,
           nextVisitDate: (client.visitType === "ONE_TIME") ? "2099-12-31T23:59:59.999Z" : client.nextVisitDate,
         } : {}),
-        visits: [newVisit, ...(client.visits || [])]
+        visits: [{...newVisit, paymentMethod}, ...(client.visits || [])]
       };
 
       if (matchesCurrentFilters(updatedClient)) {
@@ -1379,7 +1397,8 @@ export default function ClientsPage({ forceTab }) {
       // إرسال الطلب في الخلفية
       await clientsApi.handle(client.id, {
         outcome,
-        note: noteText || undefined
+        note: noteText || undefined,
+        paymentMethod: paymentMethod || undefined
       });
     } catch (err) {
       showToast(err.message || "تعذر تحديث حالة العميل", "error");
@@ -1777,6 +1796,21 @@ export default function ClientsPage({ forceTab }) {
     
     if (visitDateStr === todayDateText) {
       return lastVisit.newStatus;
+    }
+    return null;
+  };
+
+  const getTodayPaymentMethod = (client) => {
+    if (!client.visits || client.visits.length === 0) return null;
+    const lastVisit = client.visits[0];
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    
+    const visitDateObj = new Date(lastVisit.visitDate);
+    const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
+    const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
+    
+    if (visitDateStr === todayDateText) {
+      return lastVisit.paymentMethod;
     }
     return null;
   };
@@ -2343,6 +2377,41 @@ export default function ClientsPage({ forceTab }) {
       )}
 
       {/* نافذة التعديل الجماعي */}
+      {paymentModalData && (
+        <div className="modal-overlay" onClick={() => setPaymentModalData(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '350px', textAlign: 'center' }}>
+            <h3 style={{ marginBottom: '20px' }}>كيف تم الدفع؟</h3>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                type="button" 
+                className="primary-btn" 
+                style={{ flex: 1, padding: '12px', fontSize: '1.1rem', background: '#10b981' }}
+                onClick={() => {
+                  handleClientOutcome(paymentModalData.client, paymentModalData.outcome, "CASH");
+                  setPaymentModalData(null);
+                }}
+              >
+                💵 كاش
+              </button>
+              <button 
+                type="button" 
+                className="primary-btn" 
+                style={{ flex: 1, padding: '12px', fontSize: '1.1rem', background: '#3b82f6' }}
+                onClick={() => {
+                  handleClientOutcome(paymentModalData.client, paymentModalData.outcome, "VISA");
+                  setPaymentModalData(null);
+                }}
+              >
+                💳 فيزا
+              </button>
+            </div>
+            <button type="button" onClick={() => setPaymentModalData(null)} className="ghost-btn" style={{ marginTop: '16px', width: '100%' }}>
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
+
       {bulkEditModalData && (
         <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
           <form onSubmit={handleBulkEditSubmit} style={{ background: '#fff', padding: '24px', borderRadius: '8px', width: '100%', maxWidth: '400px', direction: 'rtl' }}>

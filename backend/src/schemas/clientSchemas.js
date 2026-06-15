@@ -163,6 +163,7 @@ const regionPageClientQuerySchema = z.object({
 const handleClientSchema = z.object({
   outcome: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]),
   note: z.string().max(500).optional(),
+  paymentMethod: z.enum(["CASH", "VISA"]).optional(),
   visitType: z.enum(visitTypeValues).optional(),
   customVisitIntervalDays: customVisitIntervalDaysSchema,
   advanceDays: z.coerce.number().int().min(1).max(365).optional(),
