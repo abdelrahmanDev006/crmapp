@@ -2260,19 +2260,29 @@ export default function ClientsPage({ forceTab }) {
                     {/* ملخص التحصيل للمندوب - مدمج بجوار اسم المنطقة */}
                     {isRepresentative && (() => {
                       const totalRequired = group.clients.reduce((sum, c) => sum + parsePrice(c.price), 0);
-                      const totalCollected = group.clients
-                        .filter(c => getTodayAction(c) === "ACTIVE")
+                      const activeClientsToday = group.clients.filter(c => getTodayAction(c) === "ACTIVE");
+                      const totalCashCollected = activeClientsToday
+                        .filter(c => getTodayPaymentMethod(c) === "CASH")
                         .reduce((sum, c) => sum + parsePrice(c.price), 0);
+                      const totalVisaCollected = activeClientsToday
+                        .filter(c => getTodayPaymentMethod(c) === "VISA")
+                        .reduce((sum, c) => sum + parsePrice(c.price), 0);
+                      const totalCollected = totalCashCollected + totalVisaCollected;
                       return (
-                        <div style={{ display: "flex", gap: "12px", alignItems: "center", background: "#f0fdf4", padding: "4px 12px", borderRadius: "20px", border: "1px solid #bbf7d0", margin: "0 auto", flexWrap: "wrap", justifyContent: "center" }}>
+                        <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "#f0fdf4", padding: "6px 14px", borderRadius: "12px", border: "1px solid #bbf7d0", margin: "0 auto", flexWrap: "wrap", justifyContent: "center" }}>
                           <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
                             <span style={{ color: "#666" }}>المطلوب:</span>
                             <span style={{ fontWeight: "bold", color: "#b91c1c" }}>{totalRequired.toLocaleString("ar-EG")} ج</span>
                           </div>
                           <div style={{ width: "1px", height: "14px", background: "#d1d5db" }} />
                           <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
-                            <span style={{ color: "#666" }}>تم تحصيله:</span>
-                            <span style={{ fontWeight: "bold", color: "#15803d" }}>{totalCollected.toLocaleString("ar-EG")} ج</span>
+                            <span style={{ color: "#666" }}>💵 كاش:</span>
+                            <span style={{ fontWeight: "bold", color: "#15803d" }}>{totalCashCollected.toLocaleString("ar-EG")} ج</span>
+                          </div>
+                          <div style={{ width: "1px", height: "14px", background: "#d1d5db" }} />
+                          <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
+                            <span style={{ color: "#666" }}>💳 فيزا:</span>
+                            <span style={{ fontWeight: "bold", color: "#1d4ed8" }}>{totalVisaCollected.toLocaleString("ar-EG")} ج</span>
                           </div>
                           <div style={{ width: "1px", height: "14px", background: "#d1d5db" }} />
                           <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
@@ -2393,8 +2403,8 @@ export default function ClientsPage({ forceTab }) {
 
       {/* نافذة التعديل الجماعي */}
       {paymentModalData && (
-        <div className="modal-overlay" onClick={() => setPaymentModalData(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '350px', textAlign: 'center' }}>
+        <div className="modal-overlay" onClick={() => setPaymentModalData(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', padding: '28px', borderRadius: '16px', maxWidth: '380px', width: '100%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', direction: 'rtl' }}>
             <h3 style={{ marginBottom: '20px' }}>كيف تم الدفع؟</h3>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button 
