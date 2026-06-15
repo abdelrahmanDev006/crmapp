@@ -18,6 +18,13 @@ function normalizeClientName(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
 }
 
+function parseNumericPrice(value) {
+  if (!value) return undefined;
+  const cleaned = String(value).replace(/[^0-9.]/g, "");
+  const parsed = parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function normalizePhoneForComparison(value) {
   return String(value || "")
     .trim()
@@ -30,25 +37,19 @@ async function findDuplicatePhoneClient({ normalizedPhone, excludeClientId }) {
     return null;
   }
 
-  const exclusionSql =
-    Number.isInteger(Number(excludeClientId)) && Number(excludeClientId) > 0
-      ? Prisma.sql`AND c.id <> ${Number(excludeClientId)}`
-      : Prisma.empty;
+  const where = {
+    isDeleted: false,
+    phoneNormalized: normalizedPhone
+  };
 
-  const duplicatedRows = await prisma.$queryRaw`
-    SELECT c.id, c.name, c.phone, c."regionId"
-    FROM "Client" c
-    WHERE c."isDeleted" = false AND regexp_replace(
-      translate(c.phone, '٠١٢٣٤٥٦٧٨٩', '0123456789'),
-      '[^0-9]',
-      '',
-      'g'
-    ) = ${normalizedPhone}
-    ${exclusionSql}
-    LIMIT 1
-  `;
+  if (Number.isInteger(Number(excludeClientId)) && Number(excludeClientId) > 0) {
+    where.id = { not: Number(excludeClientId) };
+  }
 
-  return duplicatedRows[0] || null;
+  return prisma.client.findFirst({
+    where,
+    select: { id: true, name: true, phone: true, regionId: true }
+  });
 }
 
 async function assertClientUniqueness({
@@ -164,7 +165,7 @@ const createClient = asyncHandler(async (req, res) => {
     throw createHttpError(400, "المنطقة غير موجودة");
   }
 
-  const { normalizedName } = await assertClientUniqueness({
+  const { normalizedName, normalizedPhone } = await assertClientUniqueness({
     name: payload.name,
     phone: payload.phone,
     regionId: payload.regionId,
@@ -178,11 +179,13 @@ const createClient = asyncHandler(async (req, res) => {
       data: {
         name: normalizedName,
         phone: String(payload.phone || "").trim(),
+        phoneNormalized: normalizedPhone || undefined,
         address: String(payload.address || "").trim(),
         locationUrl: payload.locationUrl ? String(payload.locationUrl).trim() : undefined,
         regionId: payload.regionId,
         products: String(payload.products || "").trim(),
         price: payload.price ? String(payload.price).trim() : undefined,
+        priceValue: payload.price ? parseNumericPrice(payload.price) : undefined,
         visitType: payload.visitType,
         customVisitIntervalDays:
           payload.visitType === VisitTypes.CUSTOM ? Number(payload.customVisitIntervalDays) : null,
@@ -258,7 +261,7 @@ const updateClient = asyncHandler(async (req, res) => {
   const nextName = hasNameInPayload ? req.body.name : existing.name;
   const nextPhone = hasPhoneInPayload ? req.body.phone : existing.phone;
 
-  const { normalizedName } = await assertClientUniqueness({
+  const { normalizedName, normalizedPhone } = await assertClientUniqueness({
     name: nextName,
     phone: nextPhone,
     regionId: nextRegionId,
@@ -284,7 +287,12 @@ const updateClient = asyncHandler(async (req, res) => {
   const updatePayload = {
     ...restBody,
     ...(hasNameInPayload ? { name: normalizedName } : {}),
-    ...(hasPhoneInPayload ? { phone: String(nextPhone || "").trim() } : {}),
+    ...(hasPhoneInPayload
+      ? {
+          phone: String(nextPhone || "").trim(),
+          phoneNormalized: normalizePhoneForComparison(nextPhone) || null
+        }
+      : {}),
     customVisitIntervalDays: finalCustomVisitIntervalDays,
     ...(req.body.nextVisitDate ? { nextVisitDate: normalizeToWorkDate(req.body.nextVisitDate) } : {}),
     region: { connect: { id: nextRegionId } }
@@ -311,6 +319,7 @@ const updateClient = asyncHandler(async (req, res) => {
   if (Object.prototype.hasOwnProperty.call(req.body, "price")) {
     const normalizedPrice = String(req.body.price || "").trim();
     updatePayload.price = normalizedPrice || null;
+    updatePayload.priceValue = normalizedPrice ? parseNumericPrice(normalizedPrice) : null;
   }
 
   const updated = await prisma.$transaction(async (tx) => {

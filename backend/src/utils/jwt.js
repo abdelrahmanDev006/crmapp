@@ -6,7 +6,8 @@ function generateToken(user) {
     {
       sub: user.id,
       role: user.role,
-      regionId: user.regionId || null
+      regionId: user.regionId || null,
+      tver: user.tokenVersion || 0
     },
     env.jwtSecret,
     { expiresIn: env.jwtExpiresIn }

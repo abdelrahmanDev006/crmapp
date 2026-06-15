@@ -200,6 +200,11 @@ const updateUser = asyncHandler(async (req, res) => {
     }
   }
 
+  const roleOrActiveChanged = role || Object.prototype.hasOwnProperty.call(req.body, "isActive");
+  if (roleOrActiveChanged) {
+    data.tokenVersion = { increment: 1 };
+  }
+
   const updated = await prisma.user.update({
     where: { id: userId },
     data,
@@ -273,6 +278,11 @@ const deleteUser = asyncHandler(async (req, res) => {
   if (visitCount > 0) {
     throw createHttpError(400, "لا يمكن حذف مستخدم لديه سجل زيارات");
   }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } }
+  });
 
   await prisma.user.delete({
     where: { id: userId }

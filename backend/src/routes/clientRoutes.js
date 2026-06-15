@@ -27,32 +27,6 @@ const {
 
 const router = express.Router();
 
-// TEMP
-const { PrismaClient } = require("@prisma/client");
-const prismaTemp = new PrismaClient();
-router.get("/migrate-notes", async (req, res) => {
-  const clients = await prismaTemp.client.findMany({
-    include: {
-      visits: {
-        where: { note: { not: null, notIn: [''] } },
-        orderBy: { visitDate: 'asc' },
-        take: 1
-      }
-    }
-  });
-  let count = 0;
-  for (const c of clients) {
-    if (c.visits.length > 0 && c.visits[0].note) {
-      await prismaTemp.client.update({
-        where: { id: c.id },
-        data: { note: c.visits[0].note }
-      });
-      count++;
-    }
-  }
-  res.json({ message: `Migrated ${count} notes successfully.` });
-});
-
 router.use(authenticate);
 
 router.get("/overdue-summary", authorizeRoles(Roles.ADMIN), getOverdueSummary);

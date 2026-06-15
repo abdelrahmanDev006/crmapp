@@ -5,11 +5,9 @@ const { verifyToken } = require("../utils/jwt");
 const { createHttpError } = require("../utils/httpError");
 
 // --- In-Memory User Cache ---
-// يخزن بيانات المستخدم في الذاكرة لمدة دقيقتين لتجنب query لقاعدة البيانات في كل طلب
 const userCache = new Map();
-const USER_CACHE_TTL_MS = 2 * 60 * 1000; // دقيقتان
+const USER_CACHE_TTL_MS = 30 * 1000;
 
-// تنظيف الذاكرة المؤقتة كل 5 دقائق لمنع تسريب الذاكرة (Memory Leak)
 setInterval(() => {
   const now = Date.now();
   for (const [userId, entry] of userCache.entries()) {
@@ -17,7 +15,7 @@ setInterval(() => {
       userCache.delete(userId);
     }
   }
-}, 5 * 60 * 1000).unref();
+}, 60 * 1000).unref();
 
 function getCachedUser(userId) {
   const entry = userCache.get(userId);
@@ -58,7 +56,6 @@ async function authenticate(req, res, next) {
     let user = getCachedUser(userId);
 
     if (!user) {
-      // اذهب لقاعدة البيانات فقط إذا لم يكن موجوداً في الـ Cache
       user = await prisma.user.findUnique({
         where: { id: userId },
         include: { regions: true }
@@ -70,6 +67,10 @@ async function authenticate(req, res, next) {
 
     if (!user || !user.isActive) {
       return next(createHttpError(401, "المستخدم غير صالح أو غير نشط"));
+    }
+
+    if (Number(payload.tver) !== Number(user.tokenVersion)) {
+      return next(createHttpError(401, "تم تحديث الجلسة، يرجى تسجيل الدخول مرة أخرى"));
     }
 
     req.user = user;

@@ -2,7 +2,6 @@ const prisma = require("../config/prisma");
 const { Roles, ClientStatuses, VisitTypes } = require("../constants/enums");
 const {
   normalizeToWorkDate,
-  toStartOfUtcDay,
   calculateNextVisitDate,
   addWorkDaysWith28DayMonth,
   getCurrentWorkWeekStart
@@ -114,7 +113,7 @@ function buildClientWhere(filters, user) {
   }
 
   if (filters.createdDate) {
-    const selectedCreatedDate = toStartOfUtcDay(filters.createdDate);
+    const selectedCreatedDate = normalizeToWorkDate(filters.createdDate);
     const nextCreatedDate = new Date(selectedCreatedDate);
     nextCreatedDate.setUTCDate(nextCreatedDate.getUTCDate() + 1);
 
@@ -316,7 +315,8 @@ async function getClientById(id, user, includeVisits = false) {
               },
               orderBy: {
                 visitDate: "desc"
-              }
+              },
+              take: 50
             }
           }
         : {})
@@ -626,26 +626,21 @@ async function handleRegionClients({ regionId, user, note }) {
   });
 
   await prisma.$transaction(async (tx) => {
-    const clientUpdateOperations = Array.from(updateBuckets.values()).flatMap((bucket) =>
-      chunkArray(bucket.ids, 500).map((idBatch) =>
-        tx.client.updateMany({
-          where: { id: { in: idBatch } },
-          data: {
-            status: ClientStatuses.ACTIVE,
-            noAnswerCount: 0,
-            nextVisitDate: bucket.nextVisitDate
-          }
-        })
-      )
-    );
-
-    const visitHistoryOperations = chunkArray(visitHistoryPayload, 500).map((batch) =>
-      tx.visitHistory.createMany({
-        data: batch
+    const clientUpdateOperations = Array.from(updateBuckets.values()).map((bucket) =>
+      tx.client.updateMany({
+        where: { id: { in: bucket.ids } },
+        data: {
+          status: ClientStatuses.ACTIVE,
+          noAnswerCount: 0,
+          nextVisitDate: bucket.nextVisitDate
+        }
       })
     );
 
-    await Promise.all([...clientUpdateOperations, ...visitHistoryOperations]);
+    await Promise.all([
+      ...clientUpdateOperations,
+      tx.visitHistory.createMany({ data: visitHistoryPayload })
+    ]);
   });
 
   return {

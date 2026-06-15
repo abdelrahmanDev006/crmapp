@@ -19,10 +19,6 @@ function toWorkDateTime(input = new Date()) {
   return DateTime.fromJSDate(toSafeDate(input), { zone: env.workTimezone });
 }
 
-function toStartOfUtcDay(input = new Date()) {
-  return normalizeToWorkDate(input);
-}
-
 function normalizeToWorkDate(input = new Date()) {
   return toWorkDateTime(input).startOf("day").toUTC().toJSDate();
 }
@@ -57,7 +53,6 @@ function calculateNextVisitDate(currentDate, visitType) {
 }
 
 module.exports = {
-  toStartOfUtcDay,
   normalizeToWorkDate,
   addWorkDaysWith28DayMonth,
   getCurrentWorkWeekStart,

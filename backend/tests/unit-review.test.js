@@ -41,8 +41,7 @@ const {
   addWorkDaysWith28DayMonth,
   getCurrentWorkWeekStart,
   getNextOrSameWorkWeekStart,
-  calculateNextVisitDate,
-  toStartOfUtcDay
+  calculateNextVisitDate
 } = require("../src/utils/dateUtils");
 
 // 1a. normalizeToWorkDate — should strip time
@@ -92,11 +91,7 @@ try {
   assert(true, "calculateNextVisitDate throws on unsupported type");
 }
 
-// 1h. toStartOfUtcDay is alias
-const utcDay = toStartOfUtcDay(new Date("2026-06-08T10:00:00Z"));
-assert(utcDay instanceof Date, "toStartOfUtcDay returns Date");
-
-// 1i. getCurrentWorkWeekStart
+// 1h. getCurrentWorkWeekStart
 const weekStart = getCurrentWorkWeekStart(new Date("2026-06-08T12:00:00Z")); // Monday
 assert(weekStart instanceof Date, "getCurrentWorkWeekStart returns Date");
 assert(weekStart <= new Date("2026-06-08T23:59:59Z"), "getCurrentWorkWeekStart <= input date");

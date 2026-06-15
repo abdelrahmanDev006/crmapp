@@ -13,7 +13,7 @@ async function logActivity({ userId, action, entityType, entityId = null, entity
       }
     });
   } catch (error) {
-    console.error("Failed to log activity:", error);
+    console.error("[AUDIT_FAILURE]", { action, entityType, entityId, error: error.message });
   }
 }
 

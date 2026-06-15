@@ -3,6 +3,7 @@ const asyncHandler = require("../middlewares/asyncHandler");
 const { Roles } = require("../constants/enums");
 const { normalizeToWorkDate } = require("../utils/dateUtils");
 const { getRegionSummary } = require("./regionController");
+const { logActivity } = require("../services/logService");
 
 const summary = asyncHandler(async (req, res) => {
   const today = normalizeToWorkDate(new Date());
@@ -63,6 +64,8 @@ const backup = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: "غير مسموح بالوصول لهذا الإجراء" });
   }
 
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
   const [users, regions, clients, visits] = await Promise.all([
     prisma.user.findMany({ select: { id: true, name: true, email: true, role: true, regions: true, isActive: true } }),
     prisma.region.findMany(),
@@ -70,7 +73,14 @@ const backup = asyncHandler(async (req, res) => {
     prisma.visitHistory.findMany()
   ]);
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  logActivity({
+    userId: req.user.id,
+    action: "EXPORT_BACKUP",
+    entityType: "SYSTEM",
+    entityName: "database",
+    details: `تم تصدير نسخة احتياطية كاملة (${users.length} مستخدم، ${regions.length} منطقة، ${clients.length} عميل، ${visits.length} زيارة)`
+  });
+
   res.setHeader("Content-Disposition", `attachment; filename=crm-backup-${timestamp}.json`);
   res.setHeader("Content-Type", "application/json");
 
