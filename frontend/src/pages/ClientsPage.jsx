@@ -370,6 +370,21 @@ function ClientTableRows({
     return null;
   };
 
+  const getTodayPaymentMethod = (client) => {
+    if (!client.visits || client.visits.length === 0) return null;
+    const lastVisit = client.visits[0];
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    
+    const visitDateObj = new Date(lastVisit.visitDate);
+    const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
+    const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
+    
+    if (visitDateStr === todayDateText) {
+      return lastVisit.paymentMethod;
+    }
+    return null;
+  };
+
   return clients.map((client) => {
     const clientIsNew = isNewClient(client.createdAt, todayDateText);
     const locationHref = getLocationHref(client.locationUrl);
@@ -456,7 +471,7 @@ function ClientTableRows({
                     <a className="ghost-btn quick-action-btn" href={dialHref} style={{ flex: 1, padding: "6px 10px", textAlign: "center", border: "1px solid #3b82f6", color: "#3b82f6", borderRadius: "6px", fontWeight: "bold" }}>
                       📞 اتصال
                     </a>
-                    <a className="ghost-btn quick-action-btn" href={`https://wa.me/${client.phone.replace(/\\D/g, '').replace(/^0/, '20')}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "6px 10px", textAlign: "center", border: "1px solid #25D366", color: "#25D366", borderRadius: "6px", fontWeight: "bold" }}>
+                    <a className="ghost-btn quick-action-btn" href={`https://wa.me/${client.phone.replace(/\D/g, '').replace(/^0/, '20')}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "6px 10px", textAlign: "center", border: "1px solid #25D366", color: "#25D366", borderRadius: "6px", fontWeight: "bold" }}>
                       💬 واتساب
                     </a>
                   </div>
