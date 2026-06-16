@@ -1351,7 +1351,7 @@ export default function ClientsPage({ forceTab }) {
 
 
   async function handleClientOutcome(client, outcome, paymentMethod = null, collectedPrice = null) {
-    if (outcome === "ACTIVE" && !paymentMethod) {
+    if (outcome === "ACTIVE" && !paymentMethod && isRepresentative) {
       setPaymentModalData({ client, outcome, collectedPrice: client.price || "" });
       return;
     }
