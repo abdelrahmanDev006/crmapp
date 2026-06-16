@@ -21,7 +21,8 @@ const clientWithRelations = {
       note: true,
       visitDate: true,
       newStatus: true,
-      paymentMethod: true
+      paymentMethod: true,
+      collectedAmount: true
     },
     orderBy: {
       visitDate: "desc"
@@ -417,7 +418,8 @@ async function handleClientVisit({
   visitType,
   customVisitIntervalDays,
   advanceDays,
-  referenceDate
+  referenceDate,
+  collectedAmount
 }) {
   const existingClient = await getClientById(clientId, user, false);
 
@@ -485,6 +487,7 @@ async function handleClientVisit({
           newStatus: newStatus || ClientStatuses.ACTIVE,
           note: generatedNote,
           paymentMethod: paymentMethod || null,
+          collectedAmount: typeof collectedAmount === 'number' ? collectedAmount : null,
           previousNextVisitDate,
           newNextVisitDate: previousNextVisitDate,
           visitDate: new Date()
@@ -527,6 +530,7 @@ async function handleClientVisit({
         newStatus: newStatus || ClientStatuses.ACTIVE,
         note: generatedNote,
         paymentMethod: paymentMethod || null,
+        collectedAmount: typeof collectedAmount === 'number' ? collectedAmount : null,
         previousNextVisitDate,
         newNextVisitDate: finalNextVisitDate,
         visitDate: new Date()

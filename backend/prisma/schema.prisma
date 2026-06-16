@@ -90,6 +90,7 @@ model VisitHistory {
   newStatus             ClientStatus
   note                  String?
   paymentMethod         PaymentMethod?
+  collectedAmount       Float?
   previousNextVisitDate DateTime?
   newNextVisitDate      DateTime?
   createdAt             DateTime     @default(now())
