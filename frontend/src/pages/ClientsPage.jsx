@@ -155,6 +155,15 @@ function getLocationHref(locationUrl) {
   }
 }
 
+function parsePrice(value) {
+  if (!value && value !== 0) {
+    return 0;
+  }
+
+  const num = parseFloat(String(value).replace(/[^0-9.]/g, ""));
+  return Number.isFinite(num) ? num : 0;
+}
+
 function getDialHref(phoneValue) {
   const normalizedPhone = String(phoneValue || "")
     .trim()
@@ -393,7 +402,10 @@ function ClientTableRows({
     const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
     const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
     if (visitDateStr === todayDateText) {
-      return lastVisit.collectedAmount;
+      if (lastVisit.collectedAmount != null) {
+        return lastVisit.collectedAmount;
+      }
+      return parsePrice(client.price) || null;
     }
     return null;
   };
@@ -456,9 +468,11 @@ function ClientTableRows({
 
         {!isRepresentative && <td className="col-products" data-label="المنتجات">{client.products}</td>}
         <td className="col-price" data-label="السعر">
-          {isRepresentative && getTodayAction(client) === "ACTIVE" && getTodayCollectedAmount(client) != null ? (
+          {isRepresentative && getTodayAction(client) === "ACTIVE" ? (
             <>
-              <span style={{ fontWeight: "bold" }}>{getTodayCollectedAmount(client)}</span>
+              <span style={{ fontWeight: "bold" }}>
+                {Number(getTodayCollectedAmount(client) ?? parsePrice(client.price)).toLocaleString("ar-EG")} ج
+              </span>
               {getTodayPaymentMethod(client) && (
                 <div style={{ fontSize: "0.8rem", marginTop: "4px" }}>
                   <span style={{ fontWeight: "bold", color: getTodayPaymentMethod(client) === "CASH" ? "#10b981" : "#3b82f6" }}>
@@ -477,9 +491,11 @@ function ClientTableRows({
             <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
           </td>
         )}
-        <td className="col-notes details-note-text" data-label="الملاحظات" title={client.visits?.find(v => v?.note && v.note.trim() !== "")?.note || client.note || ""}>
+        <td className="col-notes details-note-text" data-label="الملاحظات" title={isRepresentative ? (client.visits?.find(v => v?.note && v.note.trim() !== "")?.note || client.note || "") : (client.note || "")}>
           {client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.85rem", marginBottom: "4px" }}>{client.exceptionalReason}</div> : null}
-          {client.visits?.find(v => v?.note && v.note.trim() !== "")?.note || client.note || (!client.exceptionalReason ? "-" : null)}
+          {isRepresentative
+            ? (client.visits?.find(v => v?.note && v.note.trim() !== "")?.note || client.note || (!client.exceptionalReason ? "-" : null))
+            : (client.note || (!client.exceptionalReason ? "-" : null))}
         </td>
 
         <td className="actions-cell col-actions" data-label="الإجراءات">
@@ -1371,9 +1387,14 @@ export default function ClientsPage({ forceTab }) {
 
 
 
-  async function handleClientOutcome(client, outcome, paymentMethod = null) {
-    if (outcome === "ACTIVE" && !paymentMethod) {
-      setPaymentModalData({ client, outcome });
+  async function handleClientOutcome(client, outcome, paymentMethod = null, collectedAmount = null) {
+    if (outcome === "ACTIVE" && !paymentMethod && isRepresentative) {
+      const defaultAmount = parsePrice(client.price);
+      setPaymentModalData({
+        client,
+        outcome,
+        amount: defaultAmount > 0 ? String(defaultAmount) : (client.price || "")
+      });
       return;
     }
 
@@ -1381,12 +1402,25 @@ export default function ClientsPage({ forceTab }) {
 
     setError("");
 
+    const parsedCollectedAmount =
+      outcome === "ACTIVE" && isRepresentative
+        ? (collectedAmount != null && collectedAmount !== ""
+          ? Number(collectedAmount)
+          : parsePrice(client.price))
+        : null;
+
     // --- Optimistic Update: قم بتحديث العميل بدلاً من حذفه إذا كان لا يزال يطابق الفلاتر ---
     setData(prev => {
       const newVisit = {
         visitDate: new Date().toISOString(),
         newStatus: outcome,
-        note: noteText
+        note: noteText,
+        ...(isRepresentative
+          ? {
+              paymentMethod: paymentMethod || null,
+              collectedAmount: parsedCollectedAmount
+            }
+          : {})
       };
       
       const updatedClient = {
@@ -1395,7 +1429,7 @@ export default function ClientsPage({ forceTab }) {
           status: outcome,
           nextVisitDate: (client.visitType === "ONE_TIME") ? "2099-12-31T23:59:59.999Z" : client.nextVisitDate,
         } : {}),
-        visits: [{...newVisit, paymentMethod}, ...(client.visits || [])]
+        visits: [newVisit, ...(client.visits || [])]
       };
 
       if (matchesCurrentFilters(updatedClient)) {
@@ -1430,8 +1464,12 @@ export default function ClientsPage({ forceTab }) {
       await clientsApi.handle(client.id, {
         outcome,
         note: noteText || undefined,
-        paymentMethod: paymentMethod || undefined,
-        collectedAmount: collectedAmount != null ? Number(collectedAmount) : undefined
+        ...(isRepresentative
+          ? {
+              paymentMethod: paymentMethod || undefined,
+              collectedAmount: parsedCollectedAmount != null ? parsedCollectedAmount : undefined
+            }
+          : {})
       });
     } catch (err) {
       showToast(err.message || "تعذر تحديث حالة العميل", "error");
@@ -1863,19 +1901,13 @@ export default function ClientsPage({ forceTab }) {
     return null;
   };
 
-  const parsePrice = (p) => {
-    if (!p) return 0;
-    const num = parseFloat(String(p).replace(/[^0-9.]/g, ""));
-    return Number.isFinite(num) ? num : 0;
-  };
-
   const grandTotalRequired = data.items.reduce((sum, c) => sum + parsePrice(c.price), 0);
   const grandTotalCash = data.items
     .filter(c => getTodayAction(c) === "ACTIVE" && getTodayPaymentMethod(c) === "CASH")
-    .reduce((sum, c) => sum + parsePrice(c.price), 0);
+    .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
   const grandTotalVisa = data.items
     .filter(c => getTodayAction(c) === "ACTIVE" && getTodayPaymentMethod(c) === "VISA")
-    .reduce((sum, c) => sum + parsePrice(c.price), 0);
+    .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
   const grandTotalCollected = grandTotalCash + grandTotalVisa;
 
   return (
@@ -2452,14 +2484,35 @@ export default function ClientsPage({ forceTab }) {
       {paymentModalData && (
         <div className="modal-overlay" onClick={() => setPaymentModalData(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', padding: '28px', borderRadius: '16px', maxWidth: '380px', width: '100%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', direction: 'rtl' }}>
-            <h3 style={{ marginBottom: '20px' }}>كيف تم الدفع؟</h3>
+            <h3 style={{ marginBottom: '8px' }}>تسجيل التحصيل</h3>
+            <p style={{ marginBottom: '16px', color: '#666', fontSize: '0.9rem' }}>
+              {paymentModalData.client.name}
+              {paymentModalData.client.price ? ` — السعر المسجل: ${paymentModalData.client.price}` : ""}
+            </p>
+            <label style={{ display: 'block', textAlign: 'right', marginBottom: '16px', fontWeight: 'bold' }}>
+              المبلغ المحصّل
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={paymentModalData.amount}
+                onChange={(event) => setPaymentModalData((prev) => ({ ...prev, amount: event.target.value }))}
+                style={{ display: 'block', width: '100%', marginTop: '8px', padding: '12px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '1.1rem', textAlign: 'center' }}
+                autoFocus
+              />
+            </label>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button 
                 type="button" 
                 className="primary-btn" 
                 style={{ flex: 1, padding: '14px', fontSize: '1.1rem', background: '#10b981', borderRadius: '12px' }}
                 onClick={() => {
-                  handleClientOutcome(paymentModalData.client, paymentModalData.outcome, "CASH");
+                  handleClientOutcome(
+                    paymentModalData.client,
+                    paymentModalData.outcome,
+                    "CASH",
+                    paymentModalData.amount
+                  );
                   setPaymentModalData(null);
                 }}
               >
@@ -2470,7 +2523,12 @@ export default function ClientsPage({ forceTab }) {
                 className="primary-btn" 
                 style={{ flex: 1, padding: '14px', fontSize: '1.1rem', background: '#3b82f6', borderRadius: '12px' }}
                 onClick={() => {
-                  handleClientOutcome(paymentModalData.client, paymentModalData.outcome, "VISA");
+                  handleClientOutcome(
+                    paymentModalData.client,
+                    paymentModalData.outcome,
+                    "VISA",
+                    paymentModalData.amount
+                  );
                   setPaymentModalData(null);
                 }}
               >

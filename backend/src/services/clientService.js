@@ -8,28 +8,51 @@ const {
 } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
 
-const clientWithRelations = {
-  region: {
-    select: {
-      id: true,
-      code: true,
-      name: true
+function buildClientWithRelations(user) {
+  const relations = {
+    region: {
+      select: {
+        id: true,
+        code: true,
+        name: true
+      }
     }
-  },
-  visits: {
-    select: {
-      note: true,
-      visitDate: true,
-      newStatus: true,
-      paymentMethod: true,
-      collectedAmount: true
-    },
-    orderBy: {
-      visitDate: "desc"
-    },
-    take: 1
+  };
+
+  if (user?.role === Roles.REPRESENTATIVE) {
+    relations.visits = {
+      select: {
+        note: true,
+        visitDate: true,
+        newStatus: true,
+        paymentMethod: true,
+        collectedAmount: true
+      },
+      orderBy: {
+        visitDate: "desc"
+      },
+      take: 1
+    };
+  } else {
+    // الأدمن يرى ملاحظات زيارات الأدمن فقط — بدون أي بيانات تحصيل من المندوب
+    relations.visits = {
+      select: {
+        note: true
+      },
+      where: {
+        visitedBy: {
+          role: Roles.ADMIN
+        }
+      },
+      orderBy: {
+        visitDate: "desc"
+      },
+      take: 1
+    };
   }
-};
+
+  return relations;
+}
 
 function chunkArray(items, chunkSize) {
   const chunks = [];
@@ -205,7 +228,7 @@ async function listClients(filters, user) {
   const [items, total] = await Promise.all([
     prisma.client.findMany({
       where,
-      include: clientWithRelations,
+      include: buildClientWithRelations(user),
       orderBy: filters.visitType === VisitTypes.ONE_TIME 
         ? [{ updatedAt: "desc" }] 
         : [{ address: "asc" }, { nextVisitDate: "asc" }, { id: "asc" }],
@@ -275,7 +298,7 @@ async function listClientsByRegionPage(filters, user) {
     pageRegionIds.map((rid) =>
       prisma.client.findMany({
         where: { ...where, regionId: rid },
-        include: clientWithRelations,
+        include: buildClientWithRelations(user),
         orderBy: filters.visitType === VisitTypes.ONE_TIME 
           ? [{ updatedAt: "desc" }] 
           : [{ address: "asc" }, { nextVisitDate: "asc" }, { id: "asc" }],
@@ -301,10 +324,19 @@ async function getClientById(id, user, includeVisits = false) {
   const client = await prisma.client.findUnique({
     where: { id: Number(id) },
     include: {
-      ...clientWithRelations,
+      ...buildClientWithRelations(user),
       ...(includeVisits
         ? {
             visits: {
+              ...(user.role === Roles.ADMIN
+                ? {
+                    where: {
+                      visitedBy: {
+                        role: Roles.ADMIN
+                      }
+                    }
+                  }
+                : {}),
               include: {
                 visitedBy: {
                   select: {
@@ -496,7 +528,7 @@ async function handleClientVisit({
 
       return tx.client.findUnique({
         where: { id: existingClient.id },
-        include: clientWithRelations
+        include: buildClientWithRelations(user)
       });
     });
   }
@@ -519,7 +551,7 @@ async function handleClientVisit({
         pendingVisitType: null,
         pendingCustomVisitIntervalDays: null
       },
-      include: clientWithRelations
+      include: buildClientWithRelations(user)
     });
 
     await tx.visitHistory.create({
@@ -726,7 +758,7 @@ async function toggleExceptionalStatus(clientId, user, isExceptional, exceptiona
         exceptionalReason: null,
         exceptionalNextVisitDate: null
       },
-      include: clientWithRelations
+      include: buildClientWithRelations(user)
     });
     return updatedClient;
   }
@@ -759,7 +791,7 @@ async function toggleExceptionalStatus(clientId, user, isExceptional, exceptiona
       exceptionalReason: exceptionalReason || null,
       exceptionalNextVisitDate: nextExceptionalDate
     },
-    include: clientWithRelations
+    include: buildClientWithRelations(user)
   });
 
   return clonedClient;

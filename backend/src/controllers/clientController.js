@@ -395,6 +395,7 @@ const handleClient = asyncHandler(async (req, res) => {
     outcome: req.body.outcome,
     note: req.body.note,
     paymentMethod: req.body.paymentMethod,
+    collectedAmount: req.body.collectedAmount,
     visitType: req.body.visitType,
     customVisitIntervalDays: req.body.customVisitIntervalDays,
     advanceDays: req.body.advanceDays,
