@@ -456,16 +456,19 @@ function ClientTableRows({
 
         {!isRepresentative && <td className="col-products" data-label="المنتجات">{client.products}</td>}
         <td className="col-price" data-label="السعر">
-          {client.price || "-"}
-          {getTodayAction(client) === "ACTIVE" && getTodayPaymentMethod(client) && (
-            <div style={{ fontSize: "0.8rem", marginTop: "4px" }}>
-              {getTodayCollectedAmount(client) != null && Number(getTodayCollectedAmount(client)) !== Number(client.price || 0) && (
-                <span style={{ fontWeight: "bold", color: "#b91c1c" }}>محصل: {getTodayCollectedAmount(client)} ج | </span>
+          {isRepresentative && getTodayAction(client) === "ACTIVE" && getTodayCollectedAmount(client) != null ? (
+            <>
+              <span style={{ fontWeight: "bold" }}>{getTodayCollectedAmount(client)}</span>
+              {getTodayPaymentMethod(client) && (
+                <div style={{ fontSize: "0.8rem", marginTop: "4px" }}>
+                  <span style={{ fontWeight: "bold", color: getTodayPaymentMethod(client) === "CASH" ? "#10b981" : "#3b82f6" }}>
+                    {getTodayPaymentMethod(client) === "CASH" ? "💵 كاش" : "💳 فيزا"}
+                  </span>
+                </div>
               )}
-              <span style={{ fontWeight: "bold", color: getTodayPaymentMethod(client) === "CASH" ? "#10b981" : "#3b82f6" }}>
-                {getTodayPaymentMethod(client) === "CASH" ? "💵 كاش" : "💳 فيزا"}
-              </span>
-            </div>
+            </>
+          ) : (
+            <>{client.price || "-"}</>
           )}
         </td>
 
