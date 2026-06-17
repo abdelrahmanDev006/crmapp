@@ -1393,14 +1393,15 @@ export default function ClientsPage({ forceTab }) {
       setPaymentModalData({
         client,
         outcome,
-        amount: defaultAmount > 0 ? String(defaultAmount) : (client.price || "")
+        amount: defaultAmount > 0 ? String(defaultAmount) : String(client.price || "")
       });
       return;
     }
 
-    let noteText = ""; // No more prompts for notes
+    let noteText = "";
 
     setError("");
+    setPaymentModalData(null);
 
     const parsedCollectedAmount =
       outcome === "ACTIVE" && isRepresentative
@@ -2486,8 +2487,8 @@ export default function ClientsPage({ forceTab }) {
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', padding: '28px', borderRadius: '16px', maxWidth: '380px', width: '100%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', direction: 'rtl' }}>
             <h3 style={{ marginBottom: '8px' }}>تسجيل التحصيل</h3>
             <p style={{ marginBottom: '16px', color: '#666', fontSize: '0.9rem' }}>
-              {paymentModalData.client.name}
-              {paymentModalData.client.price ? ` — السعر المسجل: ${paymentModalData.client.price}` : ""}
+              {paymentModalData.client?.name}
+              {paymentModalData.client?.price ? ` — السعر المسجل: ${paymentModalData.client.price}` : ""}
             </p>
             <label style={{ display: 'block', textAlign: 'right', marginBottom: '16px', fontWeight: 'bold' }}>
               المبلغ المحصّل
@@ -2495,41 +2496,39 @@ export default function ClientsPage({ forceTab }) {
                 type="number"
                 min="0"
                 step="0.01"
-                value={paymentModalData.amount}
+                value={paymentModalData.amount ?? ""}
                 onChange={(event) => setPaymentModalData((prev) => ({ ...prev, amount: event.target.value }))}
                 style={{ display: 'block', width: '100%', marginTop: '8px', padding: '12px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '1.1rem', textAlign: 'center' }}
                 autoFocus
               />
             </label>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button 
-                type="button" 
-                className="primary-btn" 
+              <button
+                type="button"
+                className="primary-btn"
                 style={{ flex: 1, padding: '14px', fontSize: '1.1rem', background: '#10b981', borderRadius: '12px' }}
                 onClick={() => {
                   handleClientOutcome(
                     paymentModalData.client,
                     paymentModalData.outcome,
                     "CASH",
-                    paymentModalData.amount
+                    paymentModalData.amount ?? ""
                   );
-                  setPaymentModalData(null);
                 }}
               >
                 💵 كاش
               </button>
-              <button 
-                type="button" 
-                className="primary-btn" 
+              <button
+                type="button"
+                className="primary-btn"
                 style={{ flex: 1, padding: '14px', fontSize: '1.1rem', background: '#3b82f6', borderRadius: '12px' }}
                 onClick={() => {
                   handleClientOutcome(
                     paymentModalData.client,
                     paymentModalData.outcome,
                     "VISA",
-                    paymentModalData.amount
+                    paymentModalData.amount ?? ""
                   );
-                  setPaymentModalData(null);
                 }}
               >
                 💳 فيزا
