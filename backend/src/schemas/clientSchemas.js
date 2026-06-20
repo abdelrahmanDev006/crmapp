@@ -165,6 +165,7 @@ const handleClientSchema = z.object({
   note: z.string().max(500).optional(),
   paymentMethod: z.enum(["CASH", "VISA"]).optional(),
   collectedAmount: z.coerce.number().min(0).optional(),
+  deliveredProducts: z.string().max(500).optional(),
   visitType: z.enum(visitTypeValues).optional(),
   customVisitIntervalDays: customVisitIntervalDaysSchema,
   advanceDays: z.coerce.number().int().min(1).max(365).optional(),

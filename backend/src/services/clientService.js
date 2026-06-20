@@ -26,7 +26,8 @@ function buildClientWithRelations(user) {
         visitDate: true,
         newStatus: true,
         paymentMethod: true,
-        collectedAmount: true
+        collectedAmount: true,
+        deliveredProducts: true
       },
       orderBy: {
         visitDate: "desc"
@@ -451,7 +452,8 @@ async function handleClientVisit({
   customVisitIntervalDays,
   advanceDays,
   referenceDate,
-  collectedAmount
+  collectedAmount,
+  deliveredProducts
 }) {
   const existingClient = await getClientById(clientId, user, false);
 
@@ -520,6 +522,7 @@ async function handleClientVisit({
           note: generatedNote,
           paymentMethod: paymentMethod || null,
           collectedAmount: typeof collectedAmount === 'number' ? collectedAmount : null,
+          deliveredProducts: typeof deliveredProducts === 'string' ? deliveredProducts : null,
           previousNextVisitDate,
           newNextVisitDate: previousNextVisitDate,
           visitDate: new Date()
@@ -563,6 +566,7 @@ async function handleClientVisit({
         note: generatedNote,
         paymentMethod: paymentMethod || null,
         collectedAmount: typeof collectedAmount === 'number' ? collectedAmount : null,
+        deliveredProducts: typeof deliveredProducts === 'string' ? deliveredProducts : null,
         previousNextVisitDate,
         newNextVisitDate: finalNextVisitDate,
         visitDate: new Date()

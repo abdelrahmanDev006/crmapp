@@ -396,22 +396,23 @@ const handleClient = asyncHandler(async (req, res) => {
     note: req.body.note,
     paymentMethod: req.body.paymentMethod,
     collectedAmount: req.body.collectedAmount,
+    deliveredProducts: req.body.deliveredProducts,
     visitType: req.body.visitType,
     customVisitIntervalDays: req.body.customVisitIntervalDays,
     advanceDays: req.body.advanceDays,
     referenceDate: req.body.referenceDate
   });
 
-  await logActivity({
-    userId: req.user.id,
-    action: "HANDLE_CLIENT",
-    entityType: "CLIENT",
-    entityId: updatedClient.id,
-    entityName: updatedClient.name,
-    details: req.user.role === Roles.ADMIN 
-      ? `تم اتخاذ إجراء مع العميل: ${updatedClient.name}`
-      : `تم طلب إجراء للعميل: ${updatedClient.name}`
-  });
+  if (req.user.role === Roles.ADMIN) {
+    await logActivity({
+      userId: req.user.id,
+      action: "HANDLE_CLIENT",
+      entityType: "CLIENT",
+      entityId: updatedClient.id,
+      entityName: updatedClient.name,
+      details: `تم اتخاذ إجراء مع العميل: ${updatedClient.name}`
+    });
+  }
 
   res.json({
     message: "تم تحديث حالة العميل",

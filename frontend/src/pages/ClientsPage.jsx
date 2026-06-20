@@ -410,6 +410,19 @@ function ClientTableRows({
     return null;
   };
 
+  const getTodayDeliveredProducts = (client) => {
+    if (!client.visits || client.visits.length === 0) return null;
+    const lastVisit = client.visits[0];
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    const visitDateObj = new Date(lastVisit.visitDate);
+    const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
+    const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
+    if (visitDateStr === todayDateText) {
+      return lastVisit.deliveredProducts || null;
+    }
+    return null;
+  };
+
   return clients.map((client) => {
     const clientIsNew = isNewClient(client.createdAt, todayDateText);
     const locationHref = getLocationHref(client.locationUrl);
@@ -466,7 +479,11 @@ function ClientTableRows({
           )}
         </td>
 
-        {!isRepresentative && <td className="col-products" data-label="المنتجات">{client.products}</td>}
+        <td className="col-products" data-label="المنتجات">
+          {isRepresentative && getTodayAction(client) === "ACTIVE" && getTodayDeliveredProducts(client)
+            ? <span style={{ fontWeight: "bold", color: "#7c3aed" }}>{getTodayDeliveredProducts(client)}</span>
+            : (client.products || "-")}
+        </td>
         <td className="col-price" data-label="السعر">
           {isRepresentative && getTodayAction(client) === "ACTIVE" ? (
             <>
@@ -1233,8 +1250,8 @@ export default function ClientsPage({ forceTab }) {
     return params;
   }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
 
-  const loadClients = useCallback(async () => {
-    setLoading(true);
+  const loadClients = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     setError("");
 
     try {
@@ -1251,7 +1268,7 @@ export default function ClientsPage({ forceTab }) {
     } catch (err) {
       setError(err.message || "تعذر تحميل العملاء");
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, [buildRegionPageParams, page]);
 
@@ -1387,13 +1404,14 @@ export default function ClientsPage({ forceTab }) {
 
 
 
-  async function handleClientOutcome(client, outcome, paymentMethod = null, collectedAmount = null) {
+  async function handleClientOutcome(client, outcome, paymentMethod = null, collectedAmount = null, deliveredProducts = null) {
     if (outcome === "ACTIVE" && !paymentMethod && isRepresentative) {
       const defaultAmount = parsePrice(client.price);
       setPaymentModalData({
         client,
         outcome,
-        amount: defaultAmount > 0 ? String(defaultAmount) : String(client.price || "")
+        amount: defaultAmount > 0 ? String(defaultAmount) : String(client.price || ""),
+        deliveredProducts: client.products || ""
       });
       return;
     }
@@ -1419,7 +1437,8 @@ export default function ClientsPage({ forceTab }) {
         ...(isRepresentative
           ? {
               paymentMethod: paymentMethod || null,
-              collectedAmount: parsedCollectedAmount
+              collectedAmount: parsedCollectedAmount,
+              deliveredProducts: deliveredProducts || null
             }
           : {})
       };
@@ -1468,13 +1487,15 @@ export default function ClientsPage({ forceTab }) {
         ...(isRepresentative
           ? {
               paymentMethod: paymentMethod || undefined,
-              collectedAmount: parsedCollectedAmount != null ? parsedCollectedAmount : undefined
+              collectedAmount: parsedCollectedAmount != null ? parsedCollectedAmount : undefined,
+              deliveredProducts: deliveredProducts || undefined
             }
           : {})
       });
+      loadClients(false);
     } catch (err) {
       showToast(err.message || "تعذر تحديث حالة العميل", "error");
-      loadClients();
+      loadClients(false);
     }
   }
 
@@ -1898,6 +1919,19 @@ export default function ClientsPage({ forceTab }) {
     
     if (visitDateStr === todayDateText) {
       return lastVisit.collectedAmount != null ? lastVisit.collectedAmount : parsePrice(client.price);
+    }
+    return null;
+  };
+
+  const getTodayDeliveredProducts = (client) => {
+    if (!client.visits || client.visits.length === 0) return null;
+    const lastVisit = client.visits[0];
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    const visitDateObj = new Date(lastVisit.visitDate);
+    const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
+    const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
+    if (visitDateStr === todayDateText) {
+      return lastVisit.deliveredProducts || null;
     }
     return null;
   };
@@ -2337,42 +2371,6 @@ export default function ClientsPage({ forceTab }) {
                       )}
                     </div>
                     
-                    {/* ملخص التحصيل للمندوب - مدمج بجوار اسم المنطقة */}
-                    {isRepresentative && (() => {
-                      const totalRequired = group.clients.reduce((sum, c) => sum + parsePrice(c.price), 0);
-                      const activeClientsToday = group.clients.filter(c => getTodayAction(c) === "ACTIVE");
-                      const totalCashCollected = activeClientsToday
-                        .filter(c => getTodayPaymentMethod(c) === "CASH")
-                        .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
-                      const totalVisaCollected = activeClientsToday
-                        .filter(c => getTodayPaymentMethod(c) === "VISA")
-                        .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
-                      const totalCollected = totalCashCollected + totalVisaCollected;
-                      return (
-                        <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "#f0fdf4", padding: "6px 14px", borderRadius: "12px", border: "1px solid #bbf7d0", margin: "0 auto", flexWrap: "wrap", justifyContent: "center" }}>
-                          <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
-                            <span style={{ color: "#666" }}>المطلوب:</span>
-                            <span style={{ fontWeight: "bold", color: "#b91c1c" }}>{totalRequired.toLocaleString("ar-EG")} ج</span>
-                          </div>
-                          <div style={{ width: "1px", height: "14px", background: "#d1d5db" }} />
-                          <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
-                            <span style={{ color: "#666" }}>💵 كاش:</span>
-                            <span style={{ fontWeight: "bold", color: "#15803d" }}>{totalCashCollected.toLocaleString("ar-EG")} ج</span>
-                          </div>
-                          <div style={{ width: "1px", height: "14px", background: "#d1d5db" }} />
-                          <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
-                            <span style={{ color: "#666" }}>💳 فيزا:</span>
-                            <span style={{ fontWeight: "bold", color: "#1d4ed8" }}>{totalVisaCollected.toLocaleString("ar-EG")} ج</span>
-                          </div>
-                          <div style={{ width: "1px", height: "14px", background: "#d1d5db" }} />
-                          <div style={{ display: "flex", gap: "4px", fontSize: "0.85rem" }}>
-                            <span style={{ color: "#666" }}>المتبقي:</span>
-                            <span style={{ fontWeight: "bold", color: "#ea580c" }}>{(totalRequired - totalCollected).toLocaleString("ar-EG")} ج</span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
                     <div className="clients-region-group-actions">
                       {isAdmin && (
                         <>
@@ -2406,6 +2404,43 @@ export default function ClientsPage({ forceTab }) {
                     </div>
                   </div>
 
+                  {/* ملخص التحصيل للمندوب - مدمج أسفل اسم المنطقة مباشرة */}
+                  {isRepresentative && (() => {
+                    const totalRequired = group.clients.reduce((sum, c) => sum + parsePrice(c.price), 0);
+                    const activeClientsToday = group.clients.filter(c => getTodayAction(c) === "ACTIVE");
+                    const totalCashCollected = activeClientsToday
+                      .filter(c => getTodayPaymentMethod(c) === "CASH")
+                      .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
+                    const totalVisaCollected = activeClientsToday
+                      .filter(c => getTodayPaymentMethod(c) === "VISA")
+                      .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
+                    const totalCollected = totalCashCollected + totalVisaCollected;
+                    return (
+                      <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "#f0fdf4", padding: "8px 16px", borderBottom: "1px solid #bbf7d0", flexWrap: "wrap", justifyContent: "center" }}>
+                        <div style={{ display: "flex", gap: "4px", fontSize: "0.9rem" }}>
+                          <span style={{ color: "#666" }}>المطلوب:</span>
+                          <span style={{ fontWeight: "bold", color: "#b91c1c" }}>{totalRequired.toLocaleString("ar-EG")} ج</span>
+                        </div>
+                        <div style={{ width: "1px", height: "16px", background: "#d1d5db" }} />
+                        <div style={{ display: "flex", gap: "4px", fontSize: "0.9rem" }}>
+                          <span style={{ color: "#666" }}>💵 كاش:</span>
+                          <span style={{ fontWeight: "bold", color: "#15803d" }}>{totalCashCollected.toLocaleString("ar-EG")} ج</span>
+                        </div>
+                        <div style={{ width: "1px", height: "16px", background: "#d1d5db" }} />
+                        <div style={{ display: "flex", gap: "4px", fontSize: "0.9rem" }}>
+                          <span style={{ color: "#666" }}>💳 فيزا:</span>
+                          <span style={{ fontWeight: "bold", color: "#1d4ed8" }}>{totalVisaCollected.toLocaleString("ar-EG")} ج</span>
+                        </div>
+                        <div style={{ width: "1px", height: "16px", background: "#d1d5db" }} />
+                        <div style={{ display: "flex", gap: "4px", fontSize: "0.9rem" }}>
+                          <span style={{ color: "#666" }}>المتبقي:</span>
+                          <span style={{ fontWeight: "bold", color: "#ea580c" }}>{(totalRequired - totalCollected).toLocaleString("ar-EG")} ج</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+
                   {isExpanded && (
                     <div className="table-wrapper">
                       <table className="mobile-table clients-table">
@@ -2416,7 +2451,7 @@ export default function ClientsPage({ forceTab }) {
                             {!isRepresentative && <th className="col-phone">الهاتف</th>}
                             {!isRepresentative && <th className="col-address">العنوان</th>}
                             <th className="col-location">اللوكيشن</th>
-                            {!isRepresentative && <th className="col-products">المنتجات</th>}
+                            <th className="col-products">المنتجات</th>
                             <th className="col-price">السعر</th>
                             {!isRepresentative && <th className="col-visit-type">الزيارة</th>}
                             <th className="col-notes">الملاحظات</th>
@@ -2502,6 +2537,16 @@ export default function ClientsPage({ forceTab }) {
                 autoFocus
               />
             </label>
+            <label style={{ display: 'block', textAlign: 'right', marginBottom: '20px', fontWeight: 'bold' }}>
+              المنتجات
+              <input
+                type="text"
+                value={paymentModalData.deliveredProducts ?? ""}
+                onChange={(event) => setPaymentModalData((prev) => ({ ...prev, deliveredProducts: event.target.value }))}
+                style={{ display: 'block', width: '100%', marginTop: '8px', padding: '12px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '1rem', textAlign: 'right' }}
+                placeholder="أدخل المنتجات التي تم تسليمها..."
+              />
+            </label>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button
                 type="button"
@@ -2512,7 +2557,8 @@ export default function ClientsPage({ forceTab }) {
                     paymentModalData.client,
                     paymentModalData.outcome,
                     "CASH",
-                    paymentModalData.amount ?? ""
+                    paymentModalData.amount ?? "",
+                    paymentModalData.deliveredProducts ?? ""
                   );
                 }}
               >
@@ -2527,7 +2573,8 @@ export default function ClientsPage({ forceTab }) {
                     paymentModalData.client,
                     paymentModalData.outcome,
                     "VISA",
-                    paymentModalData.amount ?? ""
+                    paymentModalData.amount ?? "",
+                    paymentModalData.deliveredProducts ?? ""
                   );
                 }}
               >

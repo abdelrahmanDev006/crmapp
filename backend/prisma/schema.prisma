@@ -91,6 +91,7 @@ model VisitHistory {
   note                  String?
   paymentMethod         PaymentMethod?
   collectedAmount       Float?
+  deliveredProducts     String?
   previousNextVisitDate DateTime?
   newNextVisitDate      DateTime?
   createdAt             DateTime     @default(now())

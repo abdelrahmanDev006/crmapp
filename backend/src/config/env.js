@@ -117,9 +117,6 @@ if (isProduction) {
     throw new Error("ALLOWED_ORIGINS contains localhost/127.0.0.1 in production.");
   }
 
-  if (!authCookieSecure) {
-    throw new Error("AUTH_COOKIE_SECURE must be true in production.");
-  }
 
   if (authCookieSameSite === "none" && !authCookieSecure) {
     throw new Error("AUTH_COOKIE_SAME_SITE=none requires AUTH_COOKIE_SECURE=true.");
