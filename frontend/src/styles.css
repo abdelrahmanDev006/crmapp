@@ -1984,6 +1984,11 @@ tbody tr:hover {
     justify-self: start;
   }
 
+  .mobile-table td.col-location .location-link-icon,
+  .mobile-table td.col-location .location-link-missing {
+    justify-self: center;
+  }
+
   .login-page {
     padding: 14px;
   }
