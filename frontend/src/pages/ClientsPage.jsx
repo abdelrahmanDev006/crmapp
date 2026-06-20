@@ -458,7 +458,7 @@ function ClientTableRows({
           </div>
         </td>
         {!isRepresentative && <td className="col-phone" data-label="الهاتف">{client.phone}</td>}
-        {!isRepresentative && <td className="col-address" data-label="العنوان">{client.address}</td>}
+        <td className="col-address" data-label="العنوان">{client.address}</td>
         <td className="col-location" data-label="اللوكيشن">
           {locationHref ? (
             <a
@@ -508,12 +508,12 @@ function ClientTableRows({
             <VisitTypeBadge type={client.visitType} customVisitIntervalDays={client.customVisitIntervalDays} />
           </td>
         )}
-        <td className="col-notes details-note-text" data-label="الملاحظات" title={isRepresentative ? (client.visits?.find(v => v?.note && v.note.trim() !== "")?.note || client.note || "") : (client.note || "")}>
-          {client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.85rem", marginBottom: "4px" }}>{client.exceptionalReason}</div> : null}
-          {isRepresentative
-            ? (client.visits?.find(v => v?.note && v.note.trim() !== "")?.note || client.note || (!client.exceptionalReason ? "-" : null))
-            : (client.note || (!client.exceptionalReason ? "-" : null))}
-        </td>
+        {!isRepresentative && (
+          <td className="col-notes details-note-text" data-label="الملاحظات" title={client.note || ""}>
+            {client.exceptionalReason ? <div style={{ color: "#d9534f", fontSize: "0.85rem", marginBottom: "4px" }}>{client.exceptionalReason}</div> : null}
+            {client.note || (!client.exceptionalReason ? "-" : null)}
+          </td>
+        )}
 
         <td className="actions-cell col-actions" data-label="الإجراءات">
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%", maxWidth: "180px", margin: "0 auto" }}>
@@ -547,7 +547,7 @@ function ClientTableRows({
                       disabled={isActionLoadingForClient}
                       onClick={() => onHandleClient(client, "ACTIVE")}
                     >
-                      {isHandleActionLoading ? "..." : "✅ تم التعامل"}
+                      {isHandleActionLoading ? "..." : "✅ تم"}
                     </button>
                     <button
                       type="button"
@@ -557,6 +557,15 @@ function ClientTableRows({
                       onClick={() => onHandleClient(client, "NO_ANSWER")}
                     >
                       {isNoAnswerActionLoading ? "..." : "لم يرد"}
+                    </button>
+                    <button
+                      type="button"
+                      className="danger-btn"
+                      style={{ flex: 1, padding: "6px 8px", fontSize: "0.85rem", minHeight: "0", whiteSpace: "nowrap" }}
+                      disabled={isActionLoadingForClient}
+                      onClick={() => onHandleClient(client, "REJECTED")}
+                    >
+                      {isCancelActionLoading ? "..." : "كانسل"}
                     </button>
                   </div>
                 )}
@@ -2494,12 +2503,12 @@ export default function ClientsPage({ forceTab }) {
                             {!isRepresentative && <th className="col-checkbox" style={{ width: "40px" }}></th>}
                             <th className="col-name">العميل</th>
                             {!isRepresentative && <th className="col-phone">الهاتف</th>}
-                            {!isRepresentative && <th className="col-address">العنوان</th>}
+                            <th className="col-address">العنوان</th>
                             <th className="col-location">اللوكيشن</th>
                             <th className="col-products">المنتجات</th>
                             <th className="col-price">السعر</th>
                             {!isRepresentative && <th className="col-visit-type">الزيارة</th>}
-                            <th className="col-notes">الملاحظات</th>
+                            {!isRepresentative && <th className="col-notes">الملاحظات</th>}
                             <th className="col-actions">الإجراءات</th>
                           </tr>
                         </thead>
