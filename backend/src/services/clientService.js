@@ -128,6 +128,24 @@ function buildClientWhere(filters, user) {
      where.status = ClientStatuses.ACTIVE;
   }
 
+  if (filters.rejectedMonth && where.status === ClientStatuses.REJECTED) {
+    const [year, month] = filters.rejectedMonth.split("-");
+    if (year && month) {
+      const startDate = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
+      const endDate = new Date(Date.UTC(Number(year), Number(month), 1));
+      
+      where.visits = {
+        some: {
+          newStatus: ClientStatuses.REJECTED,
+          visitDate: {
+            gte: startDate,
+            lt: endDate
+          }
+        }
+      };
+    }
+  }
+
   if (filters.search) {
     where.OR = [
       { name: { contains: filters.search, mode: "insensitive" } },

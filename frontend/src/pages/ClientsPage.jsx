@@ -677,6 +677,11 @@ export default function ClientsPage({ forceTab }) {
     if (saved === "") return "";
     return user?.role === "REPRESENTATIVE" ? getTodayInputDate() : "";
   });
+  const [rejectedMonth, setRejectedMonth] = useState(() => {
+    const saved = localStorage.getItem("crm_rejectedMonth");
+    if (saved !== null && /^\d{4}-\d{2}$/.test(saved)) return saved;
+    return "";
+  });
   const [data, setData] = useState({ items: [], totalRegionPages: 1, totalRegions: 0, total: 0, regionPage: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -795,12 +800,13 @@ export default function ClientsPage({ forceTab }) {
     localStorage.setItem("crm_page", page.toString());
     localStorage.setItem("crm_search", search);
     localStorage.setItem("crm_selectedDueDate", selectedDueDate);
+    localStorage.setItem("crm_rejectedMonth", rejectedMonth);
 
     // تصفير السكرول فقط إذا تم استعادة السكرول السابق بالفعل (لمنع مسحه عند تحميل الصفحة أول مرة)
     if (restoredScrollRef.current) {
       sessionStorage.setItem("crm_scrollY", "0");
     }
-  }, [activeTab, page, search, selectedDueDate]);
+  }, [activeTab, page, search, selectedDueDate, rejectedMonth]);
 
   // 1. حفظ موضع السكرول في الوقت الفعلي أثناء التصفح (لتجنب انهيار الارتفاع عند Unmount)
   useEffect(() => {
@@ -1231,8 +1237,12 @@ export default function ClientsPage({ forceTab }) {
       params.dueDate = selectedDueDate;
     }
 
+    if (activeTab === "REJECTED" && rejectedMonth) {
+      params.rejectedMonth = rejectedMonth;
+    }
+
     return params;
-  }, [page, debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
+  }, [page, debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, activeTab, rejectedMonth]);
 
   const buildClientListParams = useCallback((pageOverride, pageSizeOverride) => {
     const params = {
@@ -1246,8 +1256,12 @@ export default function ClientsPage({ forceTab }) {
       params.dueDate = selectedDueDate;
     }
 
+    if (activeTab === "REJECTED" && rejectedMonth) {
+      params.rejectedMonth = rejectedMonth;
+    }
+
     return params;
-  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
+  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, activeTab, rejectedMonth]);
 
   const loadClients = useCallback(async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -1278,7 +1292,7 @@ export default function ClientsPage({ forceTab }) {
       return;
     }
     setPage(1);
-  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate]);
+  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, rejectedMonth]);
 
   useEffect(() => {
     loadClients();
@@ -2283,6 +2297,38 @@ export default function ClientsPage({ forceTab }) {
                 className="ghost-btn calendar-mini-btn"
                 disabled={!hasDueDateFilter}
                 onClick={() => onDueDateChange("")}
+              >
+                مسح
+              </button>
+            </div>
+          )}
+
+          {activeTab === "REJECTED" && (
+            <div className="clients-date-filter">
+              <span className="clients-date-label">شهر الكانسل</span>
+              <div className="clients-date-input">
+                <span className={rejectedMonth ? "clients-date-value" : "clients-date-placeholder"}>
+                  {rejectedMonth || "اختر الشهر"}
+                </span>
+                <span className="clients-date-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1zm-1-4H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1z" />
+                  </svg>
+                </span>
+                <input
+                  type="month"
+                  className="clients-date-native-input"
+                  value={rejectedMonth}
+                  onChange={(event) => { setRejectedMonth(event.target.value); setPage(1); }}
+                  title="تاريخ الكانسل"
+                  lang="ar-EG"
+                />
+              </div>
+              <button
+                type="button"
+                className="ghost-btn calendar-mini-btn"
+                disabled={!rejectedMonth}
+                onClick={() => { setRejectedMonth(""); setPage(1); }}
               >
                 مسح
               </button>
