@@ -1233,7 +1233,7 @@ export default function ClientsPage({ forceTab }) {
       ...queryFilters
     };
 
-    if (hasDueDateFilter) {
+    if (hasDueDateFilter && activeTab !== "REJECTED") {
       params.dueDate = selectedDueDate;
     }
 
@@ -1252,7 +1252,7 @@ export default function ClientsPage({ forceTab }) {
       ...queryFilters
     };
 
-    if (hasDueDateFilter) {
+    if (hasDueDateFilter && activeTab !== "REJECTED") {
       params.dueDate = selectedDueDate;
     }
 
@@ -2266,7 +2266,7 @@ export default function ClientsPage({ forceTab }) {
               </button>
             </>
           )}
-          {isAdmin && (
+          {isAdmin && activeTab !== "REJECTED" && (
             <div className="clients-date-filter">
               <span className="clients-date-label">تاريخ الاستحقاق</span>
               <div className="clients-date-input">

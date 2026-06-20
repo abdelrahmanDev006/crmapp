@@ -247,6 +247,9 @@ async function listClientsByRegionPage(filters, user) {
   const MAX_CLIENTS_PER_REGION = 200;
   const where = buildClientWhere(filters, user);
 
+  console.log("FILTERS RECEIVED:", filters);
+  console.log("WHERE QUERY BUILT:", JSON.stringify(where, null, 2));
+
   // Step 1: الحصول على المناطق اللي فيها عملاء مطابقين للفلتر (query خفيف جداً)
   const regionGroups = await prisma.client.groupBy({
     by: ["regionId"],
