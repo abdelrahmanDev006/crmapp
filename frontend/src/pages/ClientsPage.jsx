@@ -531,15 +531,15 @@ function ClientTableRows({
                   </div>
                 )}
                 {getTodayAction(client) === "ACTIVE" ? (
-                  <div className="rep-quick-actions" style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#15803d", fontWeight: "bold", background: "#dcfce7", borderRadius: "6px", border: "1px solid #bbf7d0" }}>
-                    ✅ تم التحصيل
+                  <div className="rep-quick-actions" style={{ display: "block", padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#15803d", fontWeight: "bold", background: "#dcfce7", borderRadius: "6px", border: "1px solid #bbf7d0" }}>
+                    ✅ تم
                   </div>
                 ) : getTodayAction(client) === "NO_ANSWER" ? (
-                  <div className="rep-quick-actions" style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#b91c1c", fontWeight: "bold", background: "#fee2e2", borderRadius: "6px", border: "1px solid #fecaca" }}>
+                  <div className="rep-quick-actions" style={{ display: "block", padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#b91c1c", fontWeight: "bold", background: "#fee2e2", borderRadius: "6px", border: "1px solid #fecaca" }}>
                     ❌ لم يرد
                   </div>
                 ) : getTodayAction(client) === "REJECTED" ? (
-                  <div className="rep-quick-actions" style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#6b7280", fontWeight: "bold", background: "#f3f4f6", borderRadius: "6px", border: "1px solid #e5e7eb" }}>
+                  <div className="rep-quick-actions" style={{ display: "block", padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#6b7280", fontWeight: "bold", background: "#f3f4f6", borderRadius: "6px", border: "1px solid #e5e7eb" }}>
                     🚫 تم الكانسل
                   </div>
                 ) : client.status !== "REJECTED" && (
