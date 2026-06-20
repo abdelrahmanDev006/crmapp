@@ -724,8 +724,13 @@ export default function ClientsPage({ forceTab }) {
     playToastSound(type);
     toastTimerRef.current = setTimeout(() => setToast(null), 4500);
   }, []);
-  const todayDateText = getTodayInputDate();
+  const realTodayDateText = getTodayInputDate();
   const debouncedSearch = useDebouncedValue(search, 350);
+  
+  // Calculate reference date based on active user role and filters
+  const isRep = user?.role === "REPRESENTATIVE";
+  const repAllowedDate = isRep && user?.allowedDate ? user.allowedDate.slice(0, 10) : null;
+  const referenceDateText = repAllowedDate || selectedDueDate || realTodayDateText;
 
   const [selectedClientIds, setSelectedClientIds] = useState(new Set());
   const [bulkEditModalData, setBulkEditModalData] = useState(null);
@@ -1911,17 +1916,24 @@ export default function ClientsPage({ forceTab }) {
 
   const paginatedGroups = groupedClientsByRegion;
 
+  const isVisitValidForRepPage = (lastVisit) => {
+    if (isRep && user?.id && lastVisit.visitedById && lastVisit.visitedById !== user.id) {
+      return false;
+    }
+    return true;
+  };
+
   const getTodayAction = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
     const lastVisit = client.visits[0];
-    if (!lastVisit.visitDate) return null;
+    if (!lastVisit.visitDate || !isVisitValidForRepPage(lastVisit)) return null;
     
     // Parse the visitDate as local date to match todayDateText (which is local)
     const visitDateObj = new Date(lastVisit.visitDate);
     const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
     const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
     
-    if (visitDateStr === todayDateText) {
+    if (visitDateStr === referenceDateText) {
       return lastVisit.newStatus;
     }
     return null;
@@ -1930,13 +1942,13 @@ export default function ClientsPage({ forceTab }) {
   const getTodayPaymentMethod = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
     const lastVisit = client.visits[0];
-    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE" || !isVisitValidForRepPage(lastVisit)) return null;
     
     const visitDateObj = new Date(lastVisit.visitDate);
     const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
     const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
     
-    if (visitDateStr === todayDateText) {
+    if (visitDateStr === referenceDateText) {
       return lastVisit.paymentMethod;
     }
     return null;
@@ -1945,13 +1957,13 @@ export default function ClientsPage({ forceTab }) {
   const getTodayCollectedAmount = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
     const lastVisit = client.visits[0];
-    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE" || !isVisitValidForRepPage(lastVisit)) return null;
     
     const visitDateObj = new Date(lastVisit.visitDate);
     const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
     const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
     
-    if (visitDateStr === todayDateText) {
+    if (visitDateStr === referenceDateText) {
       return lastVisit.collectedAmount != null ? lastVisit.collectedAmount : parsePrice(client.price);
     }
     return null;
@@ -1960,11 +1972,11 @@ export default function ClientsPage({ forceTab }) {
   const getTodayDeliveredProducts = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
     const lastVisit = client.visits[0];
-    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE" || !isVisitValidForRepPage(lastVisit)) return null;
     const visitDateObj = new Date(lastVisit.visitDate);
     const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
     const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
-    if (visitDateStr === todayDateText) {
+    if (visitDateStr === referenceDateText) {
       return lastVisit.deliveredProducts || null;
     }
     return null;
@@ -2527,7 +2539,7 @@ export default function ClientsPage({ forceTab }) {
                         <tbody>
                           <ClientTableRows
                             clients={group.clients}
-                            todayDateText={todayDateText}
+                            todayDateText={referenceDateText}
                             actionState={actionState}
                             onHandleClient={handleClientOutcome}
                             isRepresentative={isRepresentative}
