@@ -80,7 +80,7 @@ function buildClientWhere(filters, user) {
     where.regionId = { in: userRegionIds };
 
     if (!filters.status) {
-      where.status = ClientStatuses.ACTIVE;
+      where.status = { in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER] };
     }
 
     if (!isOneTimeFilter) {
@@ -125,7 +125,7 @@ function buildClientWhere(filters, user) {
   if (filters.status) {
     where.status = filters.status;
   } else if (!where.status) {
-     where.status = ClientStatuses.ACTIVE;
+     where.status = { in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER] };
   }
 
   if (filters.rejectedMonth && where.status === ClientStatuses.REJECTED) {
