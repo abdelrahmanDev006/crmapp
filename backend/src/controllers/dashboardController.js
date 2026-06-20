@@ -35,9 +35,9 @@ const summary = asyncHandler(async (req, res) => {
   const statusCounts = statusGroups.reduce((acc, group) => {
     acc[group.status] = group._count._all;
     return acc;
-  }, { ACTIVE: 0, REJECTED: 0 });
+  }, { ACTIVE: 0, REJECTED: 0, NO_ANSWER: 0 });
 
-  const totalClients = statusCounts.ACTIVE;
+  const totalClients = statusCounts.ACTIVE + statusCounts.NO_ANSWER;
   const activeClients = statusCounts.ACTIVE;
   const rejectedClients = statusCounts.REJECTED;
 
