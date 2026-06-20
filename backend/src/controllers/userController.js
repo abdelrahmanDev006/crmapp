@@ -271,13 +271,13 @@ const deleteUser = asyncHandler(async (req, res) => {
     }
   }
 
-  const visitCount = await prisma.visitHistory.count({
+  if (existing.role === Roles.REPRESENTATIVE && existing.allowedDate) {
+    throw createHttpError(400, "لا يمكن حذف مندوب محدد له يوم عمل. يرجى إلغاء اليوم أولاً.");
+  }
+
+  await prisma.visitHistory.deleteMany({
     where: { visitedById: userId }
   });
-
-  if (visitCount > 0) {
-    throw createHttpError(400, "لا يمكن حذف مستخدم لديه سجل زيارات");
-  }
 
   await prisma.user.update({
     where: { id: userId },
