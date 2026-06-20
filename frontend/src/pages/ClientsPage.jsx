@@ -538,6 +538,10 @@ function ClientTableRows({
                   <div className="rep-quick-actions" style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#b91c1c", fontWeight: "bold", background: "#fee2e2", borderRadius: "6px", border: "1px solid #fecaca" }}>
                     ❌ لم يرد
                   </div>
+                ) : getTodayAction(client) === "REJECTED" ? (
+                  <div className="rep-quick-actions" style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#6b7280", fontWeight: "bold", background: "#f3f4f6", borderRadius: "6px", border: "1px solid #e5e7eb" }}>
+                    🚫 تم الكانسل
+                  </div>
                 ) : client.status !== "REJECTED" && (
                   <div className="rep-quick-actions" style={{ display: "flex", gap: "6px" }}>
                     <button
