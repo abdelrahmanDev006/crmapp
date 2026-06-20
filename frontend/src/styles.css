@@ -1864,6 +1864,17 @@ tbody tr:hover {
     flex: 1 1 100%;
   }
 
+  .admin-quick-actions {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+  
+  .admin-quick-actions > * {
+    flex: 1 1 calc(50% - 4px);
+    width: 100%;
+    min-height: 40px;
+  }
+
   .inline-create-region-form input,
   .inline-create-region-form .primary-btn {
     width: 100%;

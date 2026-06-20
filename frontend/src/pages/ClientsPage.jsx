@@ -564,13 +564,12 @@ function ClientTableRows({
             ) : (
               /* === أزرار الأدمن (كما هي) === */
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-
+                <div className="admin-quick-actions" style={{ display: "flex", gap: "8px" }}>
                   {isAdmin && (
                     <Link
                       className="secondary-btn"
                       to={`/clients/${client.id}?edit=true`}
-                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", background: "#f0f0f0", color: "#333", border: "1px solid #ccc", textAlign: "center", whiteSpace: "nowrap" }}
+                      style={{ padding: "4px 10px", fontSize: "0.85rem", minHeight: "0", background: "#f0f0f0", color: "#333", border: "1px solid #ccc", textAlign: "center", whiteSpace: "nowrap", flex: "1" }}
                     >
                       تعديل
                     </Link>
@@ -578,7 +577,7 @@ function ClientTableRows({
                 </div>
 
                 {client.status !== "REJECTED" && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <div className="admin-quick-actions" style={{ display: "flex", gap: "8px" }}>
                     <button
                       type="button"
                       className="primary-btn"
