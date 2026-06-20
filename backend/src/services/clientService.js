@@ -161,14 +161,17 @@ function buildClientWhere(filters, user) {
   }
 
   if (filters.search) {
-    where.OR = [
-      { name: { contains: filters.search, mode: "insensitive" } },
-      { phone: { contains: filters.search, mode: "insensitive" } },
-      { address: { contains: filters.search, mode: "insensitive" } },
-      { locationUrl: { contains: filters.search, mode: "insensitive" } },
-      { products: { contains: filters.search, mode: "insensitive" } },
-      { price: { contains: filters.search, mode: "insensitive" } }
-    ];
+    if (!where.AND) where.AND = [];
+    where.AND.push({
+      OR: [
+        { name: { contains: filters.search, mode: "insensitive" } },
+        { phone: { contains: filters.search, mode: "insensitive" } },
+        { address: { contains: filters.search, mode: "insensitive" } },
+        { locationUrl: { contains: filters.search, mode: "insensitive" } },
+        { products: { contains: filters.search, mode: "insensitive" } },
+        { price: { contains: filters.search, mode: "insensitive" } }
+      ]
+    });
   }
 
   if (filters.createdDate) {
