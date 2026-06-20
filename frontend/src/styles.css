@@ -1865,6 +1865,7 @@ tbody tr:hover {
   }
 
   .admin-quick-actions {
+    display: flex !important;
     flex: 1 1 100%;
     flex-wrap: wrap;
   }

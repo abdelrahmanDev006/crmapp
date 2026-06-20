@@ -564,7 +564,7 @@ function ClientTableRows({
             ) : (
               /* === أزرار الأدمن (كما هي) === */
               <>
-                <div className="admin-quick-actions" style={{ display: "flex", gap: "8px" }}>
+                <div className="admin-quick-actions" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                   {isAdmin && (
                     <Link
                       className="secondary-btn"
@@ -577,7 +577,7 @@ function ClientTableRows({
                 </div>
 
                 {client.status !== "REJECTED" && (
-                  <div className="admin-quick-actions" style={{ display: "flex", gap: "8px" }}>
+                  <div className="admin-quick-actions" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                     <button
                       type="button"
                       className="primary-btn"
