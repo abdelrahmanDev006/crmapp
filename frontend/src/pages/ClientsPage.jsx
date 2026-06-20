@@ -521,7 +521,7 @@ function ClientTableRows({
               /* === أزرار المندوب: اتصال + تم التعامل + لم يرد فقط === */
               <>
                 {dialHref && (
-                  <div style={{ display: "flex", gap: "6px" }}>
+                  <div className="rep-quick-actions" style={{ display: "flex", gap: "6px" }}>
                     <a className="ghost-btn quick-action-btn" href={dialHref} style={{ flex: 1, padding: "6px 10px", textAlign: "center", border: "1px solid #3b82f6", color: "#3b82f6", borderRadius: "6px", fontWeight: "bold" }}>
                       📞 اتصال
                     </a>
@@ -531,15 +531,15 @@ function ClientTableRows({
                   </div>
                 )}
                 {getTodayAction(client) === "ACTIVE" ? (
-                  <div style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#15803d", fontWeight: "bold", background: "#dcfce7", borderRadius: "6px", border: "1px solid #bbf7d0" }}>
+                  <div className="rep-quick-actions" style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#15803d", fontWeight: "bold", background: "#dcfce7", borderRadius: "6px", border: "1px solid #bbf7d0" }}>
                     ✅ تم التحصيل
                   </div>
                 ) : getTodayAction(client) === "NO_ANSWER" ? (
-                  <div style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#b91c1c", fontWeight: "bold", background: "#fee2e2", borderRadius: "6px", border: "1px solid #fecaca" }}>
+                  <div className="rep-quick-actions" style={{ padding: "6px 8px", fontSize: "0.95rem", textAlign: "center", color: "#b91c1c", fontWeight: "bold", background: "#fee2e2", borderRadius: "6px", border: "1px solid #fecaca" }}>
                     ❌ لم يرد
                   </div>
                 ) : client.status !== "REJECTED" && (
-                  <div style={{ display: "flex", gap: "6px" }}>
+                  <div className="rep-quick-actions" style={{ display: "flex", gap: "6px" }}>
                     <button
                       type="button"
                       className="primary-btn"
