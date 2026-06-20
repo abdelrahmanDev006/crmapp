@@ -1850,9 +1850,6 @@ tbody tr:hover {
     gap: 8px;
   }
 
-  .clients-page-representative .mobile-table.clients-table td[data-label="اللوكيشن"] {
-    display: none;
-  }
 
   .clients-page-representative .mobile-table.clients-table td.actions-cell>.rep-quick-actions {
     flex: 1 1 100%;
