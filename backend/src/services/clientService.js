@@ -80,7 +80,7 @@ function buildClientWhere(filters, user) {
     where.regionId = { in: userRegionIds };
 
     if (!filters.status) {
-      where.status = { not: ClientStatuses.REJECTED };
+      where.status = ClientStatuses.ACTIVE;
     }
 
     if (!isOneTimeFilter) {
@@ -124,6 +124,8 @@ function buildClientWhere(filters, user) {
 
   if (filters.status) {
     where.status = filters.status;
+  } else if (!where.status) {
+     where.status = ClientStatuses.ACTIVE;
   }
 
   if (filters.search) {
@@ -146,12 +148,6 @@ function buildClientWhere(filters, user) {
       gte: selectedCreatedDate,
       lt: nextCreatedDate
     };
-
-    if (!filters.status) {
-      where.status = {
-        not: ClientStatuses.REJECTED
-      };
-    }
   }
 
   if (!isOneTimeFilter) {
@@ -164,30 +160,14 @@ function buildClientWhere(filters, user) {
         gte: selectedDate,
         lt: nextDay
       };
-
-      if (!filters.status) {
-        where.status = {
-          not: ClientStatuses.REJECTED
-        };
-      }
     } else if (filters.dueOnly === true || filters.dueOnly === "true") {
       where.nextVisitDate = {
         lte: normalizeToWorkDate(new Date())
       };
-      if (!filters.status) {
-        where.status = {
-          in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER]
-        };
-      }
     } else if (filters.overdueOnly === true || filters.overdueOnly === "true") {
       where.nextVisitDate = {
         lt: normalizeToWorkDate(new Date())
       };
-      if (!filters.status) {
-        where.status = {
-          in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER]
-        };
-      }
     }
   }
 
@@ -198,12 +178,6 @@ function buildClientWhere(filters, user) {
     if (where.nextVisitDate) {
       where.exceptionalNextVisitDate = where.nextVisitDate;
       delete where.nextVisitDate;
-    }
-    
-    if (!filters.status) {
-      where.status = {
-        not: ClientStatuses.REJECTED
-      };
     }
   }
 
