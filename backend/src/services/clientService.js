@@ -134,15 +134,29 @@ function buildClientWhere(filters, user) {
       const startDate = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
       const endDate = new Date(Date.UTC(Number(year), Number(month), 1));
       
-      where.visits = {
-        some: {
-          newStatus: ClientStatuses.REJECTED,
-          visitDate: {
-            gte: startDate,
-            lt: endDate
+      if (!where.AND) where.AND = [];
+      where.AND.push({
+        OR: [
+          {
+            visits: {
+              some: {
+                newStatus: ClientStatuses.REJECTED,
+                visitDate: {
+                  gte: startDate,
+                  lt: endDate
+                }
+              }
+            }
+          },
+          {
+            visits: { none: {} },
+            updatedAt: {
+              gte: startDate,
+              lt: endDate
+            }
           }
-        }
-      };
+        ]
+      });
     }
   }
 
