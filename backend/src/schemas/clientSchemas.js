@@ -115,6 +115,7 @@ const clientQuerySchema = z.object({
   regionId: z.coerce.number().int().positive().optional(),
   dueDate: dateInputSchema.optional(),
   createdDate: dateInputSchema.optional(),
+  rejectedMonth: z.string().trim().regex(/^\d{4}-\d{2}$/, "تنسيق شهر الكانسل غير صالح").optional(),
   dueOnly: z
     .union([z.boolean(), z.string()])
     .optional()
@@ -142,6 +143,7 @@ const regionPageClientQuerySchema = z.object({
   regionId: z.coerce.number().int().positive().optional(),
   dueDate: dateInputSchema.optional(),
   createdDate: dateInputSchema.optional(),
+  rejectedMonth: z.string().trim().regex(/^\d{4}-\d{2}$/, "تنسيق شهر الكانسل غير صالح").optional(),
   dueOnly: z
     .union([z.boolean(), z.string()])
     .optional()
