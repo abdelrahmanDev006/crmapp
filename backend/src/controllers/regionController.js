@@ -13,7 +13,7 @@ async function getRegionSummary() {
     include: {
       _count: {
         select: {
-          clients: { where: { isDeleted: false } },
+          clients: { where: { isDeleted: false, status: "ACTIVE" } },
           users: { where: { isActive: true } }
         }
       }
@@ -26,22 +26,12 @@ async function getRegionSummary() {
     by: ["regionId"],
     _count: { _all: true },
     where: {
-      nextVisitDate: { lte: today },
-      status: { in: ["ACTIVE", "NO_ANSWER"] }
-    }
-  });
-
-  const noAnswerByRegion = await prisma.client.groupBy({
-    by: ["regionId"],
-    _count: { _all: true },
-    where: {
-      isDeleted: false,
-      status: "NO_ANSWER"
+      nextVisitDate: today,
+      status: "ACTIVE"
     }
   });
 
   const dueMap = new Map(dueByRegion.map((item) => [item.regionId, item._count._all]));
-  const noAnswerMap = new Map(noAnswerByRegion.map((item) => [item.regionId, item._count._all]));
 
   return regions.map((region) => ({
     id: region.id,
@@ -49,8 +39,7 @@ async function getRegionSummary() {
     name: region.name,
     clientsCount: region._count.clients,
     representativesCount: region._count.users,
-    dueClientsCount: dueMap.get(region.id) || 0,
-    noAnswerCount: noAnswerMap.get(region.id) || 0
+    dueClientsCount: dueMap.get(region.id) || 0
   }));
 }
 
@@ -133,7 +122,7 @@ const getRegionDetails = asyncHandler(async (req, res) => {
       },
       _count: {
         select: {
-          clients: { where: { isDeleted: false } },
+          clients: { where: { isDeleted: false, status: "ACTIVE" } },
           users: { where: { isActive: true } }
         }
       }
@@ -221,7 +210,7 @@ const deleteRegion = asyncHandler(async (req, res) => {
     include: {
       _count: {
         select: {
-          clients: { where: { isDeleted: false } },
+          clients: { where: { isDeleted: false, status: "ACTIVE" } },
           users: { where: { isActive: true } }
         }
       }

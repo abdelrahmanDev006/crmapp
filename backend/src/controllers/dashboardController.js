@@ -21,8 +21,8 @@ const summary = asyncHandler(async (req, res) => {
     prisma.client.count({
       where: {
         ...globalWhere,
-        nextVisitDate: { lte: today },
-        status: { in: ["ACTIVE", "NO_ANSWER"] }
+        nextVisitDate: today,
+        status: "ACTIVE"
       }
     }),
     prisma.client.groupBy({
@@ -35,11 +35,10 @@ const summary = asyncHandler(async (req, res) => {
   const statusCounts = statusGroups.reduce((acc, group) => {
     acc[group.status] = group._count._all;
     return acc;
-  }, { ACTIVE: 0, NO_ANSWER: 0, REJECTED: 0 });
+  }, { ACTIVE: 0, REJECTED: 0 });
 
-  const totalClients = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+  const totalClients = statusCounts.ACTIVE;
   const activeClients = statusCounts.ACTIVE;
-  const noAnswerClients = statusCounts.NO_ANSWER;
   const rejectedClients = statusCounts.REJECTED;
 
   const regionItems =
@@ -52,7 +51,6 @@ const summary = asyncHandler(async (req, res) => {
       totalClients,
       dueClients,
       activeClients,
-      noAnswerClients,
       rejectedClients
     },
     regions: regionItems

@@ -155,10 +155,6 @@ export default function DashboardPage() {
           <strong>{data?.totals?.dueClients || 0}</strong>
         </article>
         <article className="metric-card">
-          <h3>لم يرد</h3>
-          <strong>{data?.totals?.noAnswerClients || 0}</strong>
-        </article>
-        <article className="metric-card">
           <h3>كانسل</h3>
           <strong>{data?.totals?.rejectedClients || 0}</strong>
         </article>
@@ -257,7 +253,6 @@ export default function DashboardPage() {
                   <li>عدد العملاء: {region.clientsCount}</li>
                   <li>عدد المندوبين: {region.representativesCount}</li>
                   <li>عملاء مستحقون: {region.dueClientsCount}</li>
-                  <li>لم يرد: {region.noAnswerCount}</li>
                 </ul>
                 <div className="action-bar">
                   <button type="button" className="primary-btn" onClick={() => navigate(`/regions/${region.id}`)}>
