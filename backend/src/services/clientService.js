@@ -27,7 +27,8 @@ function buildClientWithRelations(user) {
         newStatus: true,
         paymentMethod: true,
         collectedAmount: true,
-        deliveredProducts: true
+        deliveredProducts: true,
+        visitedById: true
       },
       orderBy: {
         visitDate: "desc"

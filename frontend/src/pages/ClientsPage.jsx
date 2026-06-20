@@ -361,12 +361,20 @@ function ClientTableRows({
   selectedClientIds,
   onToggleClientSelection,
   onToggleExceptional,
-  onRequestExceptional
+  onRequestExceptional,
+  currentUserId
 }) {
+  const isVisitValidForRep = (lastVisit) => {
+    if (isRepresentative && currentUserId && lastVisit.visitedById && lastVisit.visitedById !== currentUserId) {
+      return false;
+    }
+    return true;
+  };
+
   const getTodayAction = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
     const lastVisit = client.visits[0];
-    if (!lastVisit.visitDate) return null;
+    if (!lastVisit.visitDate || !isVisitValidForRep(lastVisit)) return null;
     
     // Parse the visitDate as local date to match todayDateText (which is local)
     const visitDateObj = new Date(lastVisit.visitDate);
@@ -382,7 +390,7 @@ function ClientTableRows({
   const getTodayPaymentMethod = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
     const lastVisit = client.visits[0];
-    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE" || !isVisitValidForRep(lastVisit)) return null;
     
     const visitDateObj = new Date(lastVisit.visitDate);
     const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
@@ -397,7 +405,7 @@ function ClientTableRows({
   const getTodayCollectedAmount = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
     const lastVisit = client.visits[0];
-    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE" || !isVisitValidForRep(lastVisit)) return null;
     const visitDateObj = new Date(lastVisit.visitDate);
     const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
     const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
@@ -413,7 +421,7 @@ function ClientTableRows({
   const getTodayDeliveredProducts = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
     const lastVisit = client.visits[0];
-    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE") return null;
+    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE" || !isVisitValidForRep(lastVisit)) return null;
     const visitDateObj = new Date(lastVisit.visitDate);
     const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
     const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
@@ -2528,6 +2536,7 @@ export default function ClientsPage({ forceTab }) {
                             onToggleClientSelection={toggleClientSelection}
                             onToggleExceptional={handleToggleExceptional}
                             onRequestExceptional={(client) => setExceptionalModalData({ clientId: client.id, reason: "", date: "", products: client.products || "", price: client.price || "" })}
+                            currentUserId={user?.id}
                           />
                         </tbody>
                       </table>
