@@ -14,6 +14,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "security:validate-env": "node scripts/validate-production-env.js",
+    "data:check-duplicates": "node scripts/check-duplicate-clients.js",
+    "data:seed-demo": "node scripts/seed-demo-clients.js",
     "admin:bootstrap": "node scripts/bootstrap-admin.js",
     "maintenance:normalize-next-visit-dates": "node scripts/normalize-client-next-visit-dates.js",
     "test:smoke": "node scripts/smoke-api.js"

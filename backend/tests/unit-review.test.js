@@ -40,7 +40,6 @@ const {
   normalizeToWorkDate,
   addWorkDaysWith28DayMonth,
   getCurrentWorkWeekStart,
-  getNextOrSameWorkWeekStart,
   calculateNextVisitDate
 } = require("../src/utils/dateUtils");
 
@@ -54,7 +53,7 @@ assert(d1.getUTCHours() === 21 || d1.getUTCHours() === 0 || d1.getUTCMinutes() =
 try {
   normalizeToWorkDate("not-a-date");
   assert(false, "normalizeToWorkDate throws on invalid input");
-} catch (e) {
+} catch {
   assert(true, "normalizeToWorkDate throws on invalid input");
 }
 
@@ -87,7 +86,7 @@ assert(monthlyDiff === 28, `calculateNextVisitDate(MONTHLY) = ${monthlyDiff} day
 try {
   calculateNextVisitDate(base, "UNKNOWN_TYPE");
   assert(false, "calculateNextVisitDate throws on unsupported type");
-} catch (e) {
+} catch {
   assert(true, "calculateNextVisitDate throws on unsupported type");
 }
 
@@ -155,7 +154,6 @@ section("Validation Schemas — clientSchemas.js");
 
 const {
   createClientSchema,
-  updateClientSchema,
   handleClientSchema,
   toggleExceptionalSchema,
   clientQuerySchema
@@ -237,7 +235,7 @@ function resolveNextVisitDate({
   referenceDate
 }) {
   if (visitType === VisitTypes.ONE_TIME) {
-    return null;
+    return new Date("2099-12-31T23:59:59.999Z");
   }
   if (outcome === ClientStatuses.REJECTED) {
     return referenceDate ? normalizeToWorkDate(referenceDate) : normalizeToWorkDate(new Date());
@@ -265,23 +263,23 @@ function resolveNextVisitDate({
   return normalizeToWorkDate(calculatedNextVisitDate);
 }
 
-// 6a. ONE_TIME always returns null — ACTIVE
+// 6a. ONE_TIME is moved far into the future because nextVisitDate is required.
 const oneTimeActive = resolveNextVisitDate({
   currentDate: new Date(), visitType: "ONE_TIME", outcome: "ACTIVE"
 });
-assert(oneTimeActive === null, "ONE_TIME + ACTIVE = null (archived)");
+assert(oneTimeActive.getUTCFullYear() === 2099, "ONE_TIME + ACTIVE = far future date (archived)");
 
-// 6b. ONE_TIME always returns null — REJECTED
+// 6b. ONE_TIME is archived consistently — REJECTED
 const oneTimeRejected = resolveNextVisitDate({
   currentDate: new Date(), visitType: "ONE_TIME", outcome: "REJECTED"
 });
-assert(oneTimeRejected === null, "ONE_TIME + REJECTED = null (archived)");
+assert(oneTimeRejected.getUTCFullYear() === 2099, "ONE_TIME + REJECTED = far future date (archived)");
 
-// 6c. ONE_TIME always returns null — NO_ANSWER
+// 6c. ONE_TIME is archived consistently — NO_ANSWER
 const oneTimeNoAnswer = resolveNextVisitDate({
   currentDate: new Date(), visitType: "ONE_TIME", outcome: "NO_ANSWER"
 });
-assert(oneTimeNoAnswer === null, "ONE_TIME + NO_ANSWER = null (archived)");
+assert(oneTimeNoAnswer.getUTCFullYear() === 2099, "ONE_TIME + NO_ANSWER = far future date (archived)");
 
 // 6d. WEEKLY + ACTIVE → +7 days
 const weeklyActive = resolveNextVisitDate({

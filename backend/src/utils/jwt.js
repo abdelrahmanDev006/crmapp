@@ -2,11 +2,13 @@ const jwt = require("jsonwebtoken");
 const env = require("../config/env");
 
 function generateToken(user) {
+  const regionIds = Array.isArray(user.regions) ? user.regions.map((region) => region.id) : [];
+
   return jwt.sign(
     {
       sub: user.id,
       role: user.role,
-      regionId: user.regionId || null,
+      regionIds,
       tver: user.tokenVersion || 0
     },
     env.jwtSecret,

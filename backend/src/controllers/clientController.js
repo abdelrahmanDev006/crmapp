@@ -261,7 +261,7 @@ const updateClient = asyncHandler(async (req, res) => {
   const nextName = hasNameInPayload ? req.body.name : existing.name;
   const nextPhone = hasPhoneInPayload ? req.body.phone : existing.phone;
 
-  const { normalizedName, normalizedPhone } = await assertClientUniqueness({
+  const { normalizedName } = await assertClientUniqueness({
     name: nextName,
     phone: nextPhone,
     regionId: nextRegionId,

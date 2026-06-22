@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+  import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dashboardApi, regionsApi } from "../api/crmApi";
 import { useAuth } from "../auth/AuthContext";
+
+function getTodayInputDate() {
+  const now = new Date();
+  const timezoneOffsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -150,7 +156,20 @@ export default function DashboardPage() {
           <h3>إجمالي العملاء</h3>
           <strong>{data?.totals?.totalClients || 0}</strong>
         </article>
-        <article className="metric-card">
+        <article
+          className="metric-card"
+          role="button"
+          tabIndex={0}
+          title="عرض العملاء المستحقين اليوم"
+          style={{ cursor: "pointer" }}
+          onClick={() => navigate(`/clients?dueDate=${getTodayInputDate()}`)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              navigate(`/clients?dueDate=${getTodayInputDate()}`);
+            }
+          }}
+        >
           <h3>عملاء مستحقون اليوم</h3>
           <strong>{data?.totals?.dueClients || 0}</strong>
         </article>

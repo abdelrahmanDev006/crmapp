@@ -40,19 +40,11 @@ app.use(express.json({ limit: env.jsonBodyLimit }));
 app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
 app.use("/api", csrfProtection);
 
-function clientIp(req) {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.ip;
-}
-
 const authLimiter = rateLimit({
   windowMs: env.authRateLimitWindowMinutes * 60 * 1000,
   max: env.authRateLimitMax,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: clientIp,
-  validate: { trustProxy: false },
   message: "عدد محاولات تسجيل الدخول كبير، حاول لاحقًا"
 });
 
@@ -61,8 +53,6 @@ const apiLimiter = rateLimit({
   max: 500,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: clientIp,
-  validate: { trustProxy: false },
   message: "عدد الطلبات كبير جداً، انتظر لحظة"
 });
 

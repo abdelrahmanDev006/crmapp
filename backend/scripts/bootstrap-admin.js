@@ -84,7 +84,7 @@ async function main() {
         passwordHash,
         role: Role.ADMIN,
         isActive: true,
-        regionId: null
+        regions: { set: [] }
       }
     });
 

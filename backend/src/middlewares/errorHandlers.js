@@ -5,14 +5,18 @@ function notFound(req, res) {
 }
 
 function errorHandler(error, req, res, _next) {
-  const statusCode = error.statusCode || 500;
+  const isUniqueConstraintError = error.code === "P2002" || error.code === "23505";
+  const statusCode = isUniqueConstraintError ? 409 : error.statusCode || 500;
+  const message = isUniqueConstraintError
+    ? "البيانات مكررة بالفعل"
+    : error.message || "حدث خطأ غير متوقع";
 
   if (process.env.NODE_ENV !== "production") {
     console.error(error);
   }
 
   res.status(statusCode).json({
-    message: error.message || "حدث خطأ غير متوقع",
+    message,
     ...(process.env.NODE_ENV !== "production" && { stack: error.stack })
   });
 }

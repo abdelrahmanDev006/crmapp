@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { clientsApi, regionsApi } from "../api/crmApi";
 import { useAuth } from "../auth/AuthContext";
 import Pagination from "../components/Pagination";
@@ -15,6 +15,14 @@ const tabs = [
   { key: "MONTHLY", label: "شهري" },
   { key: "CUSTOM", label: "ميعاد آخر" },
   { key: "ONE_TIME", label: "عملاء البيع" },
+  { key: "NO_ANSWER", label: "لم يرد" },
+  { key: "REJECTED", label: "كانسل" }
+];
+
+const representativeActionFilters = [
+  { key: "ALL", label: "الكل" },
+  { key: "PENDING", label: "لسه متعملش معاهم" },
+  { key: "ACTIVE", label: "تم التعامل" },
   { key: "NO_ANSWER", label: "لم يرد" },
   { key: "REJECTED", label: "كانسل" }
 ];
@@ -54,7 +62,7 @@ const playToastSound = (type) => {
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.2);
     }
-  } catch (e) {
+  } catch {
     // Ignore audio errors if browser blocks autoplay
   }
 };
@@ -75,6 +83,8 @@ const initialCreateForm = {
 };
 
 const NEW_CLIENT_WINDOW_DAYS = 7;
+const CLIENT_EXPORT_PAGE_SIZE = 50;
+const MAX_CLIENT_EXPORT_ROWS = 5000;
 
 function mapTabToFilters(tab) {
   if (tab === "ALL") {
@@ -205,6 +215,15 @@ function getSafeExportText(value) {
   return /^[=+\-@]/.test(text) ? `'${text}` : text;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function parseCustomVisitIntervalDays(value) {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 365) {
@@ -298,7 +317,52 @@ function formatImportDate(date) {
   return `${year}-${month}-${day}`;
 }
 
-function normalizeNextVisitDate(XLSX, value) {
+function getCellText(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (value instanceof Date) {
+    return formatImportDate(value);
+  }
+
+  return String(value).trim();
+}
+
+function rowsToObjects(rows) {
+  const [headerRow, ...dataRows] = rows;
+  const headers = (headerRow || []).map(getCellText);
+
+  return dataRows.map((row) =>
+    headers.reduce((record, header, index) => {
+      if (header) {
+        record[header] = row[index] ?? "";
+      }
+
+      return record;
+    }, {})
+  );
+}
+
+function excelSerialDateToDate(serial) {
+  const parsed = Number(serial);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  const excelEpochOffset = 25569;
+  const millisecondsPerDay = 86400000;
+  const utcMilliseconds = Math.round((parsed - excelEpochOffset) * millisecondsPerDay);
+  const date = new Date(utcMilliseconds);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function normalizeNextVisitDate(value) {
   if (!value && value !== 0) {
     return "";
   }
@@ -308,10 +372,9 @@ function normalizeNextVisitDate(XLSX, value) {
   }
 
   if (typeof value === "number") {
-    const parsedCode = XLSX.SSF.parse_date_code(value);
-
-    if (parsedCode) {
-      return formatImportDate(new Date(parsedCode.y, parsedCode.m - 1, parsedCode.d));
+    const parsedDate = excelSerialDateToDate(value);
+    if (parsedDate) {
+      return formatImportDate(parsedDate);
     }
   }
 
@@ -360,16 +423,9 @@ function ClientTableRows({
   isAdmin,
   selectedClientIds,
   onToggleClientSelection,
-  onToggleExceptional,
-  onRequestExceptional,
-  currentUserId
+  onRequestExceptional
 }) {
-  const isVisitValidForRep = (lastVisit) => {
-    if (isRepresentative && currentUserId && lastVisit.visitedById && lastVisit.visitedById !== currentUserId) {
-      return false;
-    }
-    return true;
-  };
+  const isVisitValidForRep = () => true;
 
   const getTodayAction = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
@@ -438,8 +494,6 @@ function ClientTableRows({
     const isActionLoadingForClient = actionState.clientId === client.id;
     const isHandleActionLoading = isActionLoadingForClient && actionState.outcome === "ACTIVE";
     const isNoAnswerActionLoading = isActionLoadingForClient && actionState.outcome === "NO_ANSWER";
-    const isApproveLoading = isActionLoadingForClient && actionState.outcome === "APPROVE";
-    const isRejectLoading = isActionLoadingForClient && actionState.outcome === "REJECT";
     const isCancelActionLoading = isActionLoadingForClient && actionState.outcome === "REJECTED";
 
     return (
@@ -650,8 +704,12 @@ function ClientTableRows({
 
 export default function ClientsPage({ forceTab }) {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const isAdmin = user?.role === "ADMIN";
   const isRepresentative = user?.role === "REPRESENTATIVE";
+  const dueDateFromQuery = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get("dueDate") || "")
+    ? searchParams.get("dueDate")
+    : null;
   const importFileInputRef = useRef(null);
   const restoredScrollRef = useRef(false);
   const [exceptionalModalData, setExceptionalModalData] = useState(null);
@@ -683,6 +741,16 @@ export default function ClientsPage({ forceTab }) {
       setActiveTab(validTabs.includes(saved) ? saved : "ALL");
     }
   }, [forceTab]);
+
+  useEffect(() => {
+    if (!dueDateFromQuery || !isAdmin) {
+      return;
+    }
+
+    setSelectedDueDate(dueDateFromQuery);
+    setActiveTab("ALL");
+    setPage(1);
+  }, [dueDateFromQuery, isAdmin]);
   const [page, setPage] = useState(() => {
     const saved = Number(localStorage.getItem("crm_page"));
     return Number.isInteger(saved) && saved > 0 ? saved : 1;
@@ -693,6 +761,7 @@ export default function ClientsPage({ forceTab }) {
   });
   const [overdueSummary, setOverdueSummary] = useState({ count: 0, dates: [] });
   const [selectedDueDate, setSelectedDueDate] = useState(() => {
+    if (dueDateFromQuery) return dueDateFromQuery;
     const saved = localStorage.getItem("crm_selectedDueDate");
     if (saved !== null && /^\d{4}-\d{2}-\d{2}$/.test(saved)) return saved;
     if (saved === "") return "";
@@ -703,7 +772,19 @@ export default function ClientsPage({ forceTab }) {
     if (saved !== null && /^\d{4}-\d{2}$/.test(saved)) return saved;
     return "";
   });
-  const [data, setData] = useState({ items: [], totalRegionPages: 1, totalRegions: 0, total: 0, regionPage: 1 });
+  const [representativeActionFilter, setRepresentativeActionFilter] = useState(() => {
+    const saved = localStorage.getItem("crm_representativeActionFilter");
+    const validFilters = representativeActionFilters.map((filter) => filter.key);
+    return validFilters.includes(saved) ? saved : "ALL";
+  });
+  const [data, setData] = useState({
+    items: [],
+    totalRegionPages: 1,
+    totalRegions: 0,
+    total: 0,
+    regionPage: 1,
+    representativeActionCounts: { ALL: 0, PENDING: 0, ACTIVE: 0, NO_ANSWER: 0, REJECTED: 0 }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionState, setActionState] = useState({ clientId: null, outcome: null });
@@ -807,7 +888,7 @@ export default function ClientsPage({ forceTab }) {
 
     try {
       await Promise.all(idsToProcess.map(id => clientsApi.handle(id, { outcome, note: noteText || undefined })));
-    } catch (err) {
+    } catch {
       showToast("❌ حدث خطأ أثناء معالجة بعض العملاء", "error");
       loadClients();
     }
@@ -827,12 +908,13 @@ export default function ClientsPage({ forceTab }) {
     localStorage.setItem("crm_search", search);
     localStorage.setItem("crm_selectedDueDate", selectedDueDate);
     localStorage.setItem("crm_rejectedMonth", rejectedMonth);
+    localStorage.setItem("crm_representativeActionFilter", representativeActionFilter);
 
     // تصفير السكرول فقط إذا تم استعادة السكرول السابق بالفعل (لمنع مسحه عند تحميل الصفحة أول مرة)
     if (restoredScrollRef.current) {
       sessionStorage.setItem("crm_scrollY", "0");
     }
-  }, [activeTab, page, search, selectedDueDate, rejectedMonth]);
+  }, [activeTab, page, search, selectedDueDate, rejectedMonth, representativeActionFilter]);
 
   // 1. حفظ موضع السكرول في الوقت الفعلي أثناء التصفح (لتجنب انهيار الارتفاع عند Unmount)
   useEffect(() => {
@@ -916,7 +998,10 @@ export default function ClientsPage({ forceTab }) {
     return client.status !== "REJECTED" && client.visitType === activeTab;
   }, [activeTab, selectedDueDate]);
 
-  const queryFilters = useMemo(() => mapTabToFilters(activeTab), [activeTab]);
+  const queryFilters = useMemo(
+    () => (isRepresentative ? {} : mapTabToFilters(activeTab)),
+    [activeTab, isRepresentative]
+  );
   const hasDueDateFilter = Boolean(selectedDueDate);
   const selectedDueDateDisplay = selectedDueDate ? formatDate(`${selectedDueDate}T00:00:00.000Z`) : "يوم/شهر/سنة";
   const createNextVisitDateDisplay = createForm.nextVisitDate
@@ -1005,7 +1090,9 @@ export default function ClientsPage({ forceTab }) {
       try {
         await navigator.clipboard.writeText(textToCopy);
         copied = true;
-      } catch (err) {}
+      } catch {
+        // Fall back to the textarea copy path below.
+      }
     }
     
     if (!copied) {
@@ -1019,7 +1106,9 @@ export default function ClientsPage({ forceTab }) {
         helper.select();
         copied = document.execCommand("copy");
         document.body.removeChild(helper);
-      } catch (err) {}
+      } catch {
+        // The toast below reports the copy failure to the user.
+      }
     }
 
     if (copied) {
@@ -1031,6 +1120,11 @@ export default function ClientsPage({ forceTab }) {
 
   const handlePrintRegion = (group) => {
     const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      showToast("تعذر فتح نافذة الطباعة. تأكد من السماح بالنوافذ المنبثقة.", "error");
+      return;
+    }
+
     const todayStr = new Date().toLocaleDateString("ar-EG");
     const filterDateStr = hasDueDateFilter ? selectedDueDate : todayStr;
 
@@ -1042,17 +1136,17 @@ export default function ClientsPage({ forceTab }) {
         (c, i) => {
           const visitNote = c.visits?.find(v => v?.note && v.note.trim() !== "")?.note || c.note || "";
           const noteContent = c.exceptionalReason 
-            ? `<div style="color: #d9534f; font-size: 0.85rem; margin-bottom: 4px;">${c.exceptionalReason}</div>${visitNote}`
-            : (visitNote || "-");
+            ? `<div style="color: #d9534f; font-size: 0.85rem; margin-bottom: 4px;">${escapeHtml(c.exceptionalReason)}</div>${escapeHtml(visitNote)}`
+            : escapeHtml(visitNote || "-");
 
           return `
             <tr>
               <td>${i + 1}</td>
-              <td style="font-weight:600">${c.name}</td>
-              <td style="direction:ltr;text-align:center">${c.phone}</td>
-              <td class="col-address">${c.address}</td>
-              <td>${c.products || "-"}</td>
-              <td style="text-align:center;font-weight:600">${c.price || "-"}</td>
+              <td style="font-weight:600">${escapeHtml(c.name)}</td>
+              <td style="direction:ltr;text-align:center">${escapeHtml(c.phone)}</td>
+              <td class="col-address">${escapeHtml(c.address)}</td>
+              <td>${escapeHtml(c.products || "-")}</td>
+              <td style="text-align:center;font-weight:600">${escapeHtml(c.price || "-")}</td>
               <td class="col-notes">${noteContent}</td>
             </tr>
           `;
@@ -1064,7 +1158,7 @@ export default function ClientsPage({ forceTab }) {
       <html dir="rtl" lang="ar">
         <head>
           <meta charset="UTF-8">
-          <title>طباعة منطقة: ${group.regionName}</title>
+          <title>طباعة منطقة: ${escapeHtml(group.regionName)}</title>
           <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
@@ -1197,18 +1291,18 @@ export default function ClientsPage({ forceTab }) {
         </head>
         <body>
           <div class="report-header">
-            <h1>تقرير منطقة: ${group.regionName}</h1>
+            <h1>تقرير منطقة: ${escapeHtml(group.regionName)}</h1>
             <span class="brand">CRM SYSTEM</span>
           </div>
 
           <div class="meta-grid">
             <div class="meta-card">
               <div class="meta-label">تاريخ التقرير</div>
-              <div class="meta-value">${filterDateStr}</div>
+              <div class="meta-value">${escapeHtml(filterDateStr)}</div>
             </div>
             <div class="meta-card">
               <div class="meta-label">المندوب</div>
-              <div class="meta-value" style="font-size:13px">${representativeText}</div>
+              <div class="meta-value" style="font-size:13px">${escapeHtml(representativeText)}</div>
             </div>
             <div class="meta-card">
               <div class="meta-label">عدد العملاء</div>
@@ -1267,8 +1361,12 @@ export default function ClientsPage({ forceTab }) {
       params.rejectedMonth = rejectedMonth;
     }
 
+    if (isRepresentative && representativeActionFilter !== "ALL") {
+      params.repAction = representativeActionFilter;
+    }
+
     return params;
-  }, [page, debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, activeTab, rejectedMonth]);
+  }, [page, debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, activeTab, rejectedMonth, isRepresentative, representativeActionFilter]);
 
   const buildClientListParams = useCallback((pageOverride, pageSizeOverride) => {
     const params = {
@@ -1286,8 +1384,12 @@ export default function ClientsPage({ forceTab }) {
       params.rejectedMonth = rejectedMonth;
     }
 
+    if (isRepresentative && representativeActionFilter !== "ALL") {
+      params.repAction = representativeActionFilter;
+    }
+
     return params;
-  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, activeTab, rejectedMonth]);
+  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, activeTab, rejectedMonth, isRepresentative, representativeActionFilter]);
 
   const loadClients = useCallback(async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -1302,7 +1404,14 @@ export default function ClientsPage({ forceTab }) {
         total: responseData.totalClients || 0,
         totalRegions: responseData.totalRegions || 0,
         totalRegionPages: responseData.totalRegionPages || 1,
-        regionPage: responseData.regionPage || 1
+        regionPage: responseData.regionPage || 1,
+        representativeActionCounts: responseData.representativeActionCounts || {
+          ALL: 0,
+          PENDING: 0,
+          ACTIVE: 0,
+          NO_ANSWER: 0,
+          REJECTED: 0
+        }
       });
     } catch (err) {
       setError(err.message || "تعذر تحميل العملاء");
@@ -1318,7 +1427,7 @@ export default function ClientsPage({ forceTab }) {
       return;
     }
     setPage(1);
-  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, rejectedMonth]);
+  }, [debouncedSearch, hasDueDateFilter, queryFilters, selectedDueDate, rejectedMonth, representativeActionFilter]);
 
   useEffect(() => {
     loadClients();
@@ -1342,7 +1451,6 @@ export default function ClientsPage({ forceTab }) {
       loadOverdueCount();
     }, 1000);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadOverdueCount, data.items.length]); // Reload count only when client list changes
 
 
@@ -1459,6 +1567,7 @@ export default function ClientsPage({ forceTab }) {
 
     setError("");
     setPaymentModalData(null);
+    setActionState({ clientId: client.id, outcome });
 
     const parsedCollectedAmount =
       outcome === "ACTIVE" && isRepresentative
@@ -1535,6 +1644,8 @@ export default function ClientsPage({ forceTab }) {
     } catch (err) {
       showToast(err.message || "تعذر تحديث حالة العميل", "error");
       loadClients(false);
+    } finally {
+      setActionState({ clientId: null, outcome: null });
     }
   }
 
@@ -1548,7 +1659,7 @@ export default function ClientsPage({ forceTab }) {
       showToast(err.message || "تعذر تحديث حالة شكوى العميل", "error");
       loadClients();
     }
-  }, [activeTab, loadClients, showToast]);
+  }, [loadClients, showToast]);
 
   async function handleCreateClient(event) {
     event.preventDefault();
@@ -1635,6 +1746,11 @@ export default function ClientsPage({ forceTab }) {
     setPage(1);
   }
 
+  function onRepresentativeActionFilterChange(nextFilter) {
+    setRepresentativeActionFilter(nextFilter);
+    setPage(1);
+  }
+
   // function applyRepresentativeQuickFilter(type) {
   //   setSearch("");
   //   setPage(1);
@@ -1661,13 +1777,18 @@ export default function ClientsPage({ forceTab }) {
     setInfoMessage("");
 
     try {
-      const firstPageResponse = await clientsApi.list(buildClientListParams(1, 1000));
+      const firstPageResponse = await clientsApi.list(buildClientListParams(1, CLIENT_EXPORT_PAGE_SIZE));
       const firstPageData = firstPageResponse.data || {};
+
+      if (Number(firstPageData.total || 0) > MAX_CLIENT_EXPORT_ROWS) {
+        throw new Error(`عدد النتائج كبير جدًا للنسخ المباشر. قلّل الفلاتر إلى ${MAX_CLIENT_EXPORT_ROWS} عميل أو أقل.`);
+      }
+
       const allItems = [...(firstPageData.items || [])];
       const totalPages = Math.max(1, Number(firstPageData.totalPages || 1));
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
-        const response = await clientsApi.list(buildClientListParams(currentPage, 1000));
+        const response = await clientsApi.list(buildClientListParams(currentPage, CLIENT_EXPORT_PAGE_SIZE));
         allItems.push(...(response.data?.items || []));
       }
 
@@ -1709,24 +1830,23 @@ export default function ClientsPage({ forceTab }) {
   }
 
   async function handleExportExcel() {
-    const password = window.prompt("برجاء إدخال كلمة المرور لتصدير البيانات:");
-    if (password !== "CRM@Export2026#Secure") {
-      alert("كلمة المرور غير صحيحة!");
-      return;
-    }
-
     setExportExcelLoading(true);
     setError("");
     setInfoMessage("");
 
     try {
-      const firstPageResponse = await clientsApi.list(buildClientListParams(1, 1000));
+      const firstPageResponse = await clientsApi.list(buildClientListParams(1, CLIENT_EXPORT_PAGE_SIZE));
       const firstPageData = firstPageResponse.data || {};
+
+      if (Number(firstPageData.total || 0) > MAX_CLIENT_EXPORT_ROWS) {
+        throw new Error(`عدد النتائج كبير جدًا للتصدير من المتصفح. قلّل الفلاتر إلى ${MAX_CLIENT_EXPORT_ROWS} عميل أو أقل.`);
+      }
+
       const allItems = [...(firstPageData.items || [])];
       const totalPages = Math.max(1, Number(firstPageData.totalPages || 1));
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
-        const response = await clientsApi.list(buildClientListParams(currentPage, 1000));
+        const response = await clientsApi.list(buildClientListParams(currentPage, CLIENT_EXPORT_PAGE_SIZE));
         allItems.push(...(response.data?.items || []));
       }
 
@@ -1749,27 +1869,27 @@ export default function ClientsPage({ forceTab }) {
         "الملاحظات": getSafeExportText(client.visits?.[0]?.note || "")
       }));
 
-      const XLSX = await import("xlsx");
-      const worksheet = XLSX.utils.json_to_sheet(exportRows);
-      worksheet["!cols"] = [
-        { wch: 6 },
-        { wch: 24 },
-        { wch: 18 },
-        { wch: 28 },
-        { wch: 28 },
-        { wch: 16 },
-        { wch: 24 },
-        { wch: 14 },
-        { wch: 16 },
-        { wch: 14 },
-        { wch: 18 }
+      const { default: writeXlsxFile } = await import("write-excel-file/browser");
+      const schema = [
+        { column: "م", type: Number, value: (row) => row["م"], width: 6 },
+        { column: "اسم العميل", type: String, value: (row) => row["اسم العميل"], width: 24 },
+        { column: "رقم الهاتف", type: String, value: (row) => row["رقم الهاتف"], width: 18 },
+        { column: "العنوان", type: String, value: (row) => row["العنوان"], width: 28 },
+        { column: "اللوكيشن", type: String, value: (row) => row["اللوكيشن"], width: 28 },
+        { column: "المنتجات", type: String, value: (row) => row["المنتجات"], width: 16 },
+        { column: "السعر", type: String, value: (row) => row["السعر"], width: 24 },
+        { column: "نوع الزيارة", type: String, value: (row) => row["نوع الزيارة"], width: 14 },
+        { column: "الحالة", type: String, value: (row) => row["الحالة"], width: 16 },
+        { column: "الزيارة القادمة", type: String, value: (row) => row["الزيارة القادمة"], width: 14 },
+        { column: "الملاحظات", type: String, value: (row) => row["الملاحظات"], width: 18 }
       ];
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "العملاء");
-
       const fileDate = getTodayInputDate();
-      XLSX.writeFile(workbook, `clients-export-${fileDate}.xlsx`);
+
+      await writeXlsxFile(exportRows, {
+        schema,
+        sheet: "العملاء",
+        fileName: `clients-export-${fileDate}.xlsx`
+      });
 
       setInfoMessage(`تم تصدير ${allItems.length} عميل إلى ملف إكسيل بنجاح.`);
     } catch (err) {
@@ -1806,20 +1926,9 @@ export default function ClientsPage({ forceTab }) {
     setInfoMessage("");
 
     try {
-      const XLSX = await import("xlsx");
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
-      const firstSheetName = workbook.SheetNames[0];
-
-      if (!firstSheetName) {
-        throw new Error("ملف الإكسيل فارغ.");
-      }
-
-      const worksheet = workbook.Sheets[firstSheetName];
-      const rows = XLSX.utils.sheet_to_json(worksheet, {
-        defval: "",
-        raw: false
-      });
+      const { default: readXlsxFile } = await import("read-excel-file/browser");
+      const sheetRows = await readXlsxFile(file);
+      const rows = rowsToObjects(sheetRows);
 
       if (!rows.length) {
         throw new Error("ملف الإكسيل لا يحتوي على بيانات.");
@@ -1849,7 +1958,7 @@ export default function ClientsPage({ forceTab }) {
           normalizedVisitType.visitType === "CUSTOM"
             ? parseCustomVisitIntervalDays(customDaysValue) || normalizedVisitType.customVisitIntervalDays
             : null;
-        const nextVisitDate = normalizeNextVisitDate(XLSX, nextVisitDateValue);
+        const nextVisitDate = normalizeNextVisitDate(nextVisitDateValue);
         const regionId = regionByCode.get(regionCode) || regionByName.get(normalizeImportKey(regionName));
 
         if (!name || !phone || !address || !products) {
@@ -1916,12 +2025,7 @@ export default function ClientsPage({ forceTab }) {
 
   const paginatedGroups = groupedClientsByRegion;
 
-  const isVisitValidForRepPage = (lastVisit) => {
-    if (isRep && user?.id && lastVisit.visitedById && lastVisit.visitedById !== user.id) {
-      return false;
-    }
-    return true;
-  };
+  const isVisitValidForRepPage = () => true;
 
   const getTodayAction = (client) => {
     if (!client.visits || client.visits.length === 0) return null;
@@ -1969,19 +2073,6 @@ export default function ClientsPage({ forceTab }) {
     return null;
   };
 
-  const getTodayDeliveredProducts = (client) => {
-    if (!client.visits || client.visits.length === 0) return null;
-    const lastVisit = client.visits[0];
-    if (!lastVisit.visitDate || lastVisit.newStatus !== "ACTIVE" || !isVisitValidForRepPage(lastVisit)) return null;
-    const visitDateObj = new Date(lastVisit.visitDate);
-    const timezoneOffsetMs = visitDateObj.getTimezoneOffset() * 60 * 1000;
-    const visitDateStr = new Date(visitDateObj.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
-    if (visitDateStr === referenceDateText) {
-      return lastVisit.deliveredProducts || null;
-    }
-    return null;
-  };
-
   const grandTotalRequired = data.items.reduce((sum, c) => sum + parsePrice(c.price), 0);
   const grandTotalCash = data.items
     .filter(c => getTodayAction(c) === "ACTIVE" && getTodayPaymentMethod(c) === "CASH")
@@ -1990,6 +2081,7 @@ export default function ClientsPage({ forceTab }) {
     .filter(c => getTodayAction(c) === "ACTIVE" && getTodayPaymentMethod(c) === "VISA")
     .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
   const grandTotalCollected = grandTotalCash + grandTotalVisa;
+  const representativeActionCounts = data.representativeActionCounts || {};
 
   return (
     <div className={`stack clients-page${isRepresentative ? " clients-page-representative" : ""}`}>
@@ -2376,7 +2468,7 @@ export default function ClientsPage({ forceTab }) {
               <input
                 ref={importFileInputRef}
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsx"
                 style={{ display: "none" }}
                 onChange={handleImportExcel}
               />
@@ -2392,6 +2484,24 @@ export default function ClientsPage({ forceTab }) {
             </>
           )}
         </div>
+
+        {isRepresentative && (
+          <div className="tabs-row" style={{ justifyContent: "center", marginBottom: "16px" }}>
+            {representativeActionFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className={representativeActionFilter === filter.key ? "tab-btn active" : "tab-btn"}
+                onClick={() => onRepresentativeActionFilterChange(filter.key)}
+              >
+                {filter.label}
+                <span style={{ marginRight: "8px", fontWeight: 800 }}>
+                  {Number(representativeActionCounts[filter.key] || 0).toLocaleString("ar-EG")}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {loading ? (
           <div className="table-empty">جاري تحميل العملاء...</div>
@@ -2546,9 +2656,7 @@ export default function ClientsPage({ forceTab }) {
                             isAdmin={isAdmin}
                             selectedClientIds={selectedClientIds}
                             onToggleClientSelection={toggleClientSelection}
-                            onToggleExceptional={handleToggleExceptional}
                             onRequestExceptional={(client) => setExceptionalModalData({ clientId: client.id, reason: "", date: "", products: client.products || "", price: client.price || "" })}
-                            currentUserId={user?.id}
                           />
                         </tbody>
                       </table>

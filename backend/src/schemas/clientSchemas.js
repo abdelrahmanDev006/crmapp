@@ -2,6 +2,7 @@ const { z } = require("zod");
 const { VisitTypes, ClientStatuses } = require("../constants/enums");
 
 const visitTypeValues = [VisitTypes.WEEKLY, VisitTypes.BIWEEKLY, VisitTypes.MONTHLY, VisitTypes.CUSTOM, VisitTypes.ONE_TIME];
+const representativeActionValues = ["PENDING", ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED];
 
 const dateInputSchema = z
   .string()
@@ -112,6 +113,7 @@ const clientQuerySchema = z.object({
   search: z.string().trim().optional(),
   visitType: z.enum(visitTypeValues).optional(),
   status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
+  repAction: z.enum(representativeActionValues).optional(),
   regionId: z.coerce.number().int().positive().optional(),
   dueDate: dateInputSchema.optional(),
   createdDate: dateInputSchema.optional(),
@@ -140,6 +142,7 @@ const regionPageClientQuerySchema = z.object({
   search: z.string().trim().optional(),
   visitType: z.enum(visitTypeValues).optional(),
   status: z.enum([ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER, ClientStatuses.REJECTED]).optional(),
+  repAction: z.enum(representativeActionValues).optional(),
   regionId: z.coerce.number().int().positive().optional(),
   dueDate: dateInputSchema.optional(),
   createdDate: dateInputSchema.optional(),

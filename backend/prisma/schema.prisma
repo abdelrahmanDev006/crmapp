@@ -82,10 +82,10 @@ model Client {
 }
 
 model VisitHistory {
-  id                    Int          @id @default(autoincrement())
+  id                    Int            @id @default(autoincrement())
   clientId              Int
   visitedById           Int
-  visitDate             DateTime     @default(now())
+  visitDate             DateTime       @default(now())
   previousStatus        ClientStatus
   newStatus             ClientStatus
   note                  String?
@@ -94,9 +94,9 @@ model VisitHistory {
   deliveredProducts     String?
   previousNextVisitDate DateTime?
   newNextVisitDate      DateTime?
-  createdAt             DateTime     @default(now())
-  client                Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  visitedBy             User         @relation("VisitUser", fields: [visitedById], references: [id])
+  createdAt             DateTime       @default(now())
+  client                Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  visitedBy             User           @relation("VisitUser", fields: [visitedById], references: [id])
 
   @@index([clientId, visitDate])
   @@index([visitedById, visitDate])

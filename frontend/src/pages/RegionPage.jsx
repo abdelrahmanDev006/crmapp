@@ -16,8 +16,6 @@ export default function RegionPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [infoMessage, setInfoMessage] = useState("");
-  const [bulkLoading, setBulkLoading] = useState(false);
   const debouncedSearch = useDebouncedValue(search, 350);
 
   const loadRegion = useCallback(async () => {
@@ -87,7 +85,6 @@ export default function RegionPage() {
           </div>
 
           {error && <div className="error-box">{error}</div>}
-          {infoMessage && <div className="info-box">{infoMessage}</div>}
 
           {clientsData.items.length === 0 ? (
             <div className="table-empty">لا يوجد عملاء في هذه المنطقة</div>

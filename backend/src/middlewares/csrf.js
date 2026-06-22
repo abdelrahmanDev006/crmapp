@@ -26,7 +26,13 @@ function csrfProtection(req, res, next) {
 
   const source = tryExtractOrigin(req.headers);
 
-  if (!source) return next();
+  if (!source) {
+    if (req.cookies?.[env.authCookieName]) {
+      return next(createHttpError(403, "طلب غير مصرح به: مصدر الطلب غير معروف"));
+    }
+
+    return next();
+  }
 
   const isAllowed = env.allowedOrigins.some((allowed) => {
     if (source === allowed) return true;

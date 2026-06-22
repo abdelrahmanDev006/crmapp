@@ -1,8 +1,9 @@
 const prisma = require("../config/prisma");
 const asyncHandler = require("../middlewares/asyncHandler");
-const { Roles } = require("../constants/enums");
+const { ClientStatuses, Roles } = require("../constants/enums");
 const { normalizeToWorkDate } = require("../utils/dateUtils");
 const { createHttpError } = require("../utils/httpError");
+const { enforceRegionAccess } = require("../middlewares/auth");
 const { handleRegionClients } = require("../services/clientService");
 const { logActivity } = require("../services/logService");
 
@@ -21,13 +22,18 @@ async function getRegionSummary() {
   });
 
   const today = normalizeToWorkDate(new Date());
+  const tomorrow = new Date(today);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
   const dueByRegion = await prisma.client.groupBy({
     by: ["regionId"],
     _count: { _all: true },
     where: {
-      nextVisitDate: today,
-      status: "ACTIVE"
+      nextVisitDate: {
+        gte: today,
+        lt: tomorrow
+      },
+      status: { in: [ClientStatuses.ACTIVE, ClientStatuses.NO_ANSWER] }
     }
   });
 
@@ -101,9 +107,7 @@ const createRegion = asyncHandler(async (req, res) => {
 const getRegionDetails = asyncHandler(async (req, res) => {
   const regionId = Number(req.params.id);
 
-  if (req.user.role === Roles.REPRESENTATIVE && Number(req.user.regionId) !== regionId) {
-    throw createHttpError(403, "لا يمكنك الوصول إلى هذه المنطقة");
-  }
+  enforceRegionAccess(req.user, regionId);
 
   const region = await prisma.region.findFirst({
     where: { 
@@ -221,9 +225,9 @@ const deleteRegion = asyncHandler(async (req, res) => {
     throw createHttpError(404, "المنطقة غير موجودة");
   }
 
-  // if (existing._count.clients > 0 || existing._count.users > 0) {
-  //   throw createHttpError(400, "لا يمكن حذف منطقة مرتبطة بعملاء أو مستخدمين");
-  // }
+  if (existing._count.clients > 0 || existing._count.users > 0) {
+    throw createHttpError(400, "لا يمكن حذف منطقة مرتبطة بعملاء أو مستخدمين");
+  }
 
   await prisma.region.update({
     where: { id: regionId },

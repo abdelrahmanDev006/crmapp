@@ -30,6 +30,40 @@ function parseBoolean(value, fallback) {
   return fallback;
 }
 
+function parseTrustProxy(value, fallback) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  const rawValue = String(value).trim();
+  const normalized = rawValue.toLowerCase();
+
+  if (!normalized) {
+    return fallback;
+  }
+
+  if (normalized === "true") {
+    return 1;
+  }
+
+  if (normalized === "false") {
+    return false;
+  }
+
+  const parsedNumber = Number(normalized);
+
+  if (Number.isInteger(parsedNumber) && parsedNumber >= 0) {
+    return parsedNumber;
+  }
+
+  const expressNamedRanges = new Set(["loopback", "linklocal", "uniquelocal"]);
+  if (expressNamedRanges.has(normalized) || /[.,:/]/.test(rawValue)) {
+    return rawValue;
+  }
+
+  return fallback;
+}
+
 function parseAllowedOrigins(value) {
   return String(value || "")
     .split(",")
@@ -117,7 +151,6 @@ if (isProduction) {
     throw new Error("ALLOWED_ORIGINS contains localhost/127.0.0.1 in production.");
   }
 
-
   if (authCookieSameSite === "none" && !authCookieSecure) {
     throw new Error("AUTH_COOKIE_SAME_SITE=none requires AUTH_COOKIE_SECURE=true.");
   }
@@ -133,7 +166,7 @@ module.exports = {
   rejectedRetryDays: Math.max(1, Number(process.env.REJECTED_RETRY_DAYS || 28)),
   corsCredentials: parseBoolean(process.env.CORS_CREDENTIALS, true),
   allowedOrigins: resolvedOrigins,
-  trustProxy: parseBoolean(process.env.TRUST_PROXY, false),
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY, false),
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || "1mb",
   authRateLimitWindowMinutes: Math.max(1, parseNumber(process.env.AUTH_RATE_LIMIT_WINDOW_MINUTES, 15)),
   authRateLimitMax: Math.max(1, parseNumber(process.env.AUTH_RATE_LIMIT_MAX, 100)),
