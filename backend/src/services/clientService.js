@@ -76,6 +76,20 @@ function normalizeRepresentativeAction(value) {
   return allowedActions.has(action) ? action : null;
 }
 
+function toSqlTimestamp(dateValue) {
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid SQL timestamp value");
+  }
+
+  return date.toISOString().replace("T", " ").replace("Z", "");
+}
+
+function sqlTimestamp(dateValue) {
+  return Prisma.sql`${toSqlTimestamp(dateValue)}::timestamp`;
+}
+
 function buildRepresentativeLatestActionSqlParts(filters, user, options = {}) {
   if (!user.allowedDate) {
     return {
@@ -137,7 +151,7 @@ function buildRepresentativeLatestActionSqlParts(filters, user, options = {}) {
     const nextCreatedDate = new Date(selectedCreatedDate);
     nextCreatedDate.setUTCDate(nextCreatedDate.getUTCDate() + 1);
 
-    conditions.push(Prisma.sql`c."createdAt" >= ${selectedCreatedDate} AND c."createdAt" < ${nextCreatedDate}`);
+    conditions.push(Prisma.sql`c."createdAt" >= ${sqlTimestamp(selectedCreatedDate)} AND c."createdAt" < ${sqlTimestamp(nextCreatedDate)}`);
   }
 
   if (filters.rejectedMonth && filters.status === ClientStatuses.REJECTED) {
@@ -152,8 +166,8 @@ function buildRepresentativeLatestActionSqlParts(filters, user, options = {}) {
           FROM "VisitHistory" rejected_visit
           WHERE rejected_visit."clientId" = c.id
             AND rejected_visit."newStatus"::text = ${ClientStatuses.REJECTED}
-            AND rejected_visit."visitDate" >= ${startDate}
-            AND rejected_visit."visitDate" < ${endDate}
+            AND rejected_visit."visitDate" >= ${sqlTimestamp(startDate)}
+            AND rejected_visit."visitDate" < ${sqlTimestamp(endDate)}
         )
         OR (
           NOT EXISTS (
@@ -161,17 +175,17 @@ function buildRepresentativeLatestActionSqlParts(filters, user, options = {}) {
             FROM "VisitHistory" any_visit
             WHERE any_visit."clientId" = c.id
           )
-          AND c."updatedAt" >= ${startDate}
-          AND c."updatedAt" < ${endDate}
+          AND c."updatedAt" >= ${sqlTimestamp(startDate)}
+          AND c."updatedAt" < ${sqlTimestamp(endDate)}
         )
       )`);
     }
   }
 
   if (filters.dueOnly === true || filters.dueOnly === "true") {
-    conditions.push(Prisma.sql`c."nextVisitDate" <= ${normalizeToWorkDate(new Date())}`);
+    conditions.push(Prisma.sql`c."nextVisitDate" <= ${sqlTimestamp(normalizeToWorkDate(new Date()))}`);
   } else if (filters.overdueOnly === true || filters.overdueOnly === "true") {
-    conditions.push(Prisma.sql`c."nextVisitDate" < ${normalizeToWorkDate(new Date())}`);
+    conditions.push(Prisma.sql`c."nextVisitDate" < ${sqlTimestamp(normalizeToWorkDate(new Date()))}`);
   }
 
   if (filters.exceptionalOnly === true || filters.exceptionalOnly === "true") {
@@ -183,8 +197,8 @@ function buildRepresentativeLatestActionSqlParts(filters, user, options = {}) {
       SELECT latest_visit_inner.id, latest_visit_inner."newStatus"
       FROM "VisitHistory" latest_visit_inner
       WHERE latest_visit_inner."clientId" = c.id
-        AND latest_visit_inner."visitDate" >= ${allowedRange.start}
-        AND latest_visit_inner."visitDate" < ${allowedRange.end}
+        AND latest_visit_inner."visitDate" >= ${sqlTimestamp(allowedRange.start)}
+        AND latest_visit_inner."visitDate" < ${sqlTimestamp(allowedRange.end)}
       ORDER BY latest_visit_inner."visitDate" DESC, latest_visit_inner.id DESC
       LIMIT 1
     ) latest_visit ON true
@@ -197,14 +211,14 @@ function buildRepresentativeLatestActionSqlParts(filters, user, options = {}) {
 
   if (action === "PENDING") {
     if (!isOneTimeFilter) {
-      conditions.push(Prisma.sql`c."nextVisitDate" >= ${allowedRange.start} AND c."nextVisitDate" < ${allowedRange.end}`);
+      conditions.push(Prisma.sql`c."nextVisitDate" >= ${sqlTimestamp(allowedRange.start)} AND c."nextVisitDate" < ${sqlTimestamp(allowedRange.end)}`);
     }
     conditions.push(Prisma.sql`latest_visit.id IS NULL`);
   } else if (action) {
     conditions.push(Prisma.sql`latest_visit."newStatus"::text = ${action}`);
   } else if (!isOneTimeFilter) {
     conditions.push(Prisma.sql`(
-      (c."nextVisitDate" >= ${allowedRange.start} AND c."nextVisitDate" < ${allowedRange.end})
+      (c."nextVisitDate" >= ${sqlTimestamp(allowedRange.start)} AND c."nextVisitDate" < ${sqlTimestamp(allowedRange.end)})
       OR latest_visit.id IS NOT NULL
     )`);
   }
