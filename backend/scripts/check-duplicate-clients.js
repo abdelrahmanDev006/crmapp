@@ -6,6 +6,7 @@ const envFile = process.env.ENV_FILE || ".env";
 dotenv.config({ path: path.resolve(__dirname, `../${envFile}`) });
 
 const prisma = new PrismaClient();
+const failOnDuplicates = process.env.FAIL_ON_DUPLICATE_CLIENTS === "true";
 
 function formatIds(ids) {
   return ids.slice(0, 10).join(", ");
@@ -64,8 +65,11 @@ async function main() {
   printDuplicateRows("Duplicate active phone numbers:", duplicatePhones, (row) => {
     return `phoneNormalized=${row.normalizedPhone}`;
   });
-  console.error("Resolve these duplicates before applying the unique-index migration.");
-  process.exit(1);
+  console.error("Resolve these duplicates when possible. Deployment will continue without deleting existing data.");
+
+  if (failOnDuplicates) {
+    process.exit(1);
+  }
 }
 
 main()

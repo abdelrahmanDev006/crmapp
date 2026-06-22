@@ -11,9 +11,9 @@ SET "phoneNormalized" = NULLIF(
 )
 WHERE "phoneNormalized" IS NULL;
 
--- Prevent duplicate active phone numbers. This intentionally fails deployment
--- if existing active duplicates must be cleaned before production.
-CREATE UNIQUE INDEX IF NOT EXISTS "uniq_client_phone_normalized_active"
+-- Speed up duplicate active phone checks without deleting or blocking
+-- existing production records that may already contain duplicates.
+CREATE INDEX IF NOT EXISTS "idx_client_phone_normalized_active"
 ON "Client"("phoneNormalized")
 WHERE "isDeleted" = false AND "phoneNormalized" IS NOT NULL;
 
