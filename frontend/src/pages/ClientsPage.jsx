@@ -1579,9 +1579,10 @@ export default function ClientsPage({ forceTab }) {
     // --- Optimistic Update: قم بتحديث العميل بدلاً من حذفه إذا كان لا يزال يطابق الفلاتر ---
     setData(prev => {
       const newVisit = {
-        visitDate: new Date().toISOString(),
+        visitDate: `${referenceDateText}T12:00:00.000Z`,
         newStatus: outcome,
         note: noteText,
+        visitedById: user?.id || null,
         ...(isRepresentative
           ? {
               paymentMethod: paymentMethod || null,
@@ -1627,6 +1628,12 @@ export default function ClientsPage({ forceTab }) {
     
     const label = outcomeLabels[outcome] || "✅ تم تنفيذ الإجراء";
     showToast(`${label}: «${client.name}»`, outcomeTypes[outcome] || "success");
+
+    // --- بعد الإجراء: تحويل المندوب للفلتر المناسب ---
+    if (isRepresentative) {
+      setRepresentativeActionFilter(outcome);
+      setPage(1);
+    }
 
     try {
       await clientsApi.handle(client.id, {
