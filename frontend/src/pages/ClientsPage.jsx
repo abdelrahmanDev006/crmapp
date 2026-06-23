@@ -1629,12 +1629,6 @@ export default function ClientsPage({ forceTab }) {
     const label = outcomeLabels[outcome] || "✅ تم تنفيذ الإجراء";
     showToast(`${label}: «${client.name}»`, outcomeTypes[outcome] || "success");
 
-    // --- بعد الإجراء: تحويل المندوب للفلتر المناسب ---
-    if (isRepresentative) {
-      setRepresentativeActionFilter(outcome);
-      setPage(1);
-    }
-
     try {
       await clientsApi.handle(client.id, {
         outcome,
