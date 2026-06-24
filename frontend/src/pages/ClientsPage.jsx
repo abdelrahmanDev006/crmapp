@@ -2510,7 +2510,34 @@ export default function ClientsPage({ forceTab }) {
           <div className="table-empty">لا توجد بيانات في هذا التصنيف</div>
         ) : (
           <>
-
+            {isRepresentative && (
+              <div style={{ display: "flex", gap: "16px", padding: "16px 20px", background: "#eef2ff", borderRadius: "8px", border: "1px solid #c7d2fe", marginBottom: "16px", direction: "rtl", flexWrap: "wrap", justifyContent: "center", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>المطلوب</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#b91c1c" }}>{grandTotalRequired.toLocaleString("ar-EG")} ج</div>
+                </div>
+                <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>💵 كاش</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#15803d" }}>{grandTotalCash.toLocaleString("ar-EG")} ج</div>
+                </div>
+                <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>💳 فيزا</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#1d4ed8" }}>{grandTotalVisa.toLocaleString("ar-EG")} ج</div>
+                </div>
+                <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>الإجمالي</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#15803d" }}>{grandTotalCollected.toLocaleString("ar-EG")} ج</div>
+                </div>
+                <div style={{ width: "2px", background: "#a5b4fc", margin: "0 10px" }} />
+                <div style={{ textAlign: "center", minWidth: "100px" }}>
+                  <div style={{ fontSize: "0.95rem", color: "#4338ca", fontWeight: "bold", marginBottom: "4px" }}>المتبقي</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#ea580c" }}>{(grandTotalRequired - grandTotalCollected).toLocaleString("ar-EG")} ج</div>
+                </div>
+              </div>
+            )}
             <div className="clients-region-groups">
               {paginatedGroups.map((group) => {
               const representativeNames = regionRepresentatives[group.regionId] || [];
@@ -2567,11 +2594,16 @@ export default function ClientsPage({ forceTab }) {
                   </div>
 
                   {/* ملخص التحصيل للمندوب - مدمج أسفل اسم المنطقة مباشرة */}
-                  {isRepresentative && representativeActionFilter !== "REJECTED" && (() => {
+                  {isRepresentative && (() => {
                     const totalRequired = group.clients.reduce((sum, c) => sum + parsePrice(c.price), 0);
                     const activeClientsToday = group.clients.filter(c => getTodayAction(c) === "ACTIVE");
-                    const totalCollected = activeClientsToday
+                    const totalCashCollected = activeClientsToday
+                      .filter(c => getTodayPaymentMethod(c) === "CASH")
                       .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
+                    const totalVisaCollected = activeClientsToday
+                      .filter(c => getTodayPaymentMethod(c) === "VISA")
+                      .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
+                    const totalCollected = totalCashCollected + totalVisaCollected;
                     return (
                       <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "#f0fdf4", padding: "8px 16px", borderBottom: "1px solid #bbf7d0", flexWrap: "wrap", justifyContent: "center" }}>
                         <div style={{ display: "flex", gap: "4px", fontSize: "0.9rem" }}>
@@ -2580,8 +2612,18 @@ export default function ClientsPage({ forceTab }) {
                         </div>
                         <div style={{ width: "1px", height: "16px", background: "#d1d5db" }} />
                         <div style={{ display: "flex", gap: "4px", fontSize: "0.9rem" }}>
-                          <span style={{ color: "#666" }}>تم التحصيل:</span>
-                          <span style={{ fontWeight: "bold", color: "#15803d" }}>{totalCollected.toLocaleString("ar-EG")} ج</span>
+                          <span style={{ color: "#666" }}>💵 كاش:</span>
+                          <span style={{ fontWeight: "bold", color: "#15803d" }}>{totalCashCollected.toLocaleString("ar-EG")} ج</span>
+                        </div>
+                        <div style={{ width: "1px", height: "16px", background: "#d1d5db" }} />
+                        <div style={{ display: "flex", gap: "4px", fontSize: "0.9rem" }}>
+                          <span style={{ color: "#666" }}>💳 فيزا:</span>
+                          <span style={{ fontWeight: "bold", color: "#1d4ed8" }}>{totalVisaCollected.toLocaleString("ar-EG")} ج</span>
+                        </div>
+                        <div style={{ width: "1px", height: "16px", background: "#d1d5db" }} />
+                        <div style={{ display: "flex", gap: "4px", fontSize: "0.9rem" }}>
+                          <span style={{ color: "#666" }}>المتبقي:</span>
+                          <span style={{ fontWeight: "bold", color: "#ea580c" }}>{(totalRequired - totalCollected).toLocaleString("ar-EG")} ج</span>
                         </div>
                       </div>
                     );
