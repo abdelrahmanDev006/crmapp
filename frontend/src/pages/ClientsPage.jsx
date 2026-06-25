@@ -2292,10 +2292,10 @@ export default function ClientsPage({ forceTab }) {
                     const activeClientsToday = group.clients.filter(c => getTodayAction(c) === "ACTIVE");
                     const totalCashCollected = activeClientsToday
                       .filter(c => getTodayPaymentMethod(c) === "CASH")
-                      .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
+                      .reduce((sum, c) => sum + Number(getTodayCollectedAmount(c) || 0), 0);
                     const totalVisaCollected = activeClientsToday
                       .filter(c => getTodayPaymentMethod(c) === "VISA")
-                      .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
+                      .reduce((sum, c) => sum + Number(getTodayCollectedAmount(c) || 0), 0);
                     const totalCollected = totalCashCollected + totalVisaCollected;
                     return (
                       <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "#f0fdf4", padding: "8px 16px", borderBottom: "1px solid #bbf7d0", flexWrap: "wrap", justifyContent: "center" }}>
