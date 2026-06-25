@@ -1563,27 +1563,44 @@ export default function ClientsPage({ forceTab }) {
         "الملاحظات": getSafeExportText(client.visits?.[0]?.note || "")
       }));
 
-      const { default: writeXlsxFile } = await import("write-excel-file/browser");
-      const schema = [
-        { column: "م", type: Number, value: (row) => row["م"], width: 6 },
-        { column: "اسم العميل", type: String, value: (row) => row["اسم العميل"], width: 24 },
-        { column: "رقم الهاتف", type: String, value: (row) => row["رقم الهاتف"], width: 18 },
-        { column: "العنوان", type: String, value: (row) => row["العنوان"], width: 28 },
-        { column: "اللوكيشن", type: String, value: (row) => row["اللوكيشن"], width: 28 },
-        { column: "المنتجات", type: String, value: (row) => row["المنتجات"], width: 16 },
-        { column: "السعر", type: String, value: (row) => row["السعر"], width: 24 },
-        { column: "نوع الزيارة", type: String, value: (row) => row["نوع الزيارة"], width: 14 },
-        { column: "الحالة", type: String, value: (row) => row["الحالة"], width: 16 },
-        { column: "الزيارة القادمة", type: String, value: (row) => row["الزيارة القادمة"], width: 14 },
-        { column: "الملاحظات", type: String, value: (row) => row["الملاحظات"], width: 18 }
-      ];
-      const fileDate = getTodayInputDate();
+      if (!window.XlsxPopulate) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "/xlsx-populate.min.js";
+          script.onload = resolve;
+          script.onerror = () => reject(new Error("تعذر تحميل مكتبة التصدير"));
+          document.head.appendChild(script);
+        });
+      }
+      const XlsxPopulate = window.XlsxPopulate;
+      const workbook = await XlsxPopulate.fromBlankAsync();
+      const sheet = workbook.sheet(0);
+      sheet.name("العملاء");
+      sheet.rightToLeft(true);
 
-      await writeXlsxFile(exportRows, {
-        schema,
-        sheet: "العملاء",
-        fileName: `clients-export-${fileDate}.xlsx`
+      const headers = ["م", "اسم العميل", "رقم الهاتف", "العنوان", "اللوكيشن", "المنتجات", "السعر", "نوع الزيارة", "الحالة", "الزيارة القادمة", "الملاحظات"];
+      headers.forEach((header, colIndex) => {
+        const cell = sheet.cell(1, colIndex + 1);
+        cell.value(header);
+        cell.style("bold", true);
       });
+
+      exportRows.forEach((row, rowIndex) => {
+        headers.forEach((header, colIndex) => {
+          sheet.cell(rowIndex + 2, colIndex + 1).value(row[header]);
+        });
+      });
+
+      const fileDate = getTodayInputDate();
+      const blob = await workbook.outputAsync({ password: "CRM@Export2026#Secure" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `clients-export-${fileDate}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
       setInfoMessage(`تم تصدير ${allItems.length} عميل إلى ملف إكسيل بنجاح.`);
     } catch (err) {
