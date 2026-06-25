@@ -1551,6 +1551,7 @@ export default function ClientsPage({ forceTab }) {
 
       const exportRows = allItems.map((client, index) => ({
         "م": index + 1,
+        "المنطقة": getSafeExportText(client.region?.name || "بدون منطقة"),
         "اسم العميل": getSafeExportText(client.name),
         "رقم الهاتف": getSafeExportText(client.phone),
         "العنوان": getSafeExportText(client.address),
@@ -1578,7 +1579,7 @@ export default function ClientsPage({ forceTab }) {
       sheet.name("العملاء");
       sheet.rightToLeft(true);
 
-      const headers = ["م", "اسم العميل", "رقم الهاتف", "العنوان", "اللوكيشن", "المنتجات", "السعر", "نوع الزيارة", "الحالة", "الزيارة القادمة", "الملاحظات"];
+      const headers = ["م", "المنطقة", "اسم العميل", "رقم الهاتف", "العنوان", "اللوكيشن", "المنتجات", "السعر", "نوع الزيارة", "الحالة", "الزيارة القادمة", "الملاحظات"];
       headers.forEach((header, colIndex) => {
         const cell = sheet.cell(1, colIndex + 1);
         cell.value(header);
