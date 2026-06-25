@@ -1770,10 +1770,10 @@ export default function ClientsPage({ forceTab }) {
   const grandTotalRequired = data.items.reduce((sum, c) => sum + parsePrice(c.price), 0);
   const grandTotalCash = data.items
     .filter(c => getTodayAction(c) === "ACTIVE" && getTodayPaymentMethod(c) === "CASH")
-    .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
+    .reduce((sum, c) => sum + Number(getTodayCollectedAmount(c) || 0), 0);
   const grandTotalVisa = data.items
     .filter(c => getTodayAction(c) === "ACTIVE" && getTodayPaymentMethod(c) === "VISA")
-    .reduce((sum, c) => sum + (getTodayCollectedAmount(c) || 0), 0);
+    .reduce((sum, c) => sum + Number(getTodayCollectedAmount(c) || 0), 0);
   const grandTotalCollected = grandTotalCash + grandTotalVisa;
   const representativeActionCounts = data.representativeActionCounts || {};
 
@@ -2122,7 +2122,7 @@ export default function ClientsPage({ forceTab }) {
             </div>
           )}
 
-          {activeTab === "REJECTED" && (
+          {isAdmin && activeTab === "REJECTED" && (
             <div className="clients-date-filter">
               <span className="clients-date-label">شهر الكانسل</span>
               <div className="clients-date-input">
