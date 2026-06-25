@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -8,8 +8,17 @@ RUN npm ci
 COPY prisma ./prisma
 RUN npx prisma generate
 
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/prisma ./prisma
 COPY src ./src
 COPY scripts ./scripts
+COPY package*.json ./
+
+RUN npm prune --production
 
 EXPOSE 5000
 

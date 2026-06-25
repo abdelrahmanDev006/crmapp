@@ -79,6 +79,7 @@ model Client {
   @@index([isDeleted, nextVisitDate])
   @@index([isDeleted, regionId, status])
   @@index([phoneNormalized])
+  @@index([isDeleted])
 }
 
 model VisitHistory {
@@ -90,7 +91,7 @@ model VisitHistory {
   newStatus             ClientStatus
   note                  String?
   paymentMethod         PaymentMethod?
-  collectedAmount       Float?
+  collectedAmount       Decimal?       @db.Decimal(10, 2)
   deliveredProducts     String?
   previousNextVisitDate DateTime?
   newNextVisitDate      DateTime?
@@ -100,6 +101,7 @@ model VisitHistory {
 
   @@index([clientId, visitDate])
   @@index([visitedById, visitDate])
+  @@index([visitedById, newStatus, visitDate])
 }
 
 model ActivityLog {

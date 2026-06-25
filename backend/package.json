@@ -18,6 +18,7 @@
     "data:seed-demo": "node scripts/seed-demo-clients.js",
     "admin:bootstrap": "node scripts/bootstrap-admin.js",
     "maintenance:normalize-next-visit-dates": "node scripts/normalize-client-next-visit-dates.js",
+    "maintenance:cleanup-logs": "node scripts/cleanup-logs.js",
     "test:smoke": "node scripts/smoke-api.js"
   },
   "prisma": {
